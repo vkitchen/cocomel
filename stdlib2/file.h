@@ -13,6 +13,11 @@
 #ifndef FILE_H_
 #define FILE_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include "string.h"
 
 /*
@@ -37,7 +42,7 @@ size_t file_slurp_buffer_c(char *filename, char *buffer, size_t len);
 		@param filename [in] Filename to be read
 		@return String containing the contents of the file
 */
-struct string *file_slurp_c(char *filename);
+struct string *file_slurp_c(char const*filename);
 
 /*
 	FILE_EXISTS_C()
@@ -48,5 +53,9 @@ struct string *file_slurp_c(char *filename);
 		@param filename [in] Filename to check
 */
 int file_exists_c(char *filename);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

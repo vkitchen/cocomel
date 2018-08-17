@@ -7,7 +7,7 @@ SRC := \
 	stdlib2/memory.c \
 	stdlib2/string2.c \
 	stdlib2/file.c \
-	index.c
+	index.cpp
 
 
 HEADERS := \
@@ -16,10 +16,13 @@ HEADERS := \
 	stdlib2/file.h
 
 
-OBJECTS := $(SRC:%.c=%.o)
+OBJECTS := $(SRC:%=%.o)
 
-%.o: %.c $(HEADERS)
+%.c.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+%.cpp.o: %.cpp $(HEADERS)
+	$(CXX) $(CFLAGS) -c $< -o $@
 
 index: $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS)

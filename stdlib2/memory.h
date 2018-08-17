@@ -14,6 +14,11 @@
 #ifndef MEMORY_H_
 #define MEMORY_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 /*
@@ -38,5 +43,9 @@ void *memory_alloc(size_t size);
 		@return Pointer to the resized chunk of memory or NULL on error
 */
 void *memory_realloc(void *ptr, size_t size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

@@ -18,7 +18,7 @@ struct tokenizer {
 };
 
 struct tokenizer *tokenizer_new(struct string *str) {
-	struct tokenizer *tok = memory_alloc(sizeof(struct tokenizer));
+	struct tokenizer *tok = (struct tokenizer *)memory_alloc(sizeof(struct tokenizer));
 	tok->str = str;
 	tok->index = 0;
 	return tok;

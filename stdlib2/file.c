@@ -42,7 +42,7 @@ size_t file_slurp_buffer_c(char *filename, char *buffer, size_t len)
 	FILE_SLURP_C()
 	--------------
 */
-struct string *file_slurp_c(char *filename)
+struct string *file_slurp_c(char const*filename)
 	{
 	FILE *fh;
 	struct stat details;

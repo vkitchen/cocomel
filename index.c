@@ -5,11 +5,8 @@
 #include "stdlib2/string2.h"
 #include "stdlib2/file.h"
 #include "stdlib2/memory.h"
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <vector>
-#include <map>
+#include "flexarray.h"
+#include "rb_tree/rb_tree.h"
 
 enum token_type {DOCNO, WORD, END};
 struct token {
@@ -110,57 +107,70 @@ struct token tokenizer_next(struct tokenizer *tok) {
 	return token;
 }
 
+struct posting {
+	char *word;
+	flexarray list;
+};
+
+int rbt_cmp(struct rb_tree *self, struct rb_node *a_node, struct rb_node *b_node) {
+	struct posting *a = (struct posting *)a_node->value;
+	struct posting *b = (struct posting *)b_node->value;
+	return strcmp(a->word, b->word);
+}
+
 int main(void) {
 	struct string *file = file_slurp_c("wsj.xml");
 	struct tokenizer *tok = tokenizer_new(file);
-	std::vector<std::string> docNos;
-	std::map<std::string, std::vector<size_t>> postings;
+	flexarray docNos = flexarray_new(1024);
+	struct rb_tree *postings = rb_tree_create(rbt_cmp);
 	struct token token;
 	size_t docI = -1;
 	do {
 		token = tokenizer_next(tok);
 		if (token.type == DOCNO) {
 			docI++;
-			std::string str(token.value);
-			docNos.push_back(str);
+			flexarray_append(docNos, token.value);
 		} else if (token.type != END) {
-			std::string word(token.value);
-			if (postings.count(word) > 0) {
-				if (postings[word].back() != docI) {
-					postings[word].push_back(docI);
+			struct posting *post = malloc(sizeof(struct posting));
+			post->word = token.value;
+			struct posting *post_exist = rb_tree_find(postings, post);
+			if (post_exist != NULL) {
+				int length = flexarray_length(post_exist->list);
+				if (length == 0 || (size_t)flexarray_get(post_exist->list, length-1) != docI) {
+					flexarray_append(post_exist->list, (void *)docI);
 				}
 			} else {
-				std::vector<size_t> docs;
-				postings[word] = docs;
-				postings[word].push_back(docI);
+				post->list = flexarray_new(1024);
+				flexarray_append(post->list, (void *)docI);
+				rb_tree_insert(postings, post);
 			}
 		}
 	} while (token.type != END);
 
 	exit(0);
 
-	std::ofstream fh;
-	fh.open("postings.dat", std::ios::binary);
-	size_t docCount = docNos.size();
-	fh.write((char *)&docCount, 8);
-	for (auto &docNo : docNos) {
-		size_t docNoSize = docNo.size();
-		fh.write((char *)&docNoSize, 8);
-		fh.write(&docNo[0], docNoSize);
-	}
-	size_t postingsLength = postings.size();
-	fh.write((char *)&postingsLength, 8);
-	for (auto &post : postings) {
-		size_t stringLength = post.first.size();
-		fh.write((char *)&stringLength, 8);
-		fh.write(&post.first[0], stringLength);
-		size_t listLength = post.second.size();
-		fh.write((char *)&listLength, 8);
-		for (auto &list : post.second) {
-			fh.write((char *)&list, 8);
-		}
-	}
-	fh.close();
+//	std::ofstream fh;
+//	fh.open("postings.dat", std::ios::binary);
+//	size_t docCount = docNos.size();
+//	fh.write((char *)&docCount, 8);
+//	for (auto &docNo : docNos) {
+//		size_t docNoSize = docNo.size();
+//		fh.write((char *)&docNoSize, 8);
+//		fh.write(&docNo[0], docNoSize);
+//	}
+//	size_t postingsLength = postings.size();
+//	fh.write((char *)&postingsLength, 8);
+//	for (auto &post : postings) {
+//		size_t stringLength = post.first.size();
+//		fh.write((char *)&stringLength, 8);
+//		fh.write(&post.first[0], stringLength);
+//		size_t listLength = post.second.size();
+//		fh.write((char *)&listLength, 8);
+//		for (auto &list : post.second) {
+//			fh.write((char *)&list, 8);
+//		}
+//	}
+//	fh.close();
 
 	return 0;
 }

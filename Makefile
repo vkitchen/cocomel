@@ -6,7 +6,9 @@ CFLAGS := -Wall -Wextra -O2 -g
 SRC := \
 	stdlib2/memory.c \
 	stdlib2/string2.c \
-	stdlib2/file.c
+	stdlib2/file.c \
+	flexarray.c \
+	rb_tree/rb_tree.c
 
 
 HEADERS := \
@@ -25,8 +27,8 @@ OBJECTS := $(SRC:%=%.o)
 
 all: index search
 
-index: index.cpp $(OBJECTS)
-	$(CXX) -o $@ index.cpp $(OBJECTS)
+index: index.c $(OBJECTS)
+	$(CC) -o $@ index.c $(OBJECTS)
 
 search: search.cpp $(OBJECTS)
 	$(CXX) -o $@ search.cpp $(OBJECTS)

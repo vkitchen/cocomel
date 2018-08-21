@@ -6,8 +6,7 @@ CFLAGS := -Wall -Wextra -O2 -g
 SRC := \
 	stdlib2/memory.c \
 	stdlib2/string2.c \
-	stdlib2/file.c \
-	index.cpp
+	stdlib2/file.c
 
 
 HEADERS := \
@@ -24,10 +23,15 @@ OBJECTS := $(SRC:%=%.o)
 %.cpp.o: %.cpp $(HEADERS)
 	$(CXX) $(CFLAGS) -c $< -o $@
 
-index: $(OBJECTS)
-	$(CC) -o $@ $(OBJECTS)
+all: index search
 
-CLEAN := $(OBJECTS) index
+index: index.cpp $(OBJECTS)
+	$(CXX) -o $@ index.cpp $(OBJECTS)
+
+search: search.cpp $(OBJECTS)
+	$(CXX) -o $@ search.cpp $(OBJECTS)
+
+CLEAN := $(OBJECTS) index search
 clean:
 	rm -f $(CLEAN)
 

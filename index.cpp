@@ -5,6 +5,11 @@
 #include "stdlib2/string2.h"
 #include "stdlib2/file.h"
 #include "stdlib2/memory.h"
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <map>
 
 enum token_type {DOCNO, WORD, END};
 struct token {
@@ -98,9 +103,52 @@ struct token tokenizer_next(struct tokenizer *tok) {
 int main(void) {
 	struct string *file = file_slurp_c("wsj.xml");
 	struct tokenizer *tok = tokenizer_new(file);
-	for (size_t i = 0; i < 300; i++) {
-		struct token token = tokenizer_next(tok);
-		printf("%d: %s\n", token.type, token.value);
+	std::vector<std::string> docNos;
+	std::map<std::string, std::vector<size_t>> postings;
+	struct token token;
+	size_t docI = -1;
+	do {
+		token = tokenizer_next(tok);
+		if (token.type == DOCNO) {
+			docI++;
+			std::string str(token.value);
+			docNos.push_back(str);
+		} else if (token.type != END) {
+			std::string word(token.value);
+			if (postings.count(word) > 0) {
+				if (postings[word].back() != docI) {
+					postings[word].push_back(docI);
+				}
+			} else {
+				std::vector<size_t> docs;
+				postings[word] = docs;
+				postings[word].push_back(docI);
+			}
+		}
+	} while (token.type != END);
+
+	std::ofstream fh;
+	fh.open("postings.dat", std::ios::binary);
+	size_t docCount = docNos.size();
+	fh.write((char *)&docCount, 8);
+	for (auto &docNo : docNos) {
+		size_t docNoSize = docNo.size();
+		fh.write((char *)&docNoSize, 8);
+		fh.write(&docNo[0], docNoSize);
 	}
+	size_t postingsLength = postings.size();
+	fh.write((char *)&postingsLength, 8);
+	for (auto &post : postings) {
+		size_t stringLength = post.first.size();
+		fh.write((char *)&stringLength, 8);
+		fh.write(&post.first[0], stringLength);
+		size_t listLength = post.second.size();
+		fh.write((char *)&listLength, 8);
+		for (auto &list : post.second) {
+			fh.write((char *)&list, 8);
+		}
+	}
+	fh.close();
+
 	return 0;
 }

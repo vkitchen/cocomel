@@ -82,11 +82,21 @@ struct token tokenizer_next(struct tokenizer *tok) {
 
 	if (tok->index < tok->str->bytes) {
 		int i = 0;
-		while (i < 256 && i + tok->index < tok->str->bytes && !isspace(tok->str->str[tok->index + i]) && tok->str->str[tok->index + i] != '<') {
-			word[i] = tok->str->str[tok->index + i];
+		int j = 0;
+		while (j < 256 && i + tok->index < tok->str->bytes && !isspace(tok->str->str[tok->index + i]) && tok->str->str[tok->index + i] != '<') {
+			char c = tok->str->str[tok->index + i];
+			if (90 < c) {
+				c -= 'a' - 'A';
+			}
+			if (c < 48 || (57 < c && c < 65) || 90 < c) {
+				i++;
+				continue;
+			}
+			word[j] = tok->str->str[tok->index + i];
 			i++;
+			j++;
 		}
-		word[i] = '\0';
+		word[j] = '\0';
 		token.type = WORD;
 		token.value = strdup(word);
 
@@ -126,6 +136,8 @@ int main(void) {
 			}
 		}
 	} while (token.type != END);
+
+	exit(0);
 
 	std::ofstream fh;
 	fh.open("postings.dat", std::ios::binary);

@@ -4,7 +4,7 @@
 CFLAGS := -Wall -Wextra -O2 -g
 
 SRC := \
-	stdlib2/memory.c \
+	memory.c \
 	stdlib2/string2.c \
 	stdlib2/file.c \
 	flexarray.c \
@@ -12,7 +12,7 @@ SRC := \
 
 
 HEADERS := \
-	stdlib2/memory.h \
+	memory.h \
 	stdlib2/string2.h	\
 	stdlib2/file.h
 
@@ -28,10 +28,10 @@ OBJECTS := $(SRC:%=%.o)
 all: index search
 
 index: index.c $(OBJECTS)
-	$(CC) -o $@ index.c $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ index.c $(OBJECTS)
 
 search: search.cpp $(OBJECTS)
-	$(CXX) -o $@ search.cpp $(OBJECTS)
+	$(CXX) $(CFLAGS) -o $@ search.cpp $(OBJECTS)
 
 CLEAN := $(OBJECTS) index search
 clean:

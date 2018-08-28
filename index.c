@@ -7,6 +7,8 @@
 #include "stdlib2/memory.h"
 #include "flexarray.h"
 #include "rb_tree/rb_tree.h"
+#include "htable_kv.h"
+#include "vector_kv.h"
 
 enum token_type {DOCNO, WORD, END};
 struct token {
@@ -124,7 +126,8 @@ int main(void) {
 	struct string *file = file_slurp_c("wsj.xml");
 	struct tokenizer *tok = tokenizer_new(file);
 	flexarray docNos = flexarray_new(1024);
-	struct rb_tree *postings = rb_tree_create(rbt_cmp);
+//	struct rb_tree *postings = rb_tree_create(rbt_cmp);
+	struct htable_kv *postings = htable_kv_new(10000);
 	struct token token;
 	size_t docI = -1;
 	do {
@@ -133,21 +136,40 @@ int main(void) {
 			docI++;
 			flexarray_append(docNos, token.value);
 		} else if (token.type != END) {
-			struct posting *post = malloc(sizeof(struct posting));
-			post->word = token.value;
-			struct posting *post_exist = rb_tree_find(postings, post);
-			if (post_exist != NULL) {
-				int length = flexarray_length(post_exist->list);
-				if (length == 0 || (size_t)flexarray_get(post_exist->list, length-1) != docI) {
-					flexarray_append(post_exist->list, (void *)docI);
+			flexarray list = htable_kv_find(postings, token.value);
+//			struct posting *post = malloc(sizeof(struct posting));
+//			post->word = token.value;
+//			struct posting *post_exist = rb_tree_find(postings, post);
+			if (list != NULL) {
+				int length = flexarray_length(list);
+				if (length == 0 || (size_t)flexarray_get(list, length-1) != docI) {
+					flexarray_append(list, (void *)docI);
 				}
 			} else {
-				post->list = flexarray_new(1024);
-				flexarray_append(post->list, (void *)docI);
-				rb_tree_insert(postings, post);
+				list = flexarray_new(1024);
+				flexarray_append(list, (void *)docI);
+				htable_kv_insert(postings, token.value, list);
+//				rb_tree_insert(postings, post);
 			}
 		}
 	} while (token.type != END);
+
+//	struct vector_kv *out_list = htable_kv_merge(postings);
+//	struct vector_kv *out_list = vector_kv_new();
+//	for (size_t i = 0; i < postings->capacity; i++) {
+//		if (postings->store[i] == NULL) {
+//			continue;
+//		}
+//		for (size_t j = 0; j < postings->store[i]->length; j++) {
+//			vector_kv_append(out_list, postings->store[i]->items[j * 2], postings->store[i]->items[j * 2 + 1]);
+//		}
+//	}
+//
+//	vector_kv_sort(out_list);
+//
+//	for (size_t i = 0; i < out_list->length; i++) {
+//		printf("%s\n", out_list->items[i*2]);
+//	}
 
 	exit(0);
 

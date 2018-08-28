@@ -8,13 +8,19 @@ SRC := \
 	stdlib2/string2.c \
 	stdlib2/file.c \
 	flexarray.c \
-	rb_tree/rb_tree.c
+	rb_tree/rb_tree.c \
+	htable_kv.c \
+	vector_kv.c \
+	rbt_kv.c
 
 
 HEADERS := \
 	memory.h \
 	stdlib2/string2.h	\
-	stdlib2/file.h
+	stdlib2/file.h \
+	htable_kv.h \
+	vector_kv.h \
+	rbt_kv.h
 
 
 OBJECTS := $(SRC:%=%.o)

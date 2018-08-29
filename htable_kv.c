@@ -50,12 +50,16 @@ void htable_kv_merge(struct htable_kv *h) {
 			rbt_kv_linked_list(h->store[i]);
 		}
 	}
-	for (size_t i = 0; i < h->capacity; i++) {
-		if (h->store[i] != NULL) {
-			rbt_kv_merge_left(h->store[0], h->store[i]);
+	for (size_t gap = 1; gap < h->capacity; gap *= 2) {
+		for (size_t i = 0; i < h->capacity; i += gap * 2) {
+			if (h->store[i] == NULL) {
+				h->store[i] = h->store[i+gap];
+				continue;
+			}
+			rbt_kv_merge_left(h->store[i], h->store[i+gap]);
 		}
 	}
-	rbt_kv_print_list(h->store[0]);
+//	rbt_kv_print_list(h->store[0]);
 	
 //	if (h->store[1] == NULL) {
 //		printf("Shit's fucked fam\n");

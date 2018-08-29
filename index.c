@@ -92,7 +92,7 @@ struct token tokenizer_next(struct tokenizer *tok) {
 				i++;
 				continue;
 			}
-			word[j] = tok->str->str[tok->index + i];
+			word[j] = c;
 			i++;
 			j++;
 		}
@@ -127,7 +127,7 @@ int main(void) {
 	struct tokenizer *tok = tokenizer_new(file);
 	flexarray docNos = flexarray_new(1024);
 //	struct rb_tree *postings = rb_tree_create(rbt_cmp);
-	struct htable_kv *postings = htable_kv_new(10000);
+	struct htable_kv *postings = htable_kv_new(8192);
 	struct token token;
 	size_t docI = -1;
 	do {
@@ -154,6 +154,7 @@ int main(void) {
 		}
 	} while (token.type != END);
 
+	htable_kv_merge(postings);
 //	struct vector_kv *out_list = htable_kv_merge(postings);
 //	struct vector_kv *out_list = vector_kv_new();
 //	for (size_t i = 0; i < postings->capacity; i++) {

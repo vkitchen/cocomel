@@ -9,7 +9,7 @@ static unsigned int htable_word_to_int(char *key);
 struct htable_kv *htable_kv_new(size_t capacity)
 {
     struct htable_kv *h = malloc(sizeof(struct htable_kv));
-    h->capacity = capacity;
+    h->capacity = capacity; /* TODO enforce a multiple of 2 */
     h->store = malloc(sizeof(struct vector_kv *) * capacity);
     for (size_t i = 0; i < capacity; i++) {
         h->store[i] = NULL;
@@ -42,6 +42,29 @@ static unsigned int htable_word_to_int(char *key) {
         result = (*key++ + 31 * result);
     }
     return result;
+}
+
+void htable_kv_merge(struct htable_kv *h) {
+	for (size_t i = 0; i < h->capacity; i++) {
+		if (h->store[i] != NULL) {
+			rbt_kv_linked_list(h->store[i]);
+		}
+	}
+	for (size_t i = 0; i < h->capacity; i++) {
+		if (h->store[i] != NULL) {
+			rbt_kv_merge_left(h->store[0], h->store[i]);
+		}
+	}
+	rbt_kv_print_list(h->store[0]);
+	
+//	if (h->store[1] == NULL) {
+//		printf("Shit's fucked fam\n");
+//		return;
+//	}
+//	rbt_kv_print(h->store[1]);
+//	printf("### INTERMISSION ###\n");
+//	rbt_kv_linked_list(h->store[1]);
+//	rbt_kv_print_list(h->store[1]);
 }
 
 // static struct vector_kv *merge(struct vector_kv *a, struct vector_kv *b) {

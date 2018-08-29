@@ -127,3 +127,103 @@ struct rbt_kv *rbt_kv_find(struct rbt_kv *tree, char *key) {
 
 	return NULL;
 }
+
+static struct rbt_kv_node *list_append(struct rbt_kv_node *left, struct rbt_kv_node *right) {
+	if (left == NULL) {
+		return right;
+	}
+	if (right == NULL) {
+		return left;
+	}
+
+	struct rbt_kv_node *tail = right->link[0];
+
+	left->link[0]->link[1] = right; /* Old left tail to old right head */
+	right->link[0]->link[1] = left; /* Right tail to left head */
+
+	right->link[0] = left->link[0]; /* Old right head to old left tail */
+	left->link[0] = tail; /* Left head to right tail */
+
+	return left;
+}
+
+static struct rbt_kv_node *rbt_kv_linked_list_join(struct rbt_kv_node *root) {
+	struct rbt_kv_node *left, *right;
+
+	if (root == NULL) {
+		return NULL;
+	}
+
+	left = rbt_kv_linked_list_join(root->link[0]);
+	right = rbt_kv_linked_list_join(root->link[1]);
+
+	root->link[0] = root;
+	root->link[1] = root;
+
+	left = list_append(left, root);
+	left = list_append(left, right);
+
+	return left;
+}
+
+/* Convert tree to doubly linked list */
+void rbt_kv_linked_list(struct rbt_kv *tree) {
+	tree->root = rbt_kv_linked_list_join(tree->root);
+}
+
+static void rbt_kv_print_inorder(struct rbt_kv_node *root) {
+	if (root == NULL) {
+		return;
+	}
+	rbt_kv_print_inorder(root->link[0]);
+	printf("%s\n", root->key);
+	rbt_kv_print_inorder(root->link[1]);
+}
+
+void rbt_kv_print(struct rbt_kv *tree) {
+	rbt_kv_print_inorder(tree->root);
+}
+
+void rbt_kv_print_list(struct rbt_kv *tree) {
+	if (tree->root == NULL) {
+		return;
+	}
+	struct rbt_kv_node *root = tree->root;
+	do {
+		printf("%s\n", root->key);
+		root = root->link[1];
+	} while (root != tree->root);
+}
+
+// static void list_insert_after(struct rbt_kv_node *list, struct rbt_kv_node *node) {
+// 	node->link[0] = list;
+// 	node->link[1] = list->link[1];
+// 	list->link[1]->link[0] = node;
+// 	list->link[1] = node;
+// }
+
+static void list_insert_before(struct rbt_kv_node *list, struct rbt_kv_node *node) {
+	node->link[0] = list->link[0];
+	node->link[1] = list;
+	list->link[0]->link[1] = node;
+	list->link[0] = node;
+}
+
+void rbt_kv_merge_left(struct rbt_kv *left_tree, struct rbt_kv *right_tree) {
+	struct rbt_kv_node *left = left_tree->root;
+	struct rbt_kv_node *right = right_tree->root;
+	struct rbt_kv_node *tmp;
+	int moved = 0;
+	do {
+		while (strcmp(left->key, right->key) < 0 && (left != left_tree->root || !moved)) {
+			left = left->link[1];
+			moved = 1;
+		}
+		tmp = right;
+		right = right->link[1];
+		list_insert_before(left, tmp);
+		if (left_tree->root == left && !moved) {
+			left_tree->root = tmp;
+		}
+	} while (right != right_tree->root);
+}

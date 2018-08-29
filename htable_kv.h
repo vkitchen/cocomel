@@ -11,6 +11,6 @@ struct htable_kv {
 struct htable_kv *htable_kv_new();
 void htable_kv_insert(struct htable_kv *h, char *key, void *val);
 void *htable_kv_find(struct htable_kv *h, char *key);
-//struct vector_kv *htable_kv_merge(struct htable_kv *h);
+void htable_kv_merge(struct htable_kv *h);
 
 #endif

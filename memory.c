@@ -18,6 +18,7 @@ static void *buffer_end;
 	MEMORY_ALLOC()
 	--------------
 */
+/* TODO this should probably deal with char * */
 void *memory_alloc(size_t size) {
 	size = (size + 8 - 1) & -8; // round to word size
 	if (buffer == NULL || buffer + size >= buffer_end) {

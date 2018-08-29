@@ -35,7 +35,7 @@ static struct rbt_kv_node *rbt_kv_double(struct rbt_kv_node *root, int dir) {
 }
 
 static struct rbt_kv_node *make_node(char *key, void *val) {
-	struct rbt_kv_node *node = malloc(sizeof(struct rbt_kv_node));
+	struct rbt_kv_node *node = memory_alloc(sizeof(struct rbt_kv_node));
 
 	node->key = key;
 	node->val = val;
@@ -47,7 +47,7 @@ static struct rbt_kv_node *make_node(char *key, void *val) {
 }
 
 struct rbt_kv *rbt_kv_new() {
-	struct rbt_kv *tree = malloc(sizeof(struct rbt_kv));
+	struct rbt_kv *tree = memory_alloc(sizeof(struct rbt_kv));
 	tree->root = NULL;
 	return tree;
 }

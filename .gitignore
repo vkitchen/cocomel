@@ -1,3 +1,4 @@
+*.txt
 postings.dat
 wsj.xml
 *.o

@@ -6,12 +6,12 @@
 
 static unsigned int htable_word_to_int(char *key);
 
-struct htable_kv *htable_kv_new(size_t capacity)
+struct htable_kv *htable_kv_new()
 {
     struct htable_kv *h = malloc(sizeof(struct htable_kv));
-    h->capacity = capacity; /* TODO enforce a multiple of 2 */
-    h->store = malloc(sizeof(struct vector_kv *) * capacity);
-    for (size_t i = 0; i < capacity; i++) {
+    h->capacity = 8192;
+    h->store = malloc(sizeof(struct vector_kv *) * h->capacity);
+    for (size_t i = 0; i < h->capacity; i++) {
         h->store[i] = NULL;
     }
     return h;
@@ -60,65 +60,4 @@ void htable_kv_merge(struct htable_kv *h) {
 		}
 	}
 //	rbt_kv_print_list(h->store[0]);
-	
-//	if (h->store[1] == NULL) {
-//		printf("Shit's fucked fam\n");
-//		return;
-//	}
-//	rbt_kv_print(h->store[1]);
-//	printf("### INTERMISSION ###\n");
-//	rbt_kv_linked_list(h->store[1]);
-//	rbt_kv_print_list(h->store[1]);
 }
-
-// static struct vector_kv *merge(struct vector_kv *a, struct vector_kv *b) {
-// 	vector_kv_sort(b);
-// 
-// 	struct vector_kv *out = vector_kv_new();
-// 	size_t i = 0;
-// 	size_t j = 0;
-// 	while (i < a->length && j < b->length) {
-// 		int res;
-// 		if (!(i < a->length)) {
-// 			res = 1;
-// 		} else if (!(j < b->length)) {
-// 			res = -1;
-// 		} else {
-// 			res = strcmp(a->items[i * 2], b->items[j * 2]);
-// 		}
-// 		if (res <= 0) {
-// 			vector_kv_append(out, a->items[i * 2], a->items[i * 2 + 1]);
-// 			i++;
-// 		} else {
-// 			vector_kv_append(out, b->items[j * 2], b->items[j * 2 + 1]);
-// 			j++;
-// 		}
-// 	}
-// 	return out;
-// }
-// 
-// struct vector_kv *htable_kv_merge(struct htable_kv *h) {
-// 	size_t i;
-// 	for (i = 0; i < h->capacity; i++) {
-// 		if (h->store[i] != NULL) {
-// 			vector_kv_sort(h->store[i]);
-// 			break;
-// 		}
-// 	}
-// 	if (h->store[i] == NULL) {
-// 		return NULL;
-// 	}
-// 	int merged = 1;
-// 	while (merged) {
-// 		merged = 0;
-// 		for (size_t j = i+1; j < h->capacity; j++) {
-// 			if (h->store[j] != NULL) {
-// 				h->store[i] = merge(h->store[i], h->store[j]);
-// 				h->store[j] = NULL;
-// 				merged = 1;
-// 				break;
-// 			}
-// 		}
-// 	}
-// 	return h->store[i];
-// }

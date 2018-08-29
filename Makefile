@@ -8,10 +8,10 @@ SRC := \
 	stdlib2/string2.c \
 	stdlib2/file.c \
 	flexarray.c \
-	rb_tree/rb_tree.c \
 	htable_kv.c \
 	vector_kv.c \
-	rbt_kv.c
+	rbt_kv.c \
+	posting.c
 
 
 HEADERS := \
@@ -20,7 +20,8 @@ HEADERS := \
 	stdlib2/file.h \
 	htable_kv.h \
 	vector_kv.h \
-	rbt_kv.h
+	rbt_kv.h \
+	posting.h
 
 
 OBJECTS := $(SRC:%=%.o)

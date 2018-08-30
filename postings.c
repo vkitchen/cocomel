@@ -1,17 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "posting.h"
+#include "postings.h"
 
-struct posting *posting_new() {
-	struct posting *p = malloc(sizeof(struct posting));
+struct postings *postings_new() {
+	struct postings *p = malloc(sizeof(struct postings));
 	p->capacity = 256;
 	p->length = 0;
 	p->store = malloc(p->capacity * 2 * sizeof(size_t));
 	return p;
 }
 
-void posting_append(struct posting *p, size_t id) {
+void postings_append(struct postings *p, size_t id) {
 	/* Already exists. Increase the count */
 	if (p->length > 0 && p->store[(p->length-1) * 2] == id) {
 		p->store[(p->length-1) * 2 + 1]++;

@@ -10,8 +10,9 @@ SRC := \
 	flexarray.c \
 	htable_kv.c \
 	vector_kv.c \
+	linked_vector_kv.c \
 	rbt_kv.c \
-	posting.c
+	postings.c
 
 
 HEADERS := \
@@ -20,8 +21,9 @@ HEADERS := \
 	stdlib2/file.h \
 	htable_kv.h \
 	vector_kv.h \
+	linked_vector_kv.h \
 	rbt_kv.h \
-	posting.h
+	postings.h
 
 
 OBJECTS := $(SRC:%=%.o)

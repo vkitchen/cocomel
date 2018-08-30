@@ -8,7 +8,8 @@
 #include "flexarray.h"
 #include "htable_kv.h"
 #include "vector_kv.h"
-#include "posting.h"
+#include "linked_vector_kv.h"
+#include "postings.h"
 
 enum token_type {DOCNO, WORD, END};
 struct token {
@@ -114,28 +115,28 @@ struct token tokenizer_next(struct tokenizer *tok) {
 int main(void) {
 	struct string *file = file_slurp_c("wsj.xml");
 	struct tokenizer *tok = tokenizer_new(file);
-	struct vector_kv *docNos = vector_kv_new();
-	struct htable_kv *postings = htable_kv_new();
+	struct linked_vector_kv *docNos = linked_vector_kv_new();
+	struct htable_kv *dictionary = htable_kv_new();
 	struct token token;
-	size_t docI = -1;
+	u_int16_t docI = -1;
 	do {
 		token = tokenizer_next(tok);
 		if (token.type == DOCNO) {
 			docI++;
-			vector_kv_append(docNos, token.value, 0);
+			linked_vector_kv_append(docNos, token.value, 0);
 		} else if (token.type != END) {
-			size_t *docLength = (size_t *)(vector_kv_back(docNos)+1);
+			size_t *docLength = (size_t *)(linked_vector_kv_back(docNos)+1);
 			(*docLength)++;
-			struct posting *post = htable_kv_find(postings, token.value);
-			if (post == NULL) {
-				post = posting_new();
-				htable_kv_insert(postings, token.value, post);
+			struct postings *postings = htable_kv_find(dictionary, token.value);
+			if (postings == NULL) {
+				postings = postings_new();
+				htable_kv_insert(dictionary, token.value, postings);
 			}
-			posting_append(post, docI);
+			postings_append(postings, docI);
 		}
 	} while (token.type != END);
 
-	htable_kv_merge(postings);
+	htable_kv_merge(dictionary);
 
 	return 0;
 }

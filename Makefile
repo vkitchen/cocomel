@@ -12,7 +12,8 @@ SRC := \
 	vector_kv.c \
 	linked_vector_kv.c \
 	rbt_kv.c \
-	postings.c
+	postings.c \
+	vbyte.c
 
 
 HEADERS := \
@@ -23,7 +24,8 @@ HEADERS := \
 	vector_kv.h \
 	linked_vector_kv.h \
 	rbt_kv.h \
-	postings.h
+	postings.h \
+	vbyte.h
 
 
 OBJECTS := $(SRC:%=%.o)

@@ -11,8 +11,8 @@
 
 #define MAXMEM 256 * 1024 * 1024
 
-static void *buffer;
-static void *buffer_end;
+static char *buffer;
+static char *buffer_end;
 
 /*
 	MEMORY_ALLOC()
@@ -25,7 +25,7 @@ void *memory_alloc(size_t size) {
 		buffer = malloc(MAXMEM);
 		buffer_end = buffer + MAXMEM;
 	}
-	void *out = buffer;
+	char *out = buffer;
 	if (buffer + size >= buffer_end) {
 		fprintf(stderr, "ERROR: memory_alloc() Memory exhausted. Failed to allocate %zd bytes\n", size);
 		exit(1);

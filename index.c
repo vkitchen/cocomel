@@ -115,7 +115,7 @@ struct token tokenizer_next(struct tokenizer *tok) {
 int main(void) {
 	struct string *file = file_slurp_c("wsj.xml");
 	struct tokenizer *tok = tokenizer_new(file);
-	struct linked_vector_kv *docNos = linked_vector_kv_new();
+	struct vector_kv *docNos = vector_kv_new();
 	struct htable_kv *dictionary = htable_kv_new();
 	struct token token;
 	u_int16_t docI = -1;
@@ -123,9 +123,9 @@ int main(void) {
 		token = tokenizer_next(tok);
 		if (token.type == DOCNO) {
 			docI++;
-			linked_vector_kv_append(docNos, token.value, 0);
+			vector_kv_append(docNos, token.value, 0);
 		} else if (token.type != END) {
-			size_t *docLength = (size_t *)(linked_vector_kv_back(docNos)+1);
+			size_t *docLength = (size_t *)(vector_kv_back(docNos)+1);
 			(*docLength)++;
 			struct postings *postings = htable_kv_find(dictionary, token.value);
 			if (postings == NULL) {

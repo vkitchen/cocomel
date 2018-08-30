@@ -6,13 +6,13 @@
 struct postings {
 	size_t id;
 	size_t diff;
-	size_t count;
+	uint16_t count;
 	size_t id_capacity;
 	size_t id_length;
 	uint8_t *id_store;
 	size_t count_capacity;
 	size_t count_length;
-	uint8_t *count_store;
+	uint16_t *count_store;
 };
 
 struct postings *postings_new();

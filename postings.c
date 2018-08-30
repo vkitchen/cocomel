@@ -13,7 +13,7 @@ struct postings *postings_new() {
 	p->id_store = malloc(p->id_capacity * sizeof(uint8_t));
 	p->count_capacity = 256;
 	p->count_length = 0;
-	p->count_store = malloc(p->count_capacity * sizeof(size_t));
+	p->count_store = malloc(p->count_capacity * sizeof(uint16_t));
 	return p;
 }
 
@@ -44,7 +44,7 @@ void postings_flush(struct postings *p) {
 
 	if (p->count_length == p->count_capacity) {
 		p->count_capacity *= 2;
-		p->count_store = realloc(p->count_store, p->count_capacity * sizeof(size_t));
+		p->count_store = realloc(p->count_store, p->count_capacity * sizeof(uint16_t));
 	}
 	p->count_store[p->count_length] = p->count;
 	p->count_length++;

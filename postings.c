@@ -20,6 +20,7 @@ struct postings *postings_new() {
 void postings_append(struct postings *p, size_t id) {
 	if (p->count == 0) {
 		p->id = id;
+		p->diff = id;
 		p->count = 1;
 		return;
 	}

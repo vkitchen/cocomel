@@ -9,7 +9,7 @@ static unsigned int htable_word_to_int(char *key);
 struct htable_kv *htable_kv_new()
 {
     struct htable_kv *h = malloc(sizeof(struct htable_kv));
-    h->capacity = 8192;
+    h->capacity = 32768;
     h->store = malloc(sizeof(struct vector_kv *) * h->capacity);
     for (size_t i = 0; i < h->capacity; i++) {
         h->store[i] = NULL;
@@ -52,7 +52,7 @@ void htable_kv_merge(struct htable_kv *h) {
 			rbt_kv_linked_list(h->store[i]);
 		}
 	}
-//	printf("RBT total %zd\n", total_size);
+	printf("RBT total %zd\n", total_size);
 	for (size_t gap = 1; gap < h->capacity; gap *= 2) {
 		for (size_t i = 0; i < h->capacity; i += gap * 2) {
 			if (h->store[i] == NULL) {

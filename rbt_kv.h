@@ -12,9 +12,9 @@ enum rbt_kv_color {
 
 struct rbt_kv_node {
 	struct rbt_kv_node *link[2];
+	char color;
 	char *key;
 	void *val;
-	int color;
 };
 
 struct rbt_kv {

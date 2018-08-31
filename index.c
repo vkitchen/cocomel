@@ -29,9 +29,13 @@ struct tokenizer *tokenizer_new(struct string *str) {
 	return tok;
 }
 
-int prefix(const char *pre, const char *str)
-{
-	return strncmp(pre, str, strlen(pre)) == 0;
+int prefix(const char *pre, const char *str) {
+	while (*pre) {
+		if (*pre++ != *str++) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 void tokenizer_advance(struct tokenizer *tok) {
@@ -61,7 +65,7 @@ struct token tokenizer_next(struct tokenizer *tok) {
 	tokenizer_advance(tok);
 
 	if (prefix("<DOCNO>", &tok->str->str[tok->index])) {
-		tok->index += sizeof("<DOCNO>");
+		tok->index += sizeof("<DOCNO>"); // TODO might be skipping 1 too many?
 
 		tokenizer_advance(tok);
 
@@ -86,10 +90,10 @@ struct token tokenizer_next(struct tokenizer *tok) {
 		int j = 0;
 		while (j < 256 && i + tok->index < tok->str->bytes && !isspace(tok->str->str[tok->index + i]) && tok->str->str[tok->index + i] != '<') {
 			char c = tok->str->str[tok->index + i];
-			if (90 < c) {
+			if ('Z' < c) {
 				c -= 'a' - 'A';
 			}
-			if (c < 48 || (57 < c && c < 65) || 90 < c) {
+			if (!('A' <= c && c <= 'Z')) {
 				i++;
 				continue;
 			}

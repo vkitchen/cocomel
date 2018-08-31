@@ -125,6 +125,9 @@ int main(void) {
 			docI++;
 			vector_kv_append(docNos, token.value, 0);
 		} else if (token.type != END) {
+			if (token.value[0] == '\0') {
+				continue; /* From stripped bare symbols */
+			}
 			size_t *docLength = (size_t *)(vector_kv_back(docNos)+1);
 			(*docLength)++;
 			struct postings *postings = htable_kv_find(dictionary, token.value);

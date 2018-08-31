@@ -1,127 +1,150 @@
-#include <stdlib.h>
+/* Produced by texiweb from libavl.w. */
+
+/* libavl - library for manipulation of binary trees.
+	 Copyright (C) 1998-2002, 2004 Free Software Foundation, Inc.
+
+	 This program is free software; you can redistribute it and/or
+	 modify it under the terms of the GNU General Public License as
+	 published by the Free Software Foundation; either version 2 of the
+	 License, or (at your option) any later version.
+
+	 This program is distributed in the hope that it will be useful, but
+	 WITHOUT ANY WARRANTY; without even the implied warranty of
+	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+	 See the GNU General Public License for more details.
+
+	 You should have received a copy of the GNU General Public License
+	 along with this program; if not, write to the Free Software
+	 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+	 02111-1307, USA.
+
+	 The author may be contacted at <blp@gnu.org> on the Internet, or
+	 write to Ben Pfaff, Stanford University, Computer Science Dept., 353
+	 Serra Mall, Stanford CA 94305, USA.
+*/
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "memory.h"
 #include "rbt_kv.h"
 
-static int is_red(struct rbt_kv_node *root) {
-	return root != NULL && root->red;
-}
-
-static struct rbt_kv_node *rbt_kv_single(struct rbt_kv_node *root, int dir) {
-	if (root == NULL) {
-		return NULL;
-	}
-
-	struct rbt_kv_node *save = root->link[!dir];
-
-	root->link[!dir] = save->link[dir];
-	save->link[dir] = root;
-
-	root->red = 1;
-	save->red = 0;
-
-	return save;
-}
-
-static struct rbt_kv_node *rbt_kv_double(struct rbt_kv_node *root, int dir) {
-	if (root == NULL) {
-		return NULL;
-	}
-
-	root->link[!dir] = rbt_kv_single(root->link[!dir], !dir);
-
-	return rbt_kv_single(root, dir);
-}
-
-static struct rbt_kv_node *make_node(char *key, void *val) {
-	struct rbt_kv_node *node = memory_alloc(sizeof(struct rbt_kv_node));
-
-	node->key = key;
-	node->val = val;
-	node->red = 1;
-	node->link[0] = NULL;
-	node->link[1] = NULL;
-
-	return node;
-}
-
 struct rbt_kv *rbt_kv_new() {
 	struct rbt_kv *tree = memory_alloc(sizeof(struct rbt_kv));
 	tree->root = NULL;
+	tree->size = 0;
+
 	return tree;
 }
 
-/* TODO consider returning pointer to node */
-void rbt_kv_insert(struct rbt_kv *tree, char *key, void *val) {
-	if (tree->root == NULL) {
-		tree->root = make_node(key, val);
-	} else {
-		struct rbt_kv_node head = { 0 }; /* False tree root */
+/* TODO rewrite this. It is the only code in this file I didn't write. It is stopping this project from being MIT */
+/* TODO appears to have a memory leak */
+void **rbt_kv_insert(struct rbt_kv *tree, char *key, void *val) {
+	struct rbt_kv_node *pa[RBT_KV_MAX_HEIGHT]; /* Nodes on stack. */
+	unsigned char da[RBT_KV_MAX_HEIGHT];	 /* Directions moved from stack nodes. */
+	int k;														 /* Stack height. */
 
-		struct rbt_kv_node *g, *t; /* Grandparent & parent */
-		struct rbt_kv_node *p, *q; /* Iterator & parent */
-		int dir = 0, last = 0;
+	struct rbt_kv_node *p; /* Traverses tree looking for insertion point. */
+	struct rbt_kv_node *n; /* Newly inserted node. */
 
-		/* Set up helpers */
-		t = &head;
-		g = p = NULL;
-		q = t->link[1] = tree->root;
-
-		/* Search down the tree */
-		for (;;) {
-			if (q == NULL) {
-				p->link[dir] = q = make_node(key, val);
-			} else if (is_red(q->link[0]) && is_red(q->link[1])) {
-				/* Color flip */
-				q->red = 1;
-				q->link[0]->red = 0;
-				q->link[1]->red = 1;
-			}
-
-			/* Fix red violation */
-			if (is_red(q) && is_red(p)) {
-				int dir2 = t->link[1] == g;
-				if (q == p->link[last]) {
-					t->link[dir2] = rbt_kv_single(g, !last);
-				} else {
-					t->link[dir2] = rbt_kv_double(g, !last);
-				}
-			}
-
-			/* Stop if found */
-			last = dir;
-			dir = strcmp(q->key, key) < 0;
-			if (dir == 0) {
-				break;
-			}
-
-			/* Update helpers */
-			if (g != NULL) {
-				t = g;
-			}
-
-			g = p, p = q;
-			q = q->link[dir];
+	pa[0] = (struct rbt_kv_node *)&tree->root; // TODO seems dodgy
+	da[0] = 0;
+	k = 1;
+	for (p = tree->root; p != NULL; p = p->link[da[k - 1]]) {
+		int cmp = strcmp(key, p->key);
+		if (cmp == 0) {
+			return &p->val;
 		}
 
-		/* Update root */
-		tree->root = head.link[1];
+		pa[k] = p;
+		da[k++] = cmp > 0;
 	}
 
-	/* Make root black */
-	tree->root->red = 0;
+	n = pa[k - 1]->link[da[k - 1]] = memory_alloc(sizeof(struct rbt_kv_node));
+	n->key = key;
+	n->val = val;
+	n->link[0] = n->link[1] = NULL;
+	n->color = RBT_KV_RED;
+	tree->size++;
+
+	while (k >= 3 && pa[k - 1]->color == RBT_KV_RED) {
+		if (da[k - 2] == 0) {
+			struct rbt_kv_node *y = pa[k - 2]->link[1];
+			if (y != NULL && y->color == RBT_KV_RED) {
+				pa[k - 1]->color = y->color = RBT_KV_BLACK;
+				pa[k - 2]->color = RBT_KV_RED;
+				k -= 2;
+			} else {
+				struct rbt_kv_node *x;
+
+				if (da[k - 1] == 0) {
+					y = pa[k - 1];
+				} else {
+					x = pa[k - 1];
+					y = x->link[1];
+					x->link[1] = y->link[0];
+					y->link[0] = x;
+					pa[k - 2]->link[0] = y;
+				}
+
+				x = pa[k - 2];
+				x->color = RBT_KV_RED;
+				y->color = RBT_KV_BLACK;
+
+				x->link[0] = y->link[1];
+				y->link[1] = x;
+				pa[k - 3]->link[da[k - 3]] = y;
+				break;
+			}
+		} else {
+			struct rbt_kv_node *y = pa[k - 2]->link[0];
+			if (y != NULL && y->color == RBT_KV_RED) {
+				pa[k - 1]->color = y->color = RBT_KV_BLACK;
+				pa[k - 2]->color = RBT_KV_RED;
+				k -= 2;
+			} else {
+				struct rbt_kv_node *x;
+
+				if (da[k - 1] == 1) {
+					y = pa[k - 1];
+				} else {
+					x = pa[k - 1];
+					y = x->link[0];
+					x->link[0] = y->link[1];
+					y->link[1] = x;
+					pa[k - 2]->link[1] = y;
+				}
+
+				x = pa[k - 2];
+				x->color = RBT_KV_RED;
+				y->color = RBT_KV_BLACK;
+
+				x->link[1] = y->link[0];
+				y->link[0] = x;
+				pa[k - 3]->link[da[k - 3]] = y;
+				break;
+			}
+		}
+	}
+	if (tree->root != NULL) {
+		tree->root->color = RBT_KV_BLACK;
+	}
+
+	return &n->val;
 }
 
-struct rbt_kv *rbt_kv_find(struct rbt_kv *tree, char *key) {
-	struct rbt_kv_node *it = tree->root;
+void *rbt_kv_find(struct rbt_kv *tree, char *key) {
+	struct rbt_kv_node *p = tree->root;
 
-	while (it != NULL) {
-		int dir = strcmp(it->key, key) < 0;
-		if (dir == 0) {
-			return it->val;
-		} else {
-			it = it->link[dir];
+	while (p != NULL) {
+		int cmp = strcmp(key, p->key);
+
+		if (cmp < 0) {
+			p = p->link[0];
+		} else if (cmp > 0) {
+			p = p->link[1];
+		} else { /* |cmp == 0| */
+			return p->val;
 		}
 	}
 

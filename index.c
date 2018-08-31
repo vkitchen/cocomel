@@ -101,13 +101,19 @@ struct token tokenizer_next(struct tokenizer *tok) {
 			i++;
 			j++;
 		}
-		word[j] = '\0';
-		token.type = WORD;
-		token.value = memory_alloc(j+1);
-		memcpy(token.value, word, j+1);
 
 		tok->index += i;
 		tokenizer_advance(tok);
+
+		token.type = WORD;
+		if (j == 0) {
+			token.value = NULL;
+			return token;
+		}
+		word[j] = '\0';
+		token.value = memory_alloc(j+1);
+		memcpy(token.value, word, j+1);
+
 
 		return token;
 	}
@@ -129,7 +135,7 @@ int main(void) {
 			docI++;
 			vector_kv_append(docNos, token.value, 0);
 		} else if (token.type != END) {
-			if (token.value[0] == '\0') {
+			if (token.value == NULL) {
 				continue; /* From stripped bare symbols */
 			}
 			size_t *docLength = (size_t *)(vector_kv_back(docNos)+1);

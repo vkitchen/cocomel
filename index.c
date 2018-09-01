@@ -8,6 +8,7 @@
 #include "flexarray.h"
 #include "htable_kv.h"
 #include "vector_kv.h"
+#include "rbt_kv.h"
 #include "linked_vector_kv.h"
 #include "postings.h"
 
@@ -122,6 +123,23 @@ struct token tokenizer_next(struct tokenizer *tok) {
 	return token;
 }
 
+// size_t string_copy(char *dest, char *src) {
+// 	size_t out = strlen(src);
+// 	strcpy(dest, src);
+// 	return out;
+// }
+
+size_t string_copy(char *dest, char *src) {
+	size_t offset = 0;
+	while (src[offset] != '\0') {
+		dest[offset] = src[offset];
+		offset++;
+	}
+	src[offset] = '\0';
+	offset++;
+	return offset;
+}
+
 int main(void) {
 	struct string *file = file_slurp_c("wsj.xml");
 	struct tokenizer *tok = tokenizer_new(file);
@@ -134,12 +152,13 @@ int main(void) {
 		if (token.type == DOCNO) {
 			docI++;
 			vector_kv_append(docNos, token.value, 0);
+//			printf("DOCNO: %s\n", token.value);
 		} else if (token.type != END) {
 			if (token.value == NULL) {
 				continue; /* From stripped bare symbols */
 			}
-			size_t *docLength = (size_t *)(vector_kv_back(docNos)+1);
-			(*docLength)++;
+			size_t *docLength = (size_t *)vector_kv_back(docNos);
+			docLength[1]++;
 			struct postings *postings = htable_kv_find(dictionary, token.value);
 			if (postings == NULL) {
 				postings = postings_new();
@@ -149,7 +168,56 @@ int main(void) {
 		}
 	} while (token.type != END);
 
-	htable_kv_merge(dictionary);
+	struct rbt_kv *dict_list = htable_kv_merge(dictionary);
+	struct vector_kv *dict_vect = vector_kv_new();
+
+	// Write to output buffer
+	size_t offset = 16;
+	for (size_t i = 0; i < docNos->length; i++) {
+		size_t delta = string_copy(&file->str[offset], docNos->store[i * 2]);
+		docNos->store[i * 2] = (void *)offset;
+		offset += delta;
+	}
+	memcpy(&file->str[offset], docNos->store, sizeof(size_t) * docNos->length * 2);
+	((size_t *)file->str)[0] = offset;
+	offset += sizeof(size_t) * docNos->length * 2;
+
+	struct rbt_kv_node *dict_node = dict_list->root;
+	do {
+		size_t key_pos = offset;
+		offset += string_copy(&file->str[offset], dict_node->key);
+
+		struct postings *postings = dict_node->val;
+		postings_flush(postings);
+
+		memcpy(&file->str[offset], postings->id_store, postings->id_length);
+		postings->id_store = (void *)offset;
+		offset += postings->id_length;
+
+		memcpy(&file->str[offset], postings->count_store, sizeof(uint16_t) * postings->count_length);
+		postings->count_store = (void *)offset;
+		offset += sizeof(uint16_t) * postings->count_length;
+
+		// TODO perhaps this is storing too much?
+		size_t val_pos = offset;
+		memcpy(&file->str[offset], dict_node->val, sizeof(struct postings));
+		offset += sizeof(struct postings);
+
+		vector_kv_append(dict_vect, (void *)key_pos, (void *)val_pos);
+		dict_node = dict_node->link[1];
+	} while (dict_node != dict_list->root);
+
+	memcpy(&file->str[offset], dict_vect->store, sizeof(size_t) * dict_vect->length * 2);
+	((size_t *)file->str)[1] = offset;
+	offset += sizeof(size_t) * dict_vect->length * 2;
+
+	FILE *fh = fopen("postings.dat", "w");
+	if (fh == NULL) {
+		fprintf(stderr, "ERROR: Failed to open postings.dat for writing\n");
+		exit(1);
+	}
+	fwrite(file->str, sizeof(char), offset, fh);
+	fclose(fh);
 
 	return 0;
 }

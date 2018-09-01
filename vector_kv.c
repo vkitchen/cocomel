@@ -31,7 +31,7 @@ void *vector_kv_find(struct vector_kv *v, char *key) {
 }
 
 /* Returns reference to cell that key is stored in */
-void *vector_kv_back(struct vector_kv *v) {
+void **vector_kv_back(struct vector_kv *v) {
 	if (v->length == 0) {
 		return NULL;
 	}

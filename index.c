@@ -135,7 +135,7 @@ size_t string_copy(char *dest, char *src) {
 		dest[offset] = src[offset];
 		offset++;
 	}
-	src[offset] = '\0';
+	dest[offset] = '\0';
 	offset++;
 	return offset;
 }
@@ -171,6 +171,9 @@ int main(void) {
 	struct rbt_kv *dict_list = htable_kv_merge(dictionary);
 	struct vector_kv *dict_vect = vector_kv_new();
 
+//	printf("doc count %zd\n", docNos->length);
+
+
 	// Write to output buffer
 	size_t offset = 16;
 	for (size_t i = 0; i < docNos->length; i++) {
@@ -178,9 +181,13 @@ int main(void) {
 		docNos->store[i * 2] = (void *)offset;
 		offset += delta;
 	}
+//	printf("doc store %zd\n", offset);
 	memcpy(&file->str[offset], docNos->store, sizeof(size_t) * docNos->length * 2);
-	((size_t *)file->str)[0] = offset;
+	docNos->store = (void **)offset;
 	offset += sizeof(size_t) * docNos->length * 2;
+	memcpy(&file->str[offset], docNos, sizeof(struct vector_kv));
+	((size_t *)file->str)[0] = offset;
+	offset += sizeof(struct vector_kv);
 
 	struct rbt_kv_node *dict_node = dict_list->root;
 	do {
@@ -208,8 +215,13 @@ int main(void) {
 	} while (dict_node != dict_list->root);
 
 	memcpy(&file->str[offset], dict_vect->store, sizeof(size_t) * dict_vect->length * 2);
-	((size_t *)file->str)[1] = offset;
+	dict_vect->store = (void **)offset;
 	offset += sizeof(size_t) * dict_vect->length * 2;
+	memcpy(&file->str[offset], dict_vect, sizeof(struct vector_kv));
+	((size_t *)file->str)[1] = offset;
+	offset += sizeof(struct vector_kv);
+
+//	exit(0);
 
 	FILE *fh = fopen("postings.dat", "w");
 	if (fh == NULL) {

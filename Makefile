@@ -9,6 +9,7 @@ SRC := \
 	stdlib2/file.c \
 	flexarray.c \
 	htable_kv.c \
+	vector.c \
 	vector_kv.c \
 	linked_vector_kv.c \
 	rbt_kv.c \
@@ -21,6 +22,7 @@ HEADERS := \
 	stdlib2/string2.h	\
 	stdlib2/file.h \
 	htable_kv.h \
+	vector.h \
 	vector_kv.h \
 	linked_vector_kv.h \
 	rbt_kv.h \
@@ -41,8 +43,8 @@ all: index search
 index: index.c $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ index.c $(OBJECTS)
 
-search: search.cpp $(OBJECTS)
-	$(CXX) $(CFLAGS) -o $@ search.cpp $(OBJECTS)
+search: search.c $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ search.c $(OBJECTS)
 
 CLEAN := $(OBJECTS) index search
 clean:

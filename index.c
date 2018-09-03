@@ -8,7 +8,7 @@
 #include "flexarray.h"
 #include "htable_kv.h"
 #include "vector_kv.h"
-#include "rbt_kv.h"
+#include "bst_kv.h"
 #include "linked_vector_kv.h"
 #include "postings.h"
 
@@ -159,16 +159,15 @@ int main(void) {
 			}
 			size_t *docLength = (size_t *)vector_kv_back(docNos);
 			docLength[1]++;
-			struct postings *postings = htable_kv_find(dictionary, token.value);
-			if (postings == NULL) {
-				postings = postings_new();
-				htable_kv_insert(dictionary, token.value, postings);
+			struct postings **postings = (struct postings **)htable_kv_insert(dictionary, token.value, NULL);
+			if (*postings == NULL) {
+				*postings = postings_new();
 			}
-			postings_append(postings, docI);
+			postings_append(*postings, docI);
 		}
 	} while (token.type != END);
 
-	struct rbt_kv *dict_list = htable_kv_merge(dictionary);
+	struct bst_kv *dict_list = htable_kv_merge(dictionary);
 	struct vector_kv *dict_vect = vector_kv_new();
 
 //	printf("doc count %zd\n", docNos->length);
@@ -189,7 +188,7 @@ int main(void) {
 	((size_t *)file->str)[0] = offset;
 	offset += sizeof(struct vector_kv);
 
-	struct rbt_kv_node *dict_node = dict_list->root;
+	struct bst_kv_node *dict_node = dict_list->root;
 	do {
 		size_t key_pos = offset;
 		offset += string_copy(&file->str[offset], dict_node->key);

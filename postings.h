@@ -1,22 +1,15 @@
 #ifndef POSTINGS_H_
 #define POSTINGS_H_
 
-#include <stdint.h>
-
 struct postings {
-	size_t id;
-	size_t diff;
-	uint16_t count;
-	size_t id_capacity;
-	size_t id_length;
-	uint8_t *id_store;
-	size_t count_capacity;
-	size_t count_length;
-	uint16_t *count_store;
+	u_int16_t docI;
+	struct vector_kv *docNos;
+	struct htable_kv *dictionary;
 };
 
 struct postings *postings_new();
-void postings_append(struct postings *p, size_t id);
-void postings_flush(struct postings *p);
+void postings_new_doc(struct postings *p, char *doc);
+void postings_append(struct postings *p, char *term);
+void postings_write(struct postings *p, struct string *buffer, char *filename);
 
 #endif

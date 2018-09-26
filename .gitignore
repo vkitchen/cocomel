@@ -1,7 +1,7 @@
 vgcore.*
 *.txt
 postings.dat
-wsj.xml
+document.xml
 *.o
 index
 search

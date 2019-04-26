@@ -2,7 +2,7 @@
 #define POSTINGS_H_
 
 struct postings {
-	u_int16_t docI;
+	size_t docI;
 	struct vector_kv *docNos;
 	struct htable_kv *dictionary;
 };

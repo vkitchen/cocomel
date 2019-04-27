@@ -81,9 +81,9 @@ void postings_write(struct postings *p, struct string *buffer, char *filename) {
 		posting->id_store = (void *)offset;
 		offset += posting->id_length;
 
-		memcpy(&buffer->str[offset], posting->count_store, sizeof(uint16_t) * posting->count_length);
+		memcpy(&buffer->str[offset], posting->count_store, sizeof(uint8_t) * posting->count_length);
 		posting->count_store = (void *)offset;
-		offset += sizeof(uint16_t) * posting->count_length;
+		offset += sizeof(uint8_t) * posting->count_length;
 
 		// TODO perhaps this is storing too much?
 		size_t val_pos = offset;

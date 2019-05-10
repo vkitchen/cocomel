@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "memory.h"
 #include "string2.h"
 
@@ -64,4 +65,31 @@ struct string *string_new_c(char *str)
 	s->str = strdup(str);
 	s->bytes = strlen(str);
 	return s;
+	}
+
+/*
+	STRING_COPY_C()
+	---------------
+*/
+size_t string_copy_c(char *dest, char *src)
+	{
+	size_t offset = 0;
+	while (src[offset] != '\0')
+		{
+		dest[offset] = src[offset];
+		offset++;
+		}
+	dest[offset] = '\0';
+	offset++;
+	return offset;
+	}
+
+/*
+	STRING_UPPERCASE_C()
+	--------------------
+*/
+void string_uppercase_c(char *str)
+	{
+	while ((*str = toupper(*str)))
+		++str;
 	}

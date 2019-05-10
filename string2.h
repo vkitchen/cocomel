@@ -26,7 +26,7 @@ struct string
 */
 /*!
 		@brief Appends one string on to another
-		@param dest [in] String that gets add to
+		@param dest [in,out] String that gets add to
 		@param src [in] What is being added on
 */
 void string_append_c(struct string *dest, char *src);
@@ -62,5 +62,27 @@ struct string *string_new();
 		@return String object
 */
 struct string *string_new_c(char *str);
+
+/*
+	STRING_COPY_C()
+	---------------
+*/
+/*!
+		@brief Copies a cstring from src to dest
+		@param src [in] String to copy
+		@param dest [out] Buffer to copy to
+		@return Number of characters copied
+*/
+size_t string_copy_c(char *dest, char *src);
+
+/*
+	STRING_UPPERCASE_C()
+	--------------------
+*/
+/*!
+		@brief Inplace uppercasing of a cstring
+		@param str [in,out] String to uppercase
+*/
+void string_uppercase_c(char *str);
 
 #endif

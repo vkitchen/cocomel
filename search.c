@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h>
 #include "string2.h"
 #include "file.h"
 #include "vbyte.h"
@@ -14,55 +13,6 @@ struct results {
 	char **docNos;
 	double *rsv;
 };
-
-void uppercase(char *str) {
-	while ((*str = toupper(*str))) {
-		++str;
-	}
-}
-
-struct vector_kv *decompress_posting(struct posting *posting) {
-	struct vector_kv *out = vector_kv_new();
-	size_t prevI = 0;
-	size_t docI = 0;
-	size_t di = 0;
-	size_t ci = 0;
-	while (ci < posting->count_length && di < posting->id_length) {
-		di += vbyte_read(&posting->id_store[di], &docI);
-		docI += prevI;
-		prevI = docI;
-		size_t count = posting->count_store[ci];
-		vector_kv_append(out, (void *)docI, (void *)count);
-		ci++;
-	}
-	return out;
-}
-
-struct vector_kv *vector_kv_intersect(struct vector_kv *a, struct vector_kv *b) {
-	struct vector_kv *out = vector_kv_new();
-	for (;;) {
-		if (a->length == 0 || b->length == 0) {
-			goto done;
-		}
-		if (a->store[0] == b->store[0]) {
-			vector_kv_append(out, a->store[0], (void *)((size_t)a->store[1] + (size_t)b->store[1]));
-			a->length--;
-			a->store += 2;
-			b->length--;
-			b->store += 2;
-			continue;
-		}
-		while (a->length > 0 && b->length > 0 && a->store[0] < b->store[0]) {
-			a->length--;
-			a->store += 2;
-		}
-		while (a->length > 0 && b->length > 0 && b->store[0] < a->store[0]) {
-			b->length--;
-			b->store += 2;
-		}
-	}
-	done: return out;
-}
 
 struct vector_kv *intersect_posting(struct vector *posting) {
 	struct vector_kv *out = posting->store[0];
@@ -88,33 +38,24 @@ void results_sort(struct results *v) {
 }
 
 int main(void) {
-	struct string *posting = file_slurp_c("postings.dat");
-	((size_t *)posting->str)[0] += (size_t)posting->str;
-	((size_t *)posting->str)[1] += (size_t)posting->str;
+	struct string *index = file_slurp_c("postings.dat");
 
-	// Decode doc no.s
-	struct vector_kv *docNos = ((struct vector_kv **)posting->str)[0];
-	docNos->store = (void **)((char *)docNos->store + (size_t)posting->str);
-	for (size_t i = 0; i < docNos->length; i++) {
-		docNos->store[i * 2] = (void *)((char *)docNos->store[i * 2] + (size_t)posting->str);
-	}
+	// Decode index
+	struct vector_kv *docNos = (struct vector_kv *)&((size_t *)index->str)[1];
+	vector_kv_decode(docNos);
 
-	// Decode dictionary
-	struct vector_kv *dictionary = ((struct vector_kv **)posting->str)[1];
-	dictionary->store = (void **)((char *)dictionary->store + (size_t)posting->str);
+	struct vector_kv *dictionary = ((void *)index->str) + ((size_t *)index->str)[0];
+	vector_kv_decode(dictionary);
 	for (size_t i = 0; i < dictionary->length; i++) {
-		dictionary->store[i * 2] = (void *)((char *)dictionary->store[i * 2] + (size_t)posting->str);
-		dictionary->store[i*2 + 1] = (void *)((char *)dictionary->store[i*2 + 1] + (size_t)posting->str);
-		struct posting *post = dictionary->store[i*2 + 1];
-		post->count_store = (void *)((char *)post->count_store + (size_t)posting->str);
-		post->id_store = (void *)((char *)post->id_store + (size_t)posting->str);
+		dictionary->store[i*2 + 1] = (void *)index->str + (size_t)dictionary->store[i*2 + 1];
+		posting_decode((struct posting *)dictionary->store[i*2 + 1]);
 	}
 
 	// Accept input
 	char term[256];
 	struct vector *terms = vector_new();
 	while (scanf("%s", term) == 1) {
-		uppercase(term);
+		string_uppercase_c(term);
 		vector_append(terms, strdup(term));
 	}
 
@@ -129,7 +70,7 @@ int main(void) {
 			printf("No results\n");
 			exit(0);
 		} else { 
-			terms->store[i] = decompress_posting(terms->store[i]);
+			terms->store[i] = posting_decompress(terms->store[i]);
 		}
 	}
 

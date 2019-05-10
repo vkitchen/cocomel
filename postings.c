@@ -8,17 +8,6 @@
 #include "posting.h"
 #include "postings.h"
 
-static size_t string_copy(char *dest, char *src) {
-	size_t offset = 0;
-	while (src[offset] != '\0') {
-		dest[offset] = src[offset];
-		offset++;
-	}
-	dest[offset] = '\0';
-	offset++;
-	return offset;
-}
-
 
 struct postings *postings_new() {
 	struct postings *p = malloc(sizeof(struct postings));
@@ -55,53 +44,21 @@ void postings_write(struct postings *p, struct string *buffer, char *filename) {
 	struct vector_kv *dict_vect = vector_kv_new();
 
 	// Write to output buffer
-	size_t offset = 16;
-	for (size_t i = 0; i < p->docNos->length; i++) {
-		size_t delta = string_copy(&buffer->str[offset], p->docNos->store[i * 2]);
-		p->docNos->store[i * 2] = (void *)offset;
-		offset += delta;
-	}
-//	printf("doc store %zd\n", offset);
-	memcpy(&buffer->str[offset], p->docNos->store, sizeof(size_t) * p->docNos->length * 2);
-	p->docNos->store = (void **)offset;
-	offset += sizeof(size_t) * p->docNos->length * 2;
-	memcpy(&buffer->str[offset], p->docNos, sizeof(struct vector_kv));
-	((size_t *)buffer->str)[0] = offset;
-	offset += sizeof(struct vector_kv);
+	size_t offset = 8;
+
+	offset += vector_kv_write(p->docNos, &buffer->str[offset]);
 
 	struct bst_kv_node *dict_node = dict_list->root;
 	do {
-		size_t key_pos = offset;
-		offset += string_copy(&buffer->str[offset], dict_node->key);
+		size_t delta = posting_write(dict_node->val, &buffer->str[offset]);
+		vector_kv_append(dict_vect, dict_node->key, (void *)offset);
 
-		struct posting *posting = dict_node->val;
-		posting_flush(posting);
-
-		memcpy(&buffer->str[offset], posting->id_store, posting->id_length);
-		posting->id_store = (void *)offset;
-		offset += posting->id_length;
-
-		memcpy(&buffer->str[offset], posting->count_store, sizeof(uint8_t) * posting->count_length);
-		posting->count_store = (void *)offset;
-		offset += sizeof(uint8_t) * posting->count_length;
-
-		// TODO perhaps this is storing too much?
-		size_t val_pos = offset;
-		memcpy(&buffer->str[offset], dict_node->val, sizeof(struct posting));
-		offset += sizeof(struct posting);
-
-		vector_kv_append(dict_vect, (void *)key_pos, (void *)val_pos);
+		offset += delta;
 		dict_node = dict_node->link[1];
 	} while (dict_node != dict_list->root);
 
-	memcpy(&buffer->str[offset], dict_vect->store, sizeof(size_t) * dict_vect->length * 2);
-	dict_vect->store = (void **)offset;
-	offset += sizeof(size_t) * dict_vect->length * 2;
-	memcpy(&buffer->str[offset], dict_vect, sizeof(struct vector_kv));
-	((size_t *)buffer->str)[1] = offset;
-	offset += sizeof(struct vector_kv);
-
-//	exit(0);
+	((size_t *)buffer->str)[0] = offset;
+	offset += vector_kv_write(dict_vect, &buffer->str[offset]);
 
 	fwrite(buffer->str, sizeof(char), offset, fh);
 	fclose(fh);

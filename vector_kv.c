@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "string2.h"
 #include "vector_kv.h"
 
 struct vector_kv *vector_kv_new() {
@@ -36,4 +37,52 @@ void **vector_kv_back(struct vector_kv *v) {
 		return NULL;
 	}
 	return &v->store[(v->length-1) * 2];
+}
+
+size_t vector_kv_write(struct vector_kv *v, char *buffer) {
+	size_t offset = sizeof(struct vector_kv) + sizeof(size_t) * v->length * 2;
+
+	for (size_t i = 0; i < v->length; i++) {
+		size_t delta = string_copy_c(&buffer[offset], v->store[i * 2]);
+		v->store[i * 2] = (void *)offset;
+		offset += delta;
+	}
+	memcpy(buffer + sizeof(struct vector_kv), v->store, sizeof(size_t) * v->length * 2);
+	v->store = (void **)(sizeof(struct vector_kv) / sizeof(size_t));
+	memcpy(&buffer[0], v, sizeof(struct vector_kv));
+
+	return offset;
+}
+
+void vector_kv_decode(struct vector_kv *v) {
+	v->store = (void **)v + (size_t)v->store;
+	for (size_t i = 0; i < v->length; i++) {
+		v->store[i * 2] = (void *)v + (size_t)v->store[i * 2];
+	}
+}
+
+struct vector_kv *vector_kv_intersect(struct vector_kv *a, struct vector_kv *b) {
+	struct vector_kv *out = vector_kv_new();
+	for (;;) {
+		if (a->length == 0 || b->length == 0) {
+			goto done;
+		}
+		if (a->store[0] == b->store[0]) {
+			vector_kv_append(out, a->store[0], (void *)((size_t)a->store[1] + (size_t)b->store[1]));
+			a->length--;
+			a->store += 2;
+			b->length--;
+			b->store += 2;
+			continue;
+		}
+		while (a->length > 0 && b->length > 0 && a->store[0] < b->store[0]) {
+			a->length--;
+			a->store += 2;
+		}
+		while (a->length > 0 && b->length > 0 && b->store[0] < a->store[0]) {
+			b->length--;
+			b->store += 2;
+		}
+	}
+	done: return out;
 }

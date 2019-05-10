@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "vbyte.h"
+#include "vector_kv.h"
 #include "posting.h"
 
 struct posting *posting_new() {
@@ -52,4 +53,44 @@ void posting_flush(struct posting *p) {
 	}
 	p->count_store[p->count_length] = p->count;
 	p->count_length++;
+}
+
+size_t posting_write(struct posting *p, char *buffer) {
+	size_t offset = sizeof(struct posting);
+
+	posting_flush(p);
+
+	memcpy(&buffer[offset], p->id_store, p->id_length);
+	p->id_store = (void *)offset;
+	offset += p->id_length;
+
+	memcpy(&buffer[offset], p->count_store, p->count_length);
+	p->count_store = (void *)offset;
+	offset += p->count_length;
+
+	memcpy(&buffer[0], p, sizeof(struct posting));
+
+	return offset;
+}
+
+void posting_decode(struct posting *p) {
+	p->id_store = (uint8_t *)p + (size_t)p->id_store;
+	p->count_store = (uint8_t *)p + (size_t)p->count_store;
+}
+
+struct vector_kv *posting_decompress(struct posting *posting) {
+	struct vector_kv *out = vector_kv_new();
+	size_t prevI = 0;
+	size_t docI = 0;
+	size_t di = 0;
+	size_t ci = 0;
+	while (ci < posting->count_length && di < posting->id_length) {
+		di += vbyte_read(&posting->id_store[di], &docI);
+		docI += prevI;
+		prevI = docI;
+		size_t count = posting->count_store[ci];
+		vector_kv_append(out, (void *)docI, (void *)count);
+		ci++;
+	}
+	return out;
 }

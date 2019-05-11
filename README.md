@@ -13,12 +13,12 @@ There are two programs. Index and search. Index builds an index over the documen
 ## Done
 
 * Naive ranking
+* Better ranking (BM25)
 * Multi term searches
 
 ## Todo
 
 * Document-at-a-time searching
-* Better ranking (BM25)
 * Snippets
 * Phrase searching
 * Run as a daemon

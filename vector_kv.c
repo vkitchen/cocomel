@@ -62,13 +62,29 @@ void vector_kv_decode(struct vector_kv *v) {
 }
 
 struct vector_kv *vector_kv_intersect(struct vector_kv *a, struct vector_kv *b) {
+	double *weights;
+	size_t wi = 0;
+
 	struct vector_kv *out = vector_kv_new();
+	if (a->length == 0 || b->length == 0) {
+		return out;
+	}
+	if (a->length > b->length) {
+		weights = malloc(sizeof(double) * a->length);
+	} else {
+		weights = malloc(sizeof(double) * b->length);
+	}
+	
 	for (;;) {
 		if (a->length == 0 || b->length == 0) {
 			goto done;
 		}
 		if (a->store[0] == b->store[0]) {
-			vector_kv_append(out, a->store[0], (void *)((size_t)a->store[1] + (size_t)b->store[1]));
+			double weight = *(double *)a->store[1] + *(double *)b->store[1];
+			weights[wi] = weight;
+			wi++;
+
+			vector_kv_append(out, a->store[0], &weights[wi-1]);
 			a->length--;
 			a->store += 2;
 			b->length--;

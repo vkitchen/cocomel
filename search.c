@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "string2.h"
 #include "file.h"
 #include "vbyte.h"
@@ -37,7 +38,24 @@ void results_sort(struct results *v) {
 	}
 }
 
+void rank(struct vector_kv *posting, struct vector_kv *docNos, double avgdl) {
+	double *weights = malloc(sizeof(double) * posting->length);
+
+	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
+	for (size_t i = 0; i < posting->length; i++) {
+		size_t docId = (size_t)posting->store[i*2];
+		size_t tf = (size_t)posting->store[i*2 + 1];
+		double docLength = (size_t)docNos->store[docId*2 + 1];
+		double K = 1.2 * (0.25 + 0.75 * docLength / avgdl);
+		double w = wt * 2.2 * tf / (K + tf);
+		weights[i] = w;
+		posting->store[i*2 + 1] = &weights[i];
+	}
+}
+
 int main(void) {
+	double avgdl = 0;
+
 	struct string *index = file_slurp_c("postings.dat");
 
 	// Decode index
@@ -50,6 +68,12 @@ int main(void) {
 		dictionary->store[i*2 + 1] = (void *)index->str + (size_t)dictionary->store[i*2 + 1];
 		posting_decode((struct posting *)dictionary->store[i*2 + 1]);
 	}
+
+	// Find average document length
+	for (size_t i = 0; i < docNos->length; i++) {
+		avgdl += (size_t)docNos->store[i*2 + 1];
+	}
+	avgdl /= docNos->length;
 
 	// Accept input
 	char term[256];
@@ -71,6 +95,7 @@ int main(void) {
 			exit(0);
 		} else { 
 			terms->store[i] = posting_decompress(terms->store[i]);
+			rank(terms->store[i], docNos, avgdl);
 		}
 	}
 
@@ -85,10 +110,9 @@ int main(void) {
 	for (size_t i = 0; i < result_list->length; i++) {
 		size_t docI = (size_t)result_list->store[i*2];	
 		char *docNo = (char *)docNos->store[docI * 2];
-		double freq = (double)(size_t)result_list->store[i*2+1];
-		double docLength = (double)(size_t)docNos->store[docI*2+1];
+		double weight = *(double *)result_list->store[i*2 + 1];
 		results->docNos[i] = docNo;
-		results->rsv[i] = freq / docLength;
+		results->rsv[i] = weight;
 	}
 
 	results_sort(results);

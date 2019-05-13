@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "memory.h"
+#include "string2.h"
 #include "bst_kv.h"
 
 struct bst_kv *bst_kv_new() {
@@ -14,7 +15,7 @@ struct bst_kv *bst_kv_new() {
 
 static struct bst_kv_node *make_node(char *key, void *val) {
 	struct bst_kv_node *n = (struct bst_kv_node *)memory_alloc(sizeof(struct bst_kv_node));
-	n->key = key;
+	n->key = string_s_dup(key);
 	n->val = val;
 	n->link[0] = n->link[1] = NULL;
 	return n;
@@ -31,7 +32,7 @@ void **bst_kv_insert(struct bst_kv *tree, char *key, void *val) {
 	struct bst_kv_node *p = tree->root;
 
 	while (p != NULL) {
-		int cmp = strcmp(key, p->key);
+		int cmp = strcmp(&key[4], p->key);
 
 		if (cmp < 0) {
 			if (p->link[0] == NULL) {

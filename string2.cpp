@@ -6,6 +6,7 @@
 */
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include "memory.h"
@@ -92,4 +93,16 @@ void string_uppercase_c(char *str)
 	{
 	while ((*str = toupper(*str)))
 		++str;
+	}
+
+/*
+	STRING_S_DUP()
+	--------------
+*/
+char *string_s_dup(char *str)
+	{
+	uint32_t length = ((uint32_t *)str)[0];
+	char *dest = (char *)memory_alloc(length + 1);
+	memcpy(dest, &str[4], length + 1);
+	return dest;
 	}

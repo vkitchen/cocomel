@@ -85,4 +85,15 @@ size_t string_copy_c(char *dest, char *src);
 */
 void string_uppercase_c(char *str);
 
+/*
+	STRING_S_DUP()
+	--------------
+*/
+/*!
+		@brief Duplicates special type string where first four bytes contain the length.
+		@param str [in] String to copy
+		@return Duplicated string as a cstring
+*/
+char *string_s_dup(char *str);
+
 #endif

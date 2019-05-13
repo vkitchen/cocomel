@@ -1,11 +1,7 @@
 #ifndef TOKENIZER_H_
 #define TOKENIZER_H_
 
-enum token_type {DOCNO, WORD, END};
-struct token {
-	char *value;
-	enum token_type type;
-};
+enum token_type {DOCNO, WORD, EMPTY, END};
 
 struct tokenizer {
 	struct string *str;
@@ -14,6 +10,6 @@ struct tokenizer {
 
 
 struct tokenizer *tokenizer_new(struct string *str);
-struct token tokenizer_next(struct tokenizer *tok);
+enum token_type tokenizer_next(struct tokenizer *tok, char *buffer);
 
 #endif

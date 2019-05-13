@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include "tokenizer.h"
@@ -17,18 +18,19 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	char tok_buffer[260];
 	struct string *file = file_slurp_c(argv[1]);
 	struct tokenizer *tok = tokenizer_new(file);
-	struct token token;
+	enum token_type token;
 	struct postings *postings = postings_new();
 	do {
-		token = tokenizer_next(tok);
-		if (token.type == DOCNO) {
-			postings_new_doc(postings, token.value);
-		} else if (token.type != END && token.value != NULL) {
-			postings_append(postings, token.value);
+		token = tokenizer_next(tok, tok_buffer);
+		if (token == DOCNO) {
+			postings_new_doc(postings, string_s_dup(tok_buffer));
+		} else if (token != END && token != EMPTY) {
+			postings_append(postings, tok_buffer);
 		}
-	} while (token.type != END);
+	} while (token != END);
 
 	postings_write(postings, file, "index.dat");
 

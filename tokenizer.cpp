@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <ctype.h>
 #include "memory.h"
@@ -41,10 +42,7 @@ static void tokenizer_advance(struct tokenizer *tok) {
 	}
 }
 
-struct token tokenizer_next(struct tokenizer *tok) {
-	struct token token;
-	char word[256];
-
+enum token_type tokenizer_next(struct tokenizer *tok, char *word) {
 	tokenizer_advance(tok);
 
 	if (prefix("<DOCNO>", &tok->str->str[tok->index])) {
@@ -54,18 +52,16 @@ struct token tokenizer_next(struct tokenizer *tok) {
 
 		int i = 0;
 		while (i < 256 && i + tok->index < tok->str->bytes && !isspace(tok->str->str[tok->index + i])) {
-			word[i] = tok->str->str[tok->index + i];
+			word[i+4] = tok->str->str[tok->index + i];
 			i++;
 		}
-		word[i] = '\0';
-		token.type = DOCNO;
-		token.value = (char *)memory_alloc(i+1);
-		memcpy(token.value, word, i+1);
+		((uint32_t *)word)[0] = i;
+		word[i+4] = '\0';
 
 		tok->index += i;
 		tokenizer_advance(tok);
 
-		return token;
+		return DOCNO;
 	}
 
 	if (tok->index < tok->str->bytes) {
@@ -80,7 +76,7 @@ struct token tokenizer_next(struct tokenizer *tok) {
 				i++;
 				continue;
 			}
-			word[j] = c;
+			word[j+4] = c;
 			i++;
 			j++;
 		}
@@ -88,19 +84,14 @@ struct token tokenizer_next(struct tokenizer *tok) {
 		tok->index += i;
 		tokenizer_advance(tok);
 
-		token.type = WORD;
 		if (j == 0) {
-			token.value = NULL;
-			return token;
+			return EMPTY;
 		}
-		word[j] = '\0';
-		token.value = (char *)memory_alloc(j+1);
-		memcpy(token.value, word, j+1);
+		((uint32_t *)word)[0] = j;
+		word[j+4] = '\0';
 
-
-		return token;
+		return WORD;
 	}
 
-	token.type = END;
-	return token;
+	return END;
 }

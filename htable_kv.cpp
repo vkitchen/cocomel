@@ -19,7 +19,7 @@ struct htable_kv *htable_kv_new()
 
 void **htable_kv_insert(struct htable_kv *h, char *key, void *val)
 {
-    unsigned int hash = htable_word_to_int(key) % h->capacity;
+    unsigned int hash = htable_word_to_int(&key[4]) % h->capacity;
 	if (h->store[hash] == NULL) {
 		h->store[hash] = bst_kv_new();
 	}

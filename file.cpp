@@ -47,14 +47,14 @@ struct string *file_slurp_c(char const*filename)
 	FILE *fh;
 	struct stat details;
 	size_t file_length = 0;
-	struct string *result = malloc(sizeof(*result));
+	struct string *result = (struct string *)malloc(sizeof(*result));
 
 	if ((fh = fopen(filename, "rb")) != NULL)
 		{
 		if (fstat(fileno(fh), &details) == 0)
 			if ((file_length = details.st_size) != 0)
 				{
-				result->str = malloc(sizeof(*result->str) * (file_length + 1));
+				result->str = (char *)malloc(sizeof(*result->str) * (file_length + 1));
 				result->bytes = file_length;
 				result->str[result->bytes] = '\0';
 				if (fread(&result->str[0], details.st_size, 1, fh) != 1)

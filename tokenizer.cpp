@@ -59,7 +59,7 @@ struct token tokenizer_next(struct tokenizer *tok) {
 		}
 		word[i] = '\0';
 		token.type = DOCNO;
-		token.value = memory_alloc(i+1);
+		token.value = (char *)memory_alloc(i+1);
 		memcpy(token.value, word, i+1);
 
 		tok->index += i;
@@ -94,7 +94,7 @@ struct token tokenizer_next(struct tokenizer *tok) {
 			return token;
 		}
 		word[j] = '\0';
-		token.value = memory_alloc(j+1);
+		token.value = (char *)memory_alloc(j+1);
 		memcpy(token.value, word, j+1);
 
 

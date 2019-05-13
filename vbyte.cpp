@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 #include <stdint.h>
+#include "vbyte.h"
 
-int vbyte_read(const uint8_t *in, uint64_t *out)
+int vbyte_read(uint8_t *in, uint64_t *out)
 {
   *out = in[0] & 0x7Fu;
   if (in[0] < 128)

@@ -10,7 +10,7 @@
 
 
 struct postings *postings_new() {
-	struct postings *p = malloc(sizeof(struct postings));
+	struct postings *p = (struct postings *)malloc(sizeof(struct postings));
 	p->docI = -1;
 	p->docNos = vector_kv_new();
 	p->dictionary = htable_kv_new();
@@ -50,7 +50,7 @@ void postings_write(struct postings *p, struct string *buffer, char *filename) {
 
 	struct bst_kv_node *dict_node = dict_list->root;
 	do {
-		size_t delta = posting_write(dict_node->val, &buffer->str[offset]);
+		size_t delta = posting_write((struct posting *)dict_node->val, &buffer->str[offset]);
 		vector_kv_append(dict_vect, dict_node->key, (void *)offset);
 
 		offset += delta;

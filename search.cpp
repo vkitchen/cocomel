@@ -16,9 +16,9 @@ struct results {
 };
 
 struct vector_kv *intersect_posting(struct vector *posting) {
-	struct vector_kv *out = posting->store[0];
+	struct vector_kv *out = (struct vector_kv *)posting->store[0];
 	for (size_t i = 1; i < posting->length; i++) {
-		out = vector_kv_intersect(out, posting->store[i]);
+		out = vector_kv_intersect(out, (struct vector_kv *)posting->store[i]);
 	}
 	return out;
 }
@@ -39,7 +39,7 @@ void results_sort(struct results *v) {
 }
 
 void rank(struct vector_kv *posting, struct vector_kv *docNos, double avgdl) {
-	double *weights = malloc(sizeof(double) * posting->length);
+	double *weights = (double *)malloc(sizeof(double) * posting->length);
 
 	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
 	for (size_t i = 0; i < posting->length; i++) {
@@ -62,10 +62,10 @@ int main(void) {
 	struct vector_kv *docNos = (struct vector_kv *)&((size_t *)index->str)[1];
 	vector_kv_decode(docNos);
 
-	struct vector_kv *dictionary = ((void *)index->str) + ((size_t *)index->str)[0];
+	struct vector_kv *dictionary = (struct vector_kv *)(((char *)index->str) + ((size_t *)index->str)[0]);
 	vector_kv_decode(dictionary);
 	for (size_t i = 0; i < dictionary->length; i++) {
-		dictionary->store[i*2 + 1] = (void *)index->str + (size_t)dictionary->store[i*2 + 1];
+		dictionary->store[i*2 + 1] = (char *)index->str + (size_t)dictionary->store[i*2 + 1];
 		posting_decode((struct posting *)dictionary->store[i*2 + 1]);
 	}
 
@@ -89,21 +89,21 @@ int main(void) {
 
 	// Find results for strings
 	for (size_t i = 0; i < terms->length; i++) {
-		terms->store[i] = vector_kv_find(dictionary, terms->store[i]);
+		terms->store[i] = vector_kv_find(dictionary, (char *)terms->store[i]);
 		if (terms->store[i] == NULL) {
 			printf("No results\n");
 			exit(0);
 		} else { 
-			terms->store[i] = posting_decompress(terms->store[i]);
-			rank(terms->store[i], docNos, avgdl);
+			terms->store[i] = posting_decompress((struct posting *)terms->store[i]);
+			rank((struct vector_kv *)terms->store[i], docNos, avgdl);
 		}
 	}
 
 	struct vector_kv *result_list = intersect_posting(terms);
-	struct results *results = malloc(sizeof(struct results));
+	struct results *results = (struct results *)malloc(sizeof(struct results));
 	results->length = result_list->length;
-	results->docNos = malloc(result_list->length * sizeof(char *));
-	results->rsv = malloc(result_list->length * sizeof(double));
+	results->docNos = (char **)malloc(result_list->length * sizeof(char *));
+	results->rsv = (double *)malloc(result_list->length * sizeof(double));
 
 	// Add relevancy to results and sort
 

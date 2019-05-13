@@ -1,33 +1,31 @@
 
-CFLAGS := -Wall -Wextra -O2 -g -lm
+CXXFLAGS := -Wall -Wextra -O2 -g -lm
 
 SRC := \
-	tokenizer.c \
-	memory.c \
-	string2.c \
-	file.c \
-	flexarray.c \
-	htable_kv.c \
-	vector.c \
-	vector_kv.c \
-	linked_vector_kv.c \
-	bst_kv.c \
-	posting.c \
-	postings.c \
-	vbyte.c
+	tokenizer.cpp \
+	memory.cpp \
+	string2.cpp \
+	file.cpp \
+	htable_kv.cpp \
+	vector.cpp \
+	vector_kv.cpp \
+	bst_kv.cpp \
+	posting.cpp \
+	postings.cpp \
+	vbyte.cpp
 
-OBJECTS := $(SRC:%.c=%.o)
+OBJECTS := $(SRC:%.cpp=%.o)
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 all: index search
 
-index: index.c $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ index.c $(OBJECTS)
+index: index.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ index.cpp $(OBJECTS)
 
-search: search.c $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ search.c $(OBJECTS)
+search: search.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ search.cpp $(OBJECTS)
 
 CLEAN := $(OBJECTS) index search
 clean:

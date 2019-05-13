@@ -5,7 +5,7 @@
 #include "bst_kv.h"
 
 struct bst_kv *bst_kv_new() {
-	struct bst_kv *tree = memory_alloc(sizeof(struct bst_kv));
+	struct bst_kv *tree = (struct bst_kv *)memory_alloc(sizeof(struct bst_kv));
 	tree->root = NULL;
 	tree->size = 0;
 
@@ -13,7 +13,7 @@ struct bst_kv *bst_kv_new() {
 }
 
 static struct bst_kv_node *make_node(char *key, void *val) {
-	struct bst_kv_node *n = memory_alloc(sizeof(struct bst_kv_node));
+	struct bst_kv_node *n = (struct bst_kv_node *)memory_alloc(sizeof(struct bst_kv_node));
 	n->key = key;
 	n->val = val;
 	n->link[0] = n->link[1] = NULL;

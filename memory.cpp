@@ -22,7 +22,7 @@ static char *buffer_end;
 void *memory_alloc(size_t size) {
 	size = (size + 8 - 1) & -8; // round to word size
 	if (buffer == NULL || buffer + size >= buffer_end) {
-		buffer = malloc(MAXMEM);
+		buffer = (char *)malloc(MAXMEM);
 		buffer_end = buffer + MAXMEM;
 	}
 	char *out = buffer;

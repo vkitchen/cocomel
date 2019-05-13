@@ -1,7 +1,7 @@
 vgcore.*
 *.txt
-postings.dat
-document.xml
+*.dat
+*.xml
 *.o
 index
 search

@@ -51,26 +51,28 @@ void posting_flush(struct posting *p) {
 }
 
 size_t posting_write(struct posting *p, char *buffer) {
-	size_t offset = 0;
+	size_t offset = 2 * sizeof(uint32_t);
 
-	((uint32_t *)buffer)[offset] = (uint32_t)p->id_length;
-	offset += sizeof(uint32_t);
+	posting_flush(p);
+
 	memcpy(&buffer[offset], p->id_store, p->id_length);
-	offset += sizeof(*p->id_store) * p->id_length;
+	offset += p->id_length;
 
-	((uint32_t *)buffer)[offset] = (uint32_t)p->counts->length;
-	offset += sizeof(uint32_t);
 	memcpy(&buffer[offset], p->counts->store, p->counts->length);
-	offset += sizeof(*p->counts->store) * p->counts->length;
+	offset += p->counts->length;
+
+	((uint32_t *)buffer)[0] = (uint32_t)p->id_length;
+	((uint32_t *)buffer)[1] = (uint32_t)p->counts->length;
 
 	return offset;
 }
 
+
 dynamic_array<std::pair<size_t, double>> *posting_decompress(struct posting *p) {
 	size_t id_length = ((uint32_t *)p)[0];
-	size_t count_length = ((uint32_t *)&((char *)p)[sizeof(uint32_t) + id_length])[0];
-	uint8_t *id_store = (uint8_t *)&((char *)p)[sizeof(uint32_t)];
-	uint8_t *count_store = (uint8_t *)&((char *)p)[2 * sizeof(uint32_t) + id_length];
+	size_t count_length = ((uint32_t *)p)[1];
+	uint8_t *id_store = (uint8_t *)p + 2 * sizeof(uint32_t);
+	uint8_t *count_store = id_store + id_length;
 
 	dynamic_array<std::pair<size_t, double>> *out = new dynamic_array<std::pair<size_t, double>>;
 	size_t prevI = 0;

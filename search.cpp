@@ -126,7 +126,7 @@ int main(void) {
 	for (size_t i = 0; i < result_list->length; i++) {
 		size_t docId = result_list->store[i].first;
 		double rsv = result_list->store[i].second;
-		printf("%s %f\n", docNos->store[docId*2], rsv);
+		printf("%s %f\n", (char *)docNos->store[docId*2], rsv);
 	}
 
 	return 0;

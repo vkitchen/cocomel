@@ -34,7 +34,7 @@ void postings_append(struct postings *p, char *term) {
 }
 
 
-void postings_write(struct postings *p, struct string *buffer, char *filename) {
+void postings_write(struct postings *p, struct string *buffer, char const *filename) {
 	FILE *fh = fopen(filename, "w");
 	if (fh == NULL) {
 		fprintf(stderr, "ERROR: Failed to open postings.dat for writing\n");

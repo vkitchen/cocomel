@@ -69,7 +69,7 @@ void rank(dynamic_array<std::pair<size_t, double>> *posting, struct vector_kv *d
 int main(void) {
 	double avgdl = 0;
 
-	struct string *index = file_slurp_c("postings.dat");
+	struct string *index = file_slurp_c("index.dat");
 
 	// Decode index
 	struct vector_kv *docNos = (struct vector_kv *)malloc(sizeof(struct vector_kv));

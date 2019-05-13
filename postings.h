@@ -13,6 +13,6 @@ struct postings {
 struct postings *postings_new();
 void postings_new_doc(struct postings *p, char *doc);
 void postings_append(struct postings *p, char *term);
-void postings_write(struct postings *p, struct string *buffer, char *filename);
+void postings_write(struct postings *p, struct string *buffer, char const *filename);
 
 #endif

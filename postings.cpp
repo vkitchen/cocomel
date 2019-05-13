@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <utility>
+#include "dynamic_array.h"
 #include "string2.h"
 #include "bst_kv.h"
 #include "htable_kv.h"
@@ -12,19 +14,18 @@
 struct postings *postings_new() {
 	struct postings *p = (struct postings *)malloc(sizeof(struct postings));
 	p->docI = -1;
-	p->docNos = vector_kv_new();
+	p->docNos = new dynamic_array<std::pair<char *, size_t>>();
 	p->dictionary = htable_kv_new();
 	return p;
 }
 
 void postings_new_doc(struct postings *p, char *doc) {
 	p->docI++;
-	vector_kv_append(p->docNos, doc, 0);
+	p->docNos->append(std::make_pair(doc, 0));
 }
 
 void postings_append(struct postings *p, char *term) {
-	size_t *docLength = (size_t *)vector_kv_back(p->docNos);
-	docLength[1]++;
+	p->docNos->back()->second++;
 	struct posting **posting = (struct posting **)htable_kv_insert(p->dictionary, term, NULL);
 	if (*posting == NULL) {
 		*posting = posting_new();
@@ -46,7 +47,16 @@ void postings_write(struct postings *p, struct string *buffer, char *filename) {
 	// Write to output buffer
 	size_t offset = 8;
 
-	offset += vector_kv_write(p->docNos, &buffer->str[offset]);
+	((size_t *)&buffer->str[offset])[0] = p->docNos->length;
+	size_t docNos_offset = offset + sizeof(p->docNos->length);
+	offset += sizeof(p->docNos->length) + p->docNos->length * (sizeof(char *) + sizeof(size_t));
+	for (size_t i = 0; i < p->docNos->length; i++) {
+		((size_t *)&buffer->str[docNos_offset])[0] = offset;
+		((size_t *)&buffer->str[docNos_offset])[1] = p->docNos->store[i].second;
+		docNos_offset += sizeof(size_t) * 2;
+
+		offset += string_copy_c(&buffer->str[offset], p->docNos->store[i].first);
+	}
 
 	struct bst_kv_node *dict_node = dict_list->root;
 	do {

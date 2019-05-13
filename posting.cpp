@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <utility>
 #include "vbyte.h"
 #include "vector_kv.h"
+#include "dynamic_array.h"
 #include "posting.h"
 
 struct posting *posting_new() {
@@ -12,9 +14,7 @@ struct posting *posting_new() {
 	p->id_capacity = 256;
 	p->id_length = 0;
 	p->id_store = (uint8_t *)malloc(p->id_capacity * sizeof(uint8_t));
-	p->count_capacity = 256;
-	p->count_length = 0;
-	p->count_store = (uint8_t *)malloc(p->count_capacity * sizeof(uint8_t));
+	p->counts = new dynamic_array<uint8_t>();
 	return p;
 }
 
@@ -47,49 +47,42 @@ void posting_flush(struct posting *p) {
 	}
 	p->id_length += vbyte_store(&p->id_store[p->id_length], p->diff);
 
-	if (p->count_length == p->count_capacity) {
-		p->count_capacity *= 2;
-		p->count_store = (uint8_t *)realloc(p->count_store, p->count_capacity * sizeof(uint8_t));
-	}
-	p->count_store[p->count_length] = p->count;
-	p->count_length++;
+	p->counts->append(p->count);
 }
 
 size_t posting_write(struct posting *p, char *buffer) {
-	size_t offset = sizeof(struct posting);
+	size_t offset = 0;
 
-	posting_flush(p);
-
+	((uint32_t *)buffer)[offset] = (uint32_t)p->id_length;
+	offset += sizeof(uint32_t);
 	memcpy(&buffer[offset], p->id_store, p->id_length);
-	p->id_store = (uint8_t *)offset;
-	offset += p->id_length;
+	offset += sizeof(*p->id_store) * p->id_length;
 
-	memcpy(&buffer[offset], p->count_store, p->count_length);
-	p->count_store = (uint8_t *)offset;
-	offset += p->count_length;
-
-	memcpy(&buffer[0], p, sizeof(struct posting));
+	((uint32_t *)buffer)[offset] = (uint32_t)p->counts->length;
+	offset += sizeof(uint32_t);
+	memcpy(&buffer[offset], p->counts->store, p->counts->length);
+	offset += sizeof(*p->counts->store) * p->counts->length;
 
 	return offset;
 }
 
-void posting_decode(struct posting *p) {
-	p->id_store = (uint8_t *)p + (size_t)p->id_store;
-	p->count_store = (uint8_t *)p + (size_t)p->count_store;
-}
+dynamic_array<std::pair<size_t, double>> *posting_decompress(struct posting *p) {
+	size_t id_length = ((uint32_t *)p)[0];
+	size_t count_length = ((uint32_t *)&((char *)p)[sizeof(uint32_t) + id_length])[0];
+	uint8_t *id_store = (uint8_t *)&((char *)p)[sizeof(uint32_t)];
+	uint8_t *count_store = (uint8_t *)&((char *)p)[2 * sizeof(uint32_t) + id_length];
 
-struct vector_kv *posting_decompress(struct posting *posting) {
-	struct vector_kv *out = vector_kv_new();
+	dynamic_array<std::pair<size_t, double>> *out = new dynamic_array<std::pair<size_t, double>>;
 	size_t prevI = 0;
 	uint64_t docI = 0;
 	size_t di = 0;
 	size_t ci = 0;
-	while (ci < posting->count_length && di < posting->id_length) {
-		di += vbyte_read(&posting->id_store[di], &docI);
+	while (ci < count_length && di < id_length) {
+		di += vbyte_read(&id_store[di], &docI);
 		docI += prevI;
 		prevI = docI;
-		size_t count = posting->count_store[ci];
-		vector_kv_append(out, (char *)docI, (void *)count);
+		size_t count = count_store[ci];
+		out->append(std::make_pair(docI, count));
 		ci++;
 	}
 	return out;

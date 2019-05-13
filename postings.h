@@ -1,9 +1,12 @@
 #ifndef POSTINGS_H_
 #define POSTINGS_H_
 
+#include<utility>
+#include "dynamic_array.h"
+
 struct postings {
 	size_t docI;
-	struct vector_kv *docNos;
+	dynamic_array<std::pair<char *, size_t>> *docNos;
 	struct htable_kv *dictionary;
 };
 

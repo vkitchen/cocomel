@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include "memory.h"
 
 template <typename T>
 class dynamic_array
@@ -9,6 +10,12 @@ class dynamic_array
 		size_t capacity;
 		size_t length;
 		T *store;
+
+	public:
+		static void *operator new(size_t size)
+			{
+			return memory_alloc(size);
+			}
 
 		dynamic_array()
 			{

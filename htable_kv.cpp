@@ -1,16 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "htable_kv.h"
+#include "memory.h"
 #include "bst_kv.h"
+#include "htable_kv.h"
 
 static unsigned int htable_word_to_int(char *key);
 
 struct htable_kv *htable_kv_new()
 {
-    struct htable_kv *h = (struct htable_kv *)malloc(sizeof(struct htable_kv));
+    struct htable_kv *h = (struct htable_kv *)memory_alloc(sizeof(struct htable_kv));
     h->capacity = 32768;
-    h->store = (struct bst_kv **)malloc(sizeof(struct bst_kv *) * h->capacity);
+    h->store = (struct bst_kv **)memory_alloc(sizeof(struct bst_kv *) * h->capacity);
     for (size_t i = 0; i < h->capacity; i++) {
         h->store[i] = NULL;
     }

@@ -8,7 +8,7 @@
 #include "posting.h"
 
 struct posting *posting_new() {
-	struct posting *p = (struct posting *)malloc(sizeof(struct posting));
+	struct posting *p = (struct posting *)memory_alloc(sizeof(struct posting));
 	p->id = 0;
 	p->count = 0;
 	p->id_capacity = 256;

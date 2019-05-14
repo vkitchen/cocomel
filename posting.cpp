@@ -9,7 +9,9 @@
 
 struct posting *posting_new() {
 	struct posting *p = (struct posting *)memory_alloc(sizeof(struct posting));
-	p->ids = new dynamic_array<uint8_t>();
+	p->id_capacity = 256;
+	p->id_length = 0;
+	p->id_store = (uint8_t *)malloc(p->id_capacity * sizeof(uint8_t));
 	p->counts = new dynamic_array<uint8_t>();
 	return p;
 }
@@ -20,11 +22,11 @@ void posting_append(struct posting *p, size_t id) {
 		if (*count < 255)
 			(*count)++;
 	} else {
-		uint8_t buf[10];
-		uint8_t *end = buf;
-		end += vbyte_store(&buf[0], id - p->id);
-		for (uint8_t *byte = buf; byte < end; byte++)
-			p->ids->append(*byte);
+		if (p->id_capacity - p->id_length < 10) {
+			p->id_capacity *= 2;
+			p->id_store = (uint8_t *)realloc(p->id_store, p->id_capacity * sizeof(uint8_t));
+		}
+		p->id_length += vbyte_store(&p->id_store[p->id_length], id - p->id);
 
 		p->counts->append(1);
 
@@ -35,13 +37,13 @@ void posting_append(struct posting *p, size_t id) {
 size_t posting_write(struct posting *p, char *buffer) {
 	size_t offset = 2 * sizeof(uint32_t);
 
-	memcpy(&buffer[offset], p->ids->store, p->ids->length);
-	offset += p->ids->length;
+	memcpy(&buffer[offset], p->id_store, p->id_length);
+	offset += p->id_length;
 
 	memcpy(&buffer[offset], p->counts->store, p->counts->length);
 	offset += p->counts->length;
 
-	((uint32_t *)buffer)[0] = (uint32_t)p->ids->length;
+	((uint32_t *)buffer)[0] = (uint32_t)p->id_length;
 	((uint32_t *)buffer)[1] = (uint32_t)p->counts->length;
 
 	return offset;

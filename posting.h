@@ -8,7 +8,9 @@
 
 struct posting {
 	size_t id;
-	dynamic_array<uint8_t> *ids;
+	size_t id_capacity;
+	size_t id_length;
+	uint8_t *id_store;
 	dynamic_array<uint8_t> *counts;
 };
 

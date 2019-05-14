@@ -57,7 +57,7 @@ void results_sort(dynamic_array<std::pair<size_t, double>> *results) {
 void rank(dynamic_array<std::pair<size_t, double>> *posting, struct vector_kv *docNos, double avgdl) {
 	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
 	for (size_t i = 0; i < posting->length; i++) {
-		size_t docId = posting->store[i].first;
+		size_t docId = posting->store[i].first - 1;
 		size_t tf = posting->store[i].second;
 		double docLength = (size_t)docNos->store[docId*2 + 1];
 		double K = 1.2 * (0.25 + 0.75 * docLength / avgdl);
@@ -124,7 +124,7 @@ int main(void) {
 	results_sort(result_list);
 
 	for (size_t i = 0; i < result_list->length; i++) {
-		size_t docId = result_list->store[i].first;
+		size_t docId = result_list->store[i].first - 1;
 		double rsv = result_list->store[i].second;
 		printf("%s %f\n", (char *)docNos->store[docId*2], rsv);
 	}

@@ -13,7 +13,7 @@
 
 struct postings *postings_new() {
 	struct postings *p = (struct postings *)memory_alloc(sizeof(struct postings));
-	p->docI = -1;
+	p->docI = 0;
 	p->docNos = new dynamic_array<std::pair<char *, size_t>>();
 	p->dictionary = htable_kv_new();
 	return p;

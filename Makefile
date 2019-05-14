@@ -11,7 +11,6 @@ SRC := \
 	vector_kv.cpp \
 	bst_kv.cpp \
 	posting.cpp \
-	postings.cpp \
 	vbyte.cpp
 
 OBJECTS := $(SRC:%.cpp=%.o)

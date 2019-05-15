@@ -5,7 +5,7 @@
 #include "bst_kv.h"
 #include "htable_kv.h"
 
-static unsigned int htable_word_to_int(char *key);
+static inline unsigned int htable_word_to_int(char *key);
 
 struct htable_kv *htable_kv_new()
 {
@@ -20,7 +20,7 @@ struct htable_kv *htable_kv_new()
 
 void **htable_kv_insert(struct htable_kv *h, char *key, void *val)
 {
-    unsigned int hash = htable_word_to_int(&key[4]) % h->capacity;
+    unsigned int hash = htable_word_to_int(&key[4]) & 0x7FFF;
 	if (h->store[hash] == NULL) {
 		h->store[hash] = bst_kv_new();
 	}
@@ -29,14 +29,14 @@ void **htable_kv_insert(struct htable_kv *h, char *key, void *val)
 
 void *htable_kv_find(struct htable_kv *h, char *key)
 {
-    unsigned int hash = htable_word_to_int(key) % h->capacity;
+    unsigned int hash = htable_word_to_int(key) & 0x7FFF;
 	if (h->store[hash] == NULL) {
 		return NULL;
 	}
 	return bst_kv_find(h->store[hash], key);
 }
 
-static unsigned int htable_word_to_int(char *key) {
+static inline unsigned int htable_word_to_int(char *key) {
     unsigned int result = 0;
 
     while (*key != '\0') {
@@ -58,6 +58,9 @@ struct bst_kv *htable_kv_merge(struct htable_kv *h) {
 		for (size_t i = 0; i < h->capacity; i += gap * 2) {
 			if (h->store[i] == NULL) {
 				h->store[i] = h->store[i+gap];
+				continue;
+			}
+			if (h->store[i+gap] == NULL) {
 				continue;
 			}
 			bst_kv_merge_left(h->store[i], h->store[i+gap]);

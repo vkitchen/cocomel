@@ -47,7 +47,7 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 
 		offset += delta;
 		dict_node = dict_node->link[1];
-	} while (dict_node != dict_list->root);
+	} while (dict_node != NULL);
 
 	((size_t *)buffer)[0] = offset;
 	offset += vector_kv_write(dict_vect, &buffer[offset]);

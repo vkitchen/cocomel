@@ -73,47 +73,31 @@ void *bst_kv_find(struct bst_kv *tree, char *key) {
 	return NULL;
 }
 
-static struct bst_kv_node *list_append(struct bst_kv_node *left, struct bst_kv_node *right) {
-	if (left == NULL) {
-		return right;
-	}
-	if (right == NULL) {
-		return left;
-	}
-
-	struct bst_kv_node *tail = right->link[0];
-
-	left->link[0]->link[1] = right; /* Old left tail to old right head */
-	right->link[0]->link[1] = left; /* Right tail to left head */
-
-	right->link[0] = left->link[0]; /* Old right head to old left tail */
-	left->link[0] = tail; /* Left head to right tail */
-
-	return left;
-}
-
-static struct bst_kv_node *bst_kv_linked_list_join(struct bst_kv_node *root) {
-	struct bst_kv_node *left, *right;
-
-	if (root == NULL) {
-		return NULL;
-	}
-
-	left = bst_kv_linked_list_join(root->link[0]);
-	right = bst_kv_linked_list_join(root->link[1]);
-
-	root->link[0] = root;
-	root->link[1] = root;
-
-	left = list_append(left, root);
-	left = list_append(left, right);
-
-	return left;
-}
-
-/* Convert tree to doubly linked list */
+/* Convert tree to sorted linked list */
+/* Modeled after the DSW tree-to-vine procedure */
+/* http://web.eecs.umich.edu/~qstout/pap/CACM86.pdf */
 void bst_kv_linked_list(struct bst_kv *tree) {
-	tree->root = bst_kv_linked_list_join(tree->root);
+	struct bst_kv_node pseudo_root;
+	pseudo_root.link[0] = NULL;
+	pseudo_root.link[1] = tree->root;
+
+	struct bst_kv_node *tail = &pseudo_root;
+	struct bst_kv_node *rest = tail->link[1];
+	struct bst_kv_node *tmp;
+
+	while (rest != NULL)
+		if (rest->link[0] == NULL) {
+			tail = rest;
+			rest = rest->link[1];
+		} else {
+			tmp = rest->link[0];
+			rest->link[0] = tmp->link[1];
+			tmp->link[1] = rest;
+			rest = tmp;
+			tail->link[1] = tmp;
+		}
+
+	tree->root = pseudo_root.link[1];
 }
 
 static void bst_kv_print_inorder(struct bst_kv_node *root) {
@@ -140,35 +124,27 @@ void bst_kv_print_list(struct bst_kv *tree) {
 	} while (root != tree->root);
 }
 
-// static void list_insert_after(struct bst_kv_node *list, struct bst_kv_node *node) {
-// 	node->link[0] = list;
-// 	node->link[1] = list->link[1];
-// 	list->link[1]->link[0] = node;
-// 	list->link[1] = node;
-// }
-
-static void list_insert_before(struct bst_kv_node *list, struct bst_kv_node *node) {
-	node->link[0] = list->link[0];
-	node->link[1] = list;
-	list->link[0]->link[1] = node;
-	list->link[0] = node;
-}
-
 void bst_kv_merge_left(struct bst_kv *left_tree, struct bst_kv *right_tree) {
 	struct bst_kv_node *left = left_tree->root;
 	struct bst_kv_node *right = right_tree->root;
-	struct bst_kv_node *tmp;
-	int moved = 0;
-	do {
-		while (strcmp(left->key, right->key) < 0 && (left != left_tree->root || !moved)) {
+
+	struct bst_kv_node dummy;
+	struct bst_kv_node *prev = &dummy;
+	while (left != NULL && right != NULL) {
+		if (strcmp(left->key, right->key) < 0) {
+			prev->link[1] = left;
 			left = left->link[1];
-			moved = 1;
+		} else {
+			prev->link[1] = right;
+			right = right->link[1];
 		}
-		tmp = right;
-		right = right->link[1];
-		list_insert_before(left, tmp);
-		if (left_tree->root == left && !moved) {
-			left_tree->root = tmp;
-		}
-	} while (right != right_tree->root);
+		prev = prev->link[1];
+	}
+
+	if (left == NULL)
+		prev->link[1] = right;
+	if (right == NULL)
+		prev->link[1] = left;
+
+	left_tree->root = dummy.link[1];
 }

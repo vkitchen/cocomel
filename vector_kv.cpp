@@ -39,6 +39,42 @@ void **vector_kv_back(struct vector_kv *v) {
 	return &v->store[(v->length-1) * 2];
 }
 
+static void vector_kv_quicksort(struct vector_kv *v, long lo, long hi) {
+	if (!(lo < hi))
+		return;
+
+	long mid = (lo + hi) / 2;
+	char *pivot = (char *)v->store[(mid-1)*2];
+	long left = lo - 1;
+	long right = hi + 1;
+
+	for (;;) {
+		left++;
+		while (strcmp((char *)v->store[(left-1)*2], pivot) > 0)
+			left++;
+		right--;
+		while (strcmp((char *)v->store[(right-1)*2], pivot) < 0)
+			right--;
+		if (left >= right)
+			break;
+
+		void *key_tmp = v->store[(left-1)*2];
+		v->store[(left-1)*2] = v->store[(right-1)*2];
+		v->store[(right-1)*2] = key_tmp;
+
+		void *val_tmp = v->store[(left-1)*2+1];
+		v->store[(left-1)*2+1] = v->store[(right-1)*2+1];
+		v->store[(right-1)*2+1] = val_tmp;
+	}
+
+	vector_kv_quicksort(v, lo, right);
+	vector_kv_quicksort(v, right + 1, hi);
+}
+
+void vector_kv_sort(struct vector_kv *v) {
+	vector_kv_quicksort(v, 1, v->length);
+}
+
 size_t vector_kv_write(struct vector_kv *v, char *buffer) {
 	size_t offset = sizeof(struct vector_kv) + sizeof(size_t) * v->length * 2;
 

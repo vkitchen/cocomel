@@ -51,12 +51,7 @@ struct vector_kv *htable_kv_merge(struct htable_kv *h) {
 
 	for (size_t i = 0; i < h->capacity; i++) {
 		if (h->store[i] != NULL) {
-			bst_kv_linked_list(h->store[i]);
-			struct bst_kv_node *node = h->store[i]->root;
-			while (node != NULL) {
-				vector_kv_append(postings, node->key, node->val);
-				node = node->link[1];
-			}
+			bst_kv_to_vector(h->store[i], postings);
 		}
 	}
 

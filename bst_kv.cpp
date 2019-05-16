@@ -3,6 +3,7 @@
 #include <string.h>
 #include "memory.h"
 #include "string2.h"
+#include "vector_kv.h"
 #include "bst_kv.h"
 
 struct bst_kv *bst_kv_new() {
@@ -71,6 +72,18 @@ void *bst_kv_find(struct bst_kv *tree, char *key) {
 	}
 
 	return NULL;
+}
+
+static void bst_kv_to_vector_inorder(struct bst_kv_node *root, struct vector_kv *v) {
+	if (root == NULL)
+		return;
+	bst_kv_to_vector_inorder(root->link[0], v);
+	vector_kv_append(v, root->key, root->val);
+	bst_kv_to_vector_inorder(root->link[1], v);
+}
+
+void bst_kv_to_vector(struct bst_kv *tree, struct vector_kv *v) {
+	bst_kv_to_vector_inorder(tree->root, v);
 }
 
 /* Convert tree to sorted linked list */

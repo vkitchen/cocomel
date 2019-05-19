@@ -21,16 +21,17 @@ struct htable_kv *htable_kv_new()
 
 void **htable_kv_insert(struct htable_kv *h, char *key, void *val)
 {
-    unsigned int hash = htable_word_to_int(&key[4]) & 0xFFFF;
+	unsigned int hash = htable_word_to_int(&key[4]) & (1 << 16) - 1;
 	if (h->store[hash] == NULL) {
-		h->store[hash] = bst_kv_new();
+		h->store[hash] = bst_kv_new(key, val);
+		return &h->store[hash]->val;
 	}
 	return bst_kv_insert(h->store[hash], key, val);
 }
 
 void *htable_kv_find(struct htable_kv *h, char *key)
 {
-    unsigned int hash = htable_word_to_int(key) & 0xFFFF;
+	unsigned int hash = htable_word_to_int(key) & (1 << 16) - 1;
 	if (h->store[hash] == NULL) {
 		return NULL;
 	}

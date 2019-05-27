@@ -23,8 +23,6 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 		exit(1);
 	}
 
-	struct vector_kv *dict_vect = htable_kv_merge(dictionary);
-
 	// Write to output buffer
 	size_t offset = 8;
 
@@ -39,14 +37,8 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 		offset += string_copy_c(&buffer[offset], docNos->store[i].first);
 	}
 
-	for (size_t i = 0; i < dict_vect->length; i++) {
-		size_t delta = posting_write((struct posting *)dict_vect->store[i*2+1], &buffer[offset]);
-		dict_vect->store[i*2+1] = (void *)offset;
-		offset += delta;
-	}
-
 	((size_t *)buffer)[0] = offset;
-	offset += vector_kv_write(dict_vect, &buffer[offset]);
+        offset += htable_kv_write(dictionary, &buffer[offset]);
 
 	fwrite(buffer, sizeof(char), offset, fh);
 	fclose(fh);

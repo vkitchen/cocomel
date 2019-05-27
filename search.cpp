@@ -10,6 +10,7 @@
 #include "vector.h"
 #include "vector_kv.h"
 #include "posting.h"
+#include "htable_kv.h"
 
 dynamic_array<std::pair<size_t, double>> *intersect_postings(dynamic_array<dynamic_array<std::pair<size_t, double>> *> *postings) {
 	dynamic_array<std::pair<size_t, double>> *result = new dynamic_array<std::pair<size_t, double>>();
@@ -80,11 +81,8 @@ int main(void) {
 		docNos->store[i*2] = index->str + (size_t)docNos->store[i*2];
 	}
 
-	struct vector_kv *dictionary = (struct vector_kv *)(((char *)index->str) + ((size_t *)index->str)[0]);
-	vector_kv_decode(dictionary);
-	for (size_t i = 0; i < dictionary->length; i++) {
-		dictionary->store[i*2 + 1] = (char *)index->str + (size_t)dictionary->store[i*2 + 1];
-	}
+	size_t dict_offset = ((size_t *)index->str)[0];
+	struct htable_kv *dictionary = htable_kv_read(&index->str[dict_offset]);
 
 	// Find average document length
 	for (size_t i = 0; i < docNos->length; i++) {
@@ -108,7 +106,7 @@ int main(void) {
 
 	// Find results for strings
 	for (size_t i = 0; i < terms->length; i++) {
-		terms->store[i] = vector_kv_find(dictionary, (char *)terms->store[i]);
+		terms->store[i] = htable_kv_find(dictionary, (char *)terms->store[i]);
 		if (terms->store[i] == NULL) {
 			printf("No results\n");
 			exit(0);

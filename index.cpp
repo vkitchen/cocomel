@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 		if (token == DOCNO) {
 			docNos->append(std::make_pair(string_s_dup(tok_buffer), 0));
 			docI++;
-		} else if (token != END && token != EMPTY) {
+		} else if (token == WORD) {
 			docNos->back()->second++;
 			struct posting **posting = (struct posting **)htable_kv_insert(dictionary, tok_buffer, NULL);
 			if (*posting == NULL)

@@ -1,7 +1,7 @@
 #ifndef TOKENIZER_H_
 #define TOKENIZER_H_
 
-enum token_type {DOCNO, WORD, EMPTY, END};
+enum token_type {DOCNO, WORD, END};
 
 struct tokenizer {
 	struct string *str;

@@ -1,59 +1,55 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 #include <utility>
 #include "vbyte.h"
-#include "vector_kv.h"
 #include "dynamic_array.h"
 #include "posting.h"
 
-struct posting *posting_new() {
-	struct posting *p = (struct posting *)memory_alloc(sizeof(struct posting));
-	p->id_capacity = 256;
-	p->id_length = 0;
-	p->id_store = (uint8_t *)malloc(p->id_capacity * sizeof(uint8_t));
-	p->counts = new dynamic_array<uint8_t>();
-	return p;
+posting::posting() {
+	id_capacity = 256;
+	id_length = 0;
+	id_store = (uint8_t *)malloc(id_capacity * sizeof(uint8_t));
+	counts = new dynamic_array<uint8_t>();
 }
 
-void posting_append(struct posting *p, size_t id) {
-	if (p->id == id) {
-		uint8_t *count = p->counts->back();
+void posting::append(size_t id) {
+	if (this->id == id) {
+		uint8_t *count = counts->back();
 		if (*count < 255)
 			(*count)++;
 	} else {
-		if (p->id_capacity - p->id_length < 10) {
-			p->id_capacity *= 2;
-			p->id_store = (uint8_t *)realloc(p->id_store, p->id_capacity * sizeof(uint8_t));
+		if (id_capacity - id_length < 10) {
+			id_capacity *= 2;
+			id_store = (uint8_t *)realloc(id_store, id_capacity * sizeof(uint8_t));
 		}
-		p->id_length += vbyte_store(&p->id_store[p->id_length], id - p->id);
+		id_length += vbyte_store(&id_store[id_length], id - this->id);
 
-		p->counts->append(1);
+		counts->append(1);
 
-		p->id = id;
+		this->id = id;
 	}
 }
 
-size_t posting_write(struct posting *p, char *buffer) {
+size_t posting::write(char *buffer) {
 	size_t offset = 2 * sizeof(uint32_t);
 
-	memcpy(&buffer[offset], p->id_store, p->id_length);
-	offset += p->id_length;
+	memcpy(&buffer[offset], id_store, id_length);
+	offset += id_length;
 
-	memcpy(&buffer[offset], p->counts->store, p->counts->length);
-	offset += p->counts->length;
+	memcpy(&buffer[offset], counts->store, counts->length);
+	offset += counts->length;
 
-	((uint32_t *)buffer)[0] = (uint32_t)p->id_length;
-	((uint32_t *)buffer)[1] = (uint32_t)p->counts->length;
+	((uint32_t *)buffer)[0] = (uint32_t)id_length;
+	((uint32_t *)buffer)[1] = (uint32_t)counts->length;
 
 	return offset;
 }
 
 
-dynamic_array<std::pair<size_t, double>> *posting_decompress(struct posting *p) {
-	size_t id_length = ((uint32_t *)p)[0];
-	size_t count_length = ((uint32_t *)p)[1];
-	uint8_t *id_store = (uint8_t *)p + 2 * sizeof(uint32_t);
+dynamic_array<std::pair<size_t, double>> *posting::decompress() {
+	size_t id_length = ((uint32_t *)this)[0];
+	size_t count_length = ((uint32_t *)this)[1];
+	uint8_t *id_store = (uint8_t *)this + 2 * sizeof(uint32_t);
 	uint8_t *count_store = id_store + id_length;
 
 	dynamic_array<std::pair<size_t, double>> *out = new dynamic_array<std::pair<size_t, double>>;

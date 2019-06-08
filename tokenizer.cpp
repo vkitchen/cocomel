@@ -1,109 +1,124 @@
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <ctype.h>
-#include "memory.h"
-#include "string2.h"
+#include <cctype>
 #include "tokenizer.h"
 
-struct tokenizer *tokenizer_new(struct string *str) {
-	struct tokenizer *tok = (struct tokenizer *)memory_alloc(sizeof(struct tokenizer));
-	tok->str = str;
-	tok->index = 0;
-	return tok;
-}
-
-static inline int prefix(const char *pre, const char *str) {
-	while (*pre) {
-		if (*pre++ != *str++) {
+static inline int prefix(const char *pre, const char *str)
+	{
+	while (*pre)
+		if (*pre++ != *str++)
 			return 0;
-		}
-	}
 	return 1;
-}
+	}
 
-static inline void tokenizer_advance(struct tokenizer *tok) {
-	for (;;) {
+static inline char lower(char c)
+	{
+	if (c < 'a')
+		c += 'a' - 'A';
+
+	return c;
+	}
+
+static inline char upper(char c)
+	{
+	if ('Z' < c)
+		c -= 'a' - 'A';
+	
+	return c;
+	}
+
+tokenizer::tokenizer(char *doc, size_t len)
+	{
+	document = doc;
+	length = len;
+	index = 0;
+	}
+
+void tokenizer::advance()
+	{
+	for (;;)
+		{
 		// EOF
-		if (tok->index == tok->str->bytes)
+		if (index == length)
 			break;
 		// Word
-		else if (isalnum(tok->str->str[tok->index]))
+		else if (isalnum(document[index]))
 			break;
 		// Doc ID
-		else if (prefix("<DOCNO>", &tok->str->str[tok->index]))
+		else if (prefix("<DOCNO>", &document[index]))
 			break;
 		// Ignored tags
-		else if (tok->str->str[tok->index] == '<') {
-			tok->index++;
-			while (tok->index < tok->str->bytes && tok->str->str[tok->index] != '>')
-				tok->index++;
-			tok->index++;
-		}
+		else if (document[index] == '<')
+			{
+			index++;
+			while (index < length && document[index] != '>')
+				index++;
+			index++;
+			}
 		// Other punctuation
-		else if (!isalnum(tok->str->str[tok->index]))
-			tok->index++;
+		else if (!isalnum(document[index]))
+			index++;
 
 		// Whitespace
-		while(tok->index < tok->str->bytes && isspace(tok->str->str[tok->index]))
-			tok->index++;
-	}
-}
-
-enum token_type tokenizer_next(struct tokenizer *tok, char *word) {
-	tokenizer_advance(tok);
-
-	if (prefix("<DOCNO>", &tok->str->str[tok->index])) {
-		tok->index += sizeof("<DOCNO>"); // TODO might be skipping 1 too many?
-
-		while(tok->index < tok->str->bytes && isspace(tok->str->str[tok->index])) {
-			tok->index++;
+		while(index < length && isspace(document[index]))
+			index++;
 		}
+	}
+
+enum token_type tokenizer::next(char *buffer)
+	{
+	advance();
+
+	if (prefix("<DOCNO>", &document[index]))
+		{
+		index += sizeof("<DOCNO>");
+
+		while(index < length && isspace(document[index]))
+			index++;
 
 		int i = 0;
-		while (i < 256 && i + tok->index < tok->str->bytes && tok->str->str[tok->index + i] != '<' && !isspace(tok->str->str[tok->index + i])) {
-			word[i+4] = tok->str->str[tok->index + i];
+		while (i < 256 && i + index < length && document[index + i] != '<' && !isspace(document[index + i]))
+			{
+			buffer[i+4] = document[index + i];
 			i++;
-		}
-		((uint32_t *)word)[0] = i;
-		word[i+4] = '\0';
+			}
+		((uint32_t *)buffer)[0] = i;
+		buffer[i+4] = '\0';
 
-		tok->index += i;
+		index += i;
 
 		return DOCNO;
-	}
-
-	if (tok->index < tok->str->bytes && isdigit(tok->str->str[tok->index])) {
-		int i = 0;
-		while (i < 256 && i + tok->index < tok->str->bytes && isdigit(tok->str->str[tok->index + i])) {
-			word[i+4] = tok->str->str[tok->index + i];
-			i++;
 		}
-		((uint32_t *)word)[0] = i;
-		word[i+4] = '\0';
 
-		tok->index += i;
-
-		return WORD;
-	}
-
-	if (tok->index < tok->str->bytes && isalpha(tok->str->str[tok->index])) {
+	if (index < length && isdigit(document[index]))
+		{
 		int i = 0;
-		while (i < 256 && i + tok->index < tok->str->bytes && isalpha(tok->str->str[tok->index + i])) {
-			char c = tok->str->str[tok->index + i];
-			if ('Z' < c) {
-				c -= 'a' - 'A';
+		while (i < 256 && i + index < length && isdigit(document[index + i]))
+			{
+			buffer[i+4] = document[index + i];
+			i++;
 			}
-			word[i+4] = c;
-			i++;
-		}
-		((uint32_t *)word)[0] = i;
-		word[i+4] = '\0';
+		((uint32_t *)buffer)[0] = i;
+		buffer[i+4] = '\0';
 
-		tok->index += i;
+		index += i;
 
 		return WORD;
-	}
+		}
+
+	if (index < length && isalpha(document[index]))
+		{
+		int i = 0;
+		while (i < 256 && i + index < length && isalpha(document[index + i]))
+			{
+			buffer[i+4] = upper(document[index + i]);
+			i++;
+			}
+		((uint32_t *)buffer)[0] = i;
+		buffer[i+4] = '\0';
+
+		index += i;
+
+		return WORD;
+		}
 
 	return END;
-}
+	}

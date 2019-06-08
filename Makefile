@@ -6,10 +6,10 @@ SRC := \
 	memory.cpp \
 	string2.cpp \
 	file.cpp \
-	htable_kv.cpp \
+	hash_table.cpp \
 	vector.cpp \
 	vector_kv.cpp \
-	bst_kv.cpp \
+	bst.cpp \
 	posting.cpp \
 	vbyte.cpp
 

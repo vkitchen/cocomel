@@ -1,15 +1,26 @@
-#ifndef TOKENIZER_H_
-#define TOKENIZER_H_
+#pragma once
+
+#include "memory.h"
 
 enum token_type {DOCNO, WORD, END};
 
-struct tokenizer {
-	struct string *str;
-	size_t index;
-};
+class tokenizer
+	{
+	private:
+		size_t length;
+		size_t index;
+		char *document;
 
+	private:
+		inline void advance();
 
-struct tokenizer *tokenizer_new(struct string *str);
-enum token_type tokenizer_next(struct tokenizer *tok, char *buffer);
+	public:
+		static void *operator new(size_t size)
+			{
+			return memory_alloc(size);
+			}
 
-#endif
+		tokenizer(char *str, size_t length);
+
+		enum token_type next(char *buffer);
+	};

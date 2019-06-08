@@ -10,7 +10,7 @@
 #include "vector.h"
 #include "vector_kv.h"
 #include "posting.h"
-#include "htable_kv.h"
+#include "hash_table.h"
 
 dynamic_array<std::pair<size_t, double>> *intersect_postings(dynamic_array<dynamic_array<std::pair<size_t, double>> *> *postings) {
 	dynamic_array<std::pair<size_t, double>> *result = new dynamic_array<std::pair<size_t, double>>();
@@ -82,7 +82,7 @@ int main(void) {
 	}
 
 	size_t dict_offset = ((size_t *)index->str)[0];
-	struct htable_kv *dictionary = htable_kv_read(&index->str[dict_offset]);
+	hash_table *dictionary = hash_table::read(&index->str[dict_offset]);
 
 	// Find average document length
 	for (size_t i = 0; i < docNos->length; i++) {
@@ -106,14 +106,14 @@ int main(void) {
 
 	// Find results for strings
 	for (size_t i = 0; i < terms->length; i++) {
-		terms->store[i] = htable_kv_find(dictionary, (char *)terms->store[i]);
+		terms->store[i] = dictionary->find((char *)terms->store[i]);
 		if (terms->store[i] == NULL) {
 			printf("No results\n");
 			exit(0);
 		} else {
-			dynamic_array<std::pair<size_t, double>> *posting = posting_decompress((struct posting *)terms->store[i]);
-			rank(posting, docNos, avgdl);
-			postings.append(posting);
+			dynamic_array<std::pair<size_t, double>> *post = ((posting *)terms->store[i])->decompress();
+			rank(post, docNos, avgdl);
+			postings.append(post);
 		}
 	}
 

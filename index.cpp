@@ -4,10 +4,9 @@
 #include <string.h>
 #include <ctype.h>
 #include "vector_kv.h"
-#include "bst_kv.h"
 #include "dynamic_array.h"
 #include "posting.h"
-#include "htable_kv.h"
+#include "hash_table.h"
 #include "tokenizer.h"
 #include "string2.h"
 #include "file.h"
@@ -16,7 +15,7 @@ const char *usage = "\
 Usage: index [file]\
 ";
 
-void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, struct htable_kv *dictionary) {
+void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, hash_table *dictionary) {
 	FILE *fh = fopen(filename, "w");
 	if (fh == NULL) {
 		fprintf(stderr, "ERROR: Failed to open index.dat for writing\n");
@@ -38,7 +37,7 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 	}
 
 	((size_t *)buffer)[0] = offset;
-        offset += htable_kv_write(dictionary, &buffer[offset]);
+        offset += dictionary->write(&buffer[offset]);
 
 	fwrite(buffer, sizeof(char), offset, fh);
 	fclose(fh);
@@ -52,23 +51,23 @@ int main(int argc, char **argv) {
 
 	char tok_buffer[260];
 	struct string *file = file_slurp_c(argv[1]);
-	struct tokenizer *tok = tokenizer_new(file);
+	tokenizer *tok = new tokenizer(file->str, file->bytes);
 	enum token_type token;
 
 	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
-	struct htable_kv *dictionary = htable_kv_new();
+	hash_table *dictionary = new hash_table();
 	size_t docI = 0;
 	do {
-		token = tokenizer_next(tok, tok_buffer);
+		token = tok->next(tok_buffer);
 		if (token == DOCNO) {
 			docNos->append(std::make_pair(string_s_dup(tok_buffer), 0));
 			docI++;
 		} else if (token == WORD) {
 			docNos->back()->second++;
-			struct posting **posting = (struct posting **)htable_kv_insert(dictionary, tok_buffer, NULL);
-			if (*posting == NULL)
-				*posting = posting_new();
-			posting_append(*posting, docI);
+			posting **post = (posting **)dictionary->insert(tok_buffer, NULL);
+			if (*post == NULL)
+				*post = new posting();
+			(*post)->append(docI);
 		}
 	} while (token != END);
 

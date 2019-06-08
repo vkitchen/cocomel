@@ -1,23 +1,29 @@
-#ifndef POSTING_H_
-#define POSTING_H_
+#pragma once
 
 #include <utility>
-#include <stdint.h>
+#include <cstdint>
 #include "dynamic_array.h"
-#include "vector_kv.h"
 
-struct posting {
-	size_t id;
-	size_t id_capacity;
-	size_t id_length;
-	uint8_t *id_store;
-	dynamic_array<uint8_t> *counts;
-};
+class posting
+	{
+	private:
+		size_t id;
+		size_t id_capacity;
+		size_t id_length;
+		uint8_t *id_store;
+		dynamic_array<uint8_t> *counts;
 
-struct posting *posting_new();
-void posting_append(struct posting *p, size_t id);
-void posting_flush(struct posting *p);
-size_t posting_write(struct posting *p, char *buffer);
-dynamic_array<std::pair<size_t, double>> *posting_decompress(struct posting *posting);
+	public:
+		static void *operator new(size_t size)
+			{
+			return memory_alloc(size);
+			}
 
-#endif
+		posting();
+
+		void append(size_t id);
+
+		size_t write(char *buffer);
+
+		dynamic_array<std::pair<size_t, double>> *decompress();
+	};

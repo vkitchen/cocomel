@@ -80,7 +80,7 @@ int main(void) {
 	}
 
 	size_t dict_offset = ((size_t *)index->str)[0];
-	hash_table *dictionary = hash_table::read(&index->str[dict_offset]);
+	hash_table<posting, size_t> *dictionary = hash_table<posting, size_t>::read(&index->str[dict_offset]);
 
 	// Find average document length
 	for (size_t i = 0; i < docNos->length; i++) {

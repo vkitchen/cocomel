@@ -6,8 +6,6 @@ SRC := \
 	memory.cpp \
 	string2.cpp \
 	file.cpp \
-	hash_table.cpp \
-	bst.cpp \
 	posting.cpp \
 	vbyte.cpp
 

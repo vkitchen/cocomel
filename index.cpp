@@ -14,7 +14,7 @@ const char *usage = "\
 Usage: index [file]\
 ";
 
-void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, hash_table *dictionary) {
+void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, hash_table<posting, size_t> *dictionary) {
 	FILE *fh = fopen(filename, "w");
 	if (fh == NULL) {
 		fprintf(stderr, "ERROR: Failed to open index.dat for writing\n");
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 	enum token_type token;
 
 	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
-	hash_table *dictionary = new hash_table();
+	hash_table<posting, size_t> *dictionary = new hash_table<posting, size_t>();
 	size_t docI = 0;
 	do {
 		token = tok->next(tok_buffer);
@@ -63,10 +63,7 @@ int main(int argc, char **argv) {
 			docI++;
 		} else if (token == WORD) {
 			docNos->back()->second++;
-			posting **post = (posting **)dictionary->insert(tok_buffer, NULL);
-			if (*post == NULL)
-				*post = new posting();
-			(*post)->append(docI);
+			dictionary->insert(tok_buffer, docI);
 		}
 	} while (token != END);
 

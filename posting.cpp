@@ -10,14 +10,13 @@ posting::posting()
 	id_capacity = 256;
 	id_length = 0;
 	id_store = (uint8_t *)malloc(id_capacity * sizeof(uint8_t));
-	counts = new dynamic_array<uint8_t>();
 	}
 
 void posting::append(uint32_t id)
 	{
 	if (this->id == id)
 		{
-		uint8_t *count = counts->back();
+		uint8_t *count = counts.back();
 		if (*count < 255)
 			(*count)++;
 		}
@@ -30,7 +29,7 @@ void posting::append(uint32_t id)
 			}
 		id_length += vbyte_store(&id_store[id_length], id - this->id);
 
-		counts->append(1);
+		counts.append(1);
 
 		this->id = id;
 		}
@@ -43,11 +42,11 @@ size_t posting::write(char *buffer)
 	memcpy(&buffer[offset], id_store, id_length);
 	offset += id_length;
 
-	memcpy(&buffer[offset], counts->store, counts->length);
-	offset += counts->length;
+	memcpy(&buffer[offset], counts.store, counts.length);
+	offset += counts.length;
 
 	((uint32_t *)buffer)[0] = id_length;
-	((uint32_t *)buffer)[1] = counts->length;
+	((uint32_t *)buffer)[1] = counts.length;
 
 	return offset;
 	}

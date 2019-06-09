@@ -11,7 +11,7 @@ class posting
 		uint32_t id_capacity;
 		uint32_t id_length;
 		uint8_t *id_store;
-		dynamic_array<uint8_t> *counts;
+		dynamic_array<uint8_t> counts;
 
 	public:
 		static void *operator new(size_t size)

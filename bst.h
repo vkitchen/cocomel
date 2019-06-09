@@ -10,7 +10,7 @@ class bst
 		char *key;
 		bst *left;
 		bst *right;
-		TBacking *store;
+		TBacking store;
 
 	public:
 		static void *operator new(size_t size)
@@ -21,8 +21,7 @@ class bst
 		bst(char *key, T val)
 			{
 			this->key = string_s_dup(key);
-			store = new TBacking();
-			store->append(val);
+			store.append(val);
 			left = right = NULL;
 			}
 		
@@ -56,7 +55,7 @@ class bst
 					}
 				else /* |cmp == 0| */
 					{
-					tree->store->append(val);
+					tree->store.append(val);
 					return;
 					}
 				}
@@ -74,7 +73,7 @@ class bst
 
 			((size_t *)*ptr_buffer)[0] = *val_buffer - *ptr_buffer;
 			*ptr_buffer += sizeof(size_t);
-			delta = store->write(*val_buffer);
+			delta = store.write(*val_buffer);
 			*val_buffer += delta;
 
 			if (right != NULL)

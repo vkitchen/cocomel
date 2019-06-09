@@ -1,15 +1,15 @@
 #pragma once
 
 #include <utility>
-#include <cstdint>
+#include <stdint.h>
 #include "dynamic_array.h"
 
 class posting
 	{
 	private:
-		size_t id;
-		size_t id_capacity;
-		size_t id_length;
+		uint32_t id;
+		uint32_t id_capacity;
+		uint32_t id_length;
 		uint8_t *id_store;
 		dynamic_array<uint8_t> *counts;
 
@@ -21,7 +21,7 @@ class posting
 
 		posting();
 
-		void append(size_t id);
+		void append(uint32_t id);
 
 		size_t write(char *buffer);
 

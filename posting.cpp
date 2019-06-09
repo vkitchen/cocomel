@@ -12,7 +12,7 @@ posting::posting() {
 	counts = new dynamic_array<uint8_t>();
 }
 
-void posting::append(size_t id) {
+void posting::append(uint32_t id) {
 	if (this->id == id) {
 		uint8_t *count = counts->back();
 		if (*count < 255)
@@ -39,8 +39,8 @@ size_t posting::write(char *buffer) {
 	memcpy(&buffer[offset], counts->store, counts->length);
 	offset += counts->length;
 
-	((uint32_t *)buffer)[0] = (uint32_t)id_length;
-	((uint32_t *)buffer)[1] = (uint32_t)counts->length;
+	((uint32_t *)buffer)[0] = id_length;
+	((uint32_t *)buffer)[1] = counts->length;
 
 	return offset;
 }
@@ -54,7 +54,7 @@ dynamic_array<std::pair<size_t, double>> *posting::decompress() {
 
 	dynamic_array<std::pair<size_t, double>> *out = new dynamic_array<std::pair<size_t, double>>;
 	size_t prevI = 0;
-	uint64_t docI = 0;
+	uint32_t docI = 0;
 	size_t di = 0;
 	size_t ci = 0;
 	while (ci < count_length && di < id_length) {

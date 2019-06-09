@@ -1,8 +1,5 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <ctype.h>
+#include <utility>
 #include "dynamic_array.h"
 #include "posting.h"
 #include "hash_table.h"
@@ -14,12 +11,14 @@ const char *usage = "\
 Usage: index [file]\
 ";
 
-void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, hash_table<posting, uint32_t> *dictionary) {
+void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, hash_table<posting, uint32_t> *dictionary)
+	{
 	FILE *fh = fopen(filename, "w");
-	if (fh == NULL) {
+	if (fh == NULL)
+		{
 		fprintf(stderr, "ERROR: Failed to open index.dat for writing\n");
 		exit(1);
-	}
+		}
 
 	// Write to output buffer
 	size_t offset = 8;
@@ -27,26 +26,29 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 	((size_t *)&buffer[offset])[0] = docNos->length;
 	size_t docNos_offset = offset + sizeof(docNos->length);
 	offset += sizeof(docNos->length) + docNos->length * (sizeof(char *) + sizeof(size_t));
-	for (size_t i = 0; i < docNos->length; i++) {
+	for (size_t i = 0; i < docNos->length; i++)
+		{
 		((size_t *)&buffer[docNos_offset])[0] = offset;
 		((size_t *)&buffer[docNos_offset])[1] = docNos->store[i].second;
 		docNos_offset += sizeof(size_t) * 2;
 
 		offset += string_copy_c(&buffer[offset], docNos->store[i].first);
-	}
+		}
 
 	((size_t *)buffer)[0] = offset;
         offset += dictionary->write(&buffer[offset]);
 
 	fwrite(buffer, sizeof(char), offset, fh);
 	fclose(fh);
-}
+	}
 
-int main(int argc, char **argv) {
-	if (argc != 2) {
+int main(int argc, char **argv)
+	{
+	if (argc != 2)
+		{
 		puts(usage);
 		return 1;
-	}
+		}
 
 	char tok_buffer[260];
 	struct string *file = file_slurp_c(argv[1]);
@@ -56,18 +58,22 @@ int main(int argc, char **argv) {
 	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
 	hash_table<posting, uint32_t> *dictionary = new hash_table<posting, uint32_t>();
 	uint32_t docI = 0;
-	do {
+	do
+		{
 		token = tok->next(tok_buffer);
-		if (token == DOCNO) {
+		if (token == DOCNO)
+			{
 			docNos->append(std::make_pair(string_s_dup(tok_buffer), 0));
 			docI++;
-		} else if (token == WORD) {
+			}
+		else if (token == WORD)
+			{
 			docNos->back()->second++;
 			dictionary->insert(tok_buffer, docI);
-		}
-	} while (token != END);
+			}
+		} while (token != END);
 
 	index_write("index.dat", file->str, docNos, dictionary);
 
 	return 0;
-}
+	}

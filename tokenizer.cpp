@@ -1,4 +1,5 @@
-#include <cctype>
+#include <stdint.h>
+#include <ctype.h>
 #include "tokenizer.h"
 
 static inline int prefix(const char *pre, const char *str)

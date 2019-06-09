@@ -11,8 +11,7 @@
 	@copyright 2017 Vaughan Kitchen
 */
 
-#ifndef STRING_H_
-#define STRING_H_
+#pragma once
 
 struct string
 	{
@@ -95,5 +94,3 @@ void string_uppercase_c(char *str);
 		@return Duplicated string as a cstring
 */
 char *string_s_dup(char *str);
-
-#endif

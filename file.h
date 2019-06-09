@@ -10,15 +10,8 @@
 	@author Vaughan Kitchen
 	@copyright 2017 Vaughan Kitchen
 */
-#ifndef FILE_H_
-#define FILE_H_
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-#include "string.h"
+#pragma once
 
 /*
 	FILE_SLURP_BUFFER_C()
@@ -53,9 +46,3 @@ struct string *file_slurp_c(char const*filename);
 		@param filename [in] Filename to check
 */
 int file_exists_c(char *filename);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif

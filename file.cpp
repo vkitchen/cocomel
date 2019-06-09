@@ -10,71 +10,32 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "file.h"
-#include "memory.h"
-#include "str.h"
 
 /*
-	FILE_SLURP_BUFFER_C()
-	---------------------
+	FILE_SLURP()
+	------------
 */
-size_t file_slurp_buffer_c(char *filename, char *buffer, size_t len)
+size_t file_slurp(char const *filename, char **into)
 	{
 	FILE *fh;
 	struct stat details;
 	size_t file_length = 0;
-
-	if ((fh = fopen(filename, "rb")) != NULL)
-		{
-		if (fstat(fileno(fh), &details) == 0)
-			if ((file_length = details.st_size) != 0 && file_length < len)
-				{
-				buffer[file_length] = '\0';
-				if (fread(&buffer[0], details.st_size, 1, fh) != 1)
-					file_length = 0;
-				}
-		fclose(fh);
-		}
-
-	return file_length;
-	}
-
-/*
-	FILE_SLURP_C()
-	--------------
-*/
-struct string *file_slurp_c(char const*filename)
-	{
-	FILE *fh;
-	struct stat details;
-	size_t file_length = 0;
-	struct string *result = (struct string *)malloc(sizeof(*result));
 
 	if ((fh = fopen(filename, "rb")) != NULL)
 		{
 		if (fstat(fileno(fh), &details) == 0)
 			if ((file_length = details.st_size) != 0)
 				{
-				result->str = (char *)malloc(sizeof(*result->str) * (file_length + 1));
-				result->bytes = file_length;
-				result->str[result->bytes] = '\0';
-				if (fread(&result->str[0], details.st_size, 1, fh) != 1)
+				*into = (char *)malloc(file_length + 1);
+				(*into)[file_length] = '\0';
+				if (fread(*into, details.st_size, 1, fh) != 1)
 					{
-					free(result->str);
-					result->str = NULL;
-					result->bytes = 0;
+					free(*into);
+					file_length = 0;
 					}
 				}
 		fclose(fh);
 		}
 
-	return result;
-	}
-
-/*
-	FILE_EXISTS_C()
-	---------------
-*/
-int file_exists_c(char *filename)
-	{
-	return access(filename, F_OK) != -1;
+	return file_length;
 	}

@@ -14,20 +14,7 @@
 #pragma once
 
 /*
-	FILE_SLURP_BUFFER_C()
-	---------------------
-*/
-/*!
-		@brief Reads an entire file into a preallocated buffer (C calling convention)
-		@param filename [in] Filename to be read
-		@param buffer [in] Buffer to read into
-		@param len [in] Maximum number of bytes that can be read before buffer overflows
-		@return Number of bytes read
-*/
-size_t file_slurp_buffer_c(char *filename, char *buffer, size_t len);
-
-/*
-	FILE_SLURP_C()
+	FILE_SLURP()
 	------------
 */
 /*!
@@ -35,14 +22,4 @@ size_t file_slurp_buffer_c(char *filename, char *buffer, size_t len);
 		@param filename [in] Filename to be read
 		@return String containing the contents of the file
 */
-struct string *file_slurp_c(char const*filename);
-
-/*
-	FILE_EXISTS_C()
-	---------------
-*/
-/*!
-		@brief Checks whether a file exists on the filesystem (C calling convention)
-		@param filename [in] Filename to check
-*/
-int file_exists_c(char *filename);
+size_t file_slurp(char const *filename, char **into);

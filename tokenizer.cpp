@@ -2,29 +2,6 @@
 #include <ctype.h>
 #include "tokenizer.h"
 
-static inline int prefix(const char *pre, const char *str)
-	{
-	while (*pre)
-		if (*pre++ != *str++)
-			return 0;
-	return 1;
-	}
-
-static inline char lower(char c)
-	{
-	if (c < 'a')
-		c += 'a' - 'A';
-
-	return c;
-	}
-
-static inline char upper(char c)
-	{
-	if ('Z' < c)
-		c -= 'a' - 'A';
-	
-	return c;
-	}
 
 tokenizer::tokenizer(char *doc, size_t len)
 	{
@@ -33,7 +10,7 @@ tokenizer::tokenizer(char *doc, size_t len)
 	index = 0;
 	}
 
-enum token_type tokenizer::next(char *buffer)
+enum token_type tokenizer::next(str buffer)
 	{
 	for (;;)
 		{
@@ -44,7 +21,7 @@ enum token_type tokenizer::next(char *buffer)
 		if (index == length)
 			break;
 		// Doc ID
-		else if (prefix("<DOCNO>", &document[index]))
+		else if (string_prefix("<DOCNO>", &document[index]))
 			{
 			index += sizeof("<DOCNO>");
 
@@ -54,11 +31,11 @@ enum token_type tokenizer::next(char *buffer)
 			int i = 0;
 			while (i < 256 && i + index < length && document[index + i] != '<' && !isspace(document[index + i]))
 				{
-				buffer[i+4] = document[index + i];
+				buffer[i] = document[index + i];
 				i++;
 				}
-			((uint32_t *)buffer)[0] = i;
-			buffer[i+4] = '\0';
+			buffer[i] = '\0';
+			buffer.resize(i);
 
 			index += i;
 
@@ -79,11 +56,11 @@ enum token_type tokenizer::next(char *buffer)
 			int i = 0;
 			while (i < 256 && i + index < length && isdigit(document[index + i]))
 				{
-				buffer[i+4] = document[index + i];
+				buffer[i] = document[index + i];
 				i++;
 				}
-			((uint32_t *)buffer)[0] = i;
-			buffer[i+4] = '\0';
+			buffer[i] = '\0';
+			buffer.resize(i);
 
 			index += i;
 
@@ -95,11 +72,11 @@ enum token_type tokenizer::next(char *buffer)
 			int i = 0;
 			while (i < 256 && i + index < length && isalpha(document[index + i]))
 				{
-				buffer[i+4] = upper(document[index + i]);
+				buffer[i] = char_upper(document[index + i]);
 				i++;
 				}
-			((uint32_t *)buffer)[0] = i;
-			buffer[i+4] = '\0';
+			buffer[i] = '\0';
+			buffer.resize(i);
 
 			index += i;
 

@@ -77,18 +77,19 @@ int main(void)
 	{
 	double avgdl = 0;
 
-	struct string *index = file_slurp_c("index.dat");
+	char *index;
+	file_slurp("index.dat", &index);
 
 	// Decode index
 	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
-	docNos->length = ((size_t *)index->str)[1];
-	docNos->store = (std::pair<char *, size_t> *)&index->str[2 * sizeof(size_t)];
+	docNos->length = ((size_t *)index)[1];
+	docNos->store = (std::pair<char *, size_t> *)&index[2 * sizeof(size_t)];
 
 	for (size_t i = 0; i < docNos->length; i++)
-		docNos->store[i].first = index->str + (size_t)docNos->store[i].first;
+		docNos->store[i].first = index + (size_t)docNos->store[i].first;
 
-	size_t dict_offset = ((size_t *)index->str)[0];
-	hash_table<posting, uint32_t> *dictionary = hash_table<posting, uint32_t>::read(&index->str[dict_offset]);
+	size_t dict_offset = ((size_t *)index)[0];
+	hash_table<posting, uint32_t> *dictionary = hash_table<posting, uint32_t>::read(&index[dict_offset]);
 
 	// Find average document length
 	for (size_t i = 0; i < docNos->length; i++)
@@ -100,7 +101,7 @@ int main(void)
 	dynamic_array<char *> *terms = new dynamic_array<char *>();
 	while (scanf("%s", term) == 1)
 		{
-		string_uppercase_c(term);
+		string_uppercase(term);
 		terms->append(strdup(term));
 		}
 

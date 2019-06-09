@@ -39,9 +39,9 @@ class hash_table
 				}
 			}
 
-		void insert(char *key, T val)
+		void insert(str key, T val)
 			{
-			unsigned int index = hash(&key[4]) & (1 << 16) - 1;
+			unsigned int index = hash(key.c_str()) & (1 << 16) - 1;
 			if (store[index] == NULL)
 				{
 				store[index] = new bst<TBacking, T>(key, val);

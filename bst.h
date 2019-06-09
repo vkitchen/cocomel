@@ -18,20 +18,20 @@ class bst
 			return memory_alloc(size);
 			}
 
-		bst(char *key, T val)
+		bst(str key, T val)
 			{
-			this->key = string_s_dup(key);
+			this->key = key.c_dup();
 			store.append(val);
 			left = right = NULL;
 			}
 		
-		void insert(char *key, T val, uint32_t *length)
+		void insert(str key, T val, uint32_t *length)
 			{
 			bst *tree = this;
 
 			for (;;)
 				{
-				int cmp = strcmp(&key[4], tree->key);
+				int cmp = strcmp(key.c_str(), tree->key);
 
 				if (cmp < 0)
 					{
@@ -68,7 +68,7 @@ class bst
 
 			((size_t *)*ptr_buffer)[0] = *val_buffer - *ptr_buffer;
 			*ptr_buffer += sizeof(size_t);
-			size_t delta = string_copy_c(*val_buffer, key);
+			size_t delta = string_copy(*val_buffer, key);
 			*val_buffer += delta;
 
 			((size_t *)*ptr_buffer)[0] = *val_buffer - *ptr_buffer;

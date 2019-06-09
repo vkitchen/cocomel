@@ -1,6 +1,6 @@
 /*
-		STRING2.H
-		---------
+		STR.H
+		-----
 		Copyright (c) 2017 Vaughan Kitchen
 		Released under the MIT license (https://opensource.org/licenses/MIT)
 */
@@ -13,58 +13,53 @@
 
 #pragma once
 
-struct string
+#include <stdint.h>
+#include <string.h>
+#include "memory.h"
+
+class str
 	{
-		size_t bytes;	//!< The length of the string in bytes not including the termininating null byte
-		char *str;		//!< Pointer to the underlying array of chars
+	private:
+		char *store;
+
+	public:
+		str(char *s)
+			{
+			store = s;
+			}
+
+		inline uint32_t length()
+			{
+			return *(uint32_t *)store;
+			}
+
+		inline void resize(uint32_t size)
+			{
+			((uint32_t *)store)[0] = size;
+			}
+
+		char &operator[](size_t index)
+			{
+			return store[4+index];
+			}
+
+		inline char *c_str()
+			{
+			return &store[4];
+			}
+
+		inline char *c_dup()
+			{
+			char *dest = (char *)memory_alloc(length() + 1);
+			memcpy(dest, &store[4], length() + 1);
+			return dest;
+			}
 	};
 
-/*
-	STRING_APPEND_C()
-	-----------------
-*/
-/*!
-		@brief Appends one string on to another
-		@param dest [in,out] String that gets add to
-		@param src [in] What is being added on
-*/
-void string_append_c(struct string *dest, char *src);
 
 /*
-	STRING_FREE()
+	STRING_COPY()
 	-------------
-*/
-/*!
-		@brief Frees a string object
-		@param str [in] String to be freed
-		@return Pointer to the allocated memory or NULL on error
-*/
-void string_free(struct string *str);
-
-/*
-	STRING_NEW()
-	------------
-*/
-/*!
-		@brief Creates a new empty string object
-		@return An empty string object
-*/
-struct string *string_new();
-
-/*
-	STRING_NEW_C()
-	--------------
-*/
-/*!
-		@brief Creates a new string object from a cstring
-		@param str [in] String to use in creation
-		@return String object
-*/
-struct string *string_new_c(char *str);
-
-/*
-	STRING_COPY_C()
-	---------------
 */
 /*!
 		@brief Copies a cstring from src to dest
@@ -72,25 +67,55 @@ struct string *string_new_c(char *str);
 		@param dest [out] Buffer to copy to
 		@return Number of characters copied
 */
-size_t string_copy_c(char *dest, char *src);
+inline size_t string_copy(char *dest, char *src)
+	{
+	char *at = src;
+	while (*at)
+		*dest++ = *at++;
+	*dest = '\0';
+	return at - src + 1;
+	}
+
+inline int string_prefix(const char *pre, const char *str)
+	{
+	while (*pre)
+		if (*pre++ != *str++)
+			return 0;
+	return 1;
+	}
+
+inline char char_lower(char c)
+	{
+	if (c < 'a')
+		c += 'a' - 'A';
+
+	return c;
+	}
+
+inline char char_upper(char c)
+	{
+	if ('Z' < c)
+		c -= 'a' - 'A';
+	
+	return c;
+	}
+
+inline void string_lowercase(char *str)
+	{
+	while ((*str = char_lower(*str)))
+		++str;
+	}
 
 /*
-	STRING_UPPERCASE_C()
-	--------------------
+	STRING_UPPERCASE()
+	------------------
 */
 /*!
 		@brief Inplace uppercasing of a cstring
 		@param str [in,out] String to uppercase
 */
-void string_uppercase_c(char *str);
-
-/*
-	STRING_S_DUP()
-	--------------
-*/
-/*!
-		@brief Duplicates special type string where first four bytes contain the length.
-		@param str [in] String to copy
-		@return Duplicated string as a cstring
-*/
-char *string_s_dup(char *str);
+inline void string_uppercase(char *str)
+	{
+	while ((*str = char_upper(*str)))
+		++str;
+	}

@@ -32,7 +32,7 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 		((size_t *)&buffer[docNos_offset])[1] = docNos->store[i].second;
 		docNos_offset += sizeof(size_t) * 2;
 
-		offset += string_copy_c(&buffer[offset], docNos->store[i].first);
+		offset += string_copy(&buffer[offset], docNos->store[i].first);
 		}
 
 	((size_t *)buffer)[0] = offset;
@@ -50,9 +50,11 @@ int main(int argc, char **argv)
 		return 1;
 		}
 
-	char tok_buffer[260];
-	struct string *file = file_slurp_c(argv[1]);
-	tokenizer *tok = new tokenizer(file->str, file->bytes);
+	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
+	str tok_buffer(tok_buffer_store);
+	char *file;
+	size_t file_length = file_slurp(argv[1], &file);
+	tokenizer *tok = new tokenizer(file, file_length);
 	enum token_type token;
 
 	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
@@ -63,7 +65,7 @@ int main(int argc, char **argv)
 		token = tok->next(tok_buffer);
 		if (token == DOCNO)
 			{
-			docNos->append(std::make_pair(string_s_dup(tok_buffer), 0));
+			docNos->append(std::make_pair(tok_buffer.c_dup(), 0));
 			docI++;
 			}
 		else if (token == WORD)
@@ -73,7 +75,7 @@ int main(int argc, char **argv)
 			}
 		} while (token != END);
 
-	index_write("index.dat", file->str, docNos, dictionary);
+	index_write("index.dat", file, docNos, dictionary);
 
 	return 0;
 	}

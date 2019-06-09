@@ -1,6 +1,7 @@
 #pragma once
 
 #include "memory.h"
+#include "str.h"
 
 enum token_type {DOCNO, WORD, END};
 
@@ -19,5 +20,5 @@ class tokenizer
 
 		tokenizer(char *str, size_t length);
 
-		enum token_type next(char *buffer);
+		enum token_type next(str buffer);
 	};

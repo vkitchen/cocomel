@@ -4,7 +4,7 @@
 #include "posting.h"
 #include "hash_table.h"
 #include "tokenizer.h"
-#include "string2.h"
+#include "str.h"
 #include "file.h"
 
 const char *usage = "\

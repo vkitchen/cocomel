@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include "file.h"
 #include "memory.h"
-#include "string2.h"
+#include "str.h"
 
 /*
 	FILE_SLURP_BUFFER_C()

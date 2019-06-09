@@ -10,7 +10,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "memory.h"
-#include "string2.h"
+#include "str.h"
 
 /*
 	STRING_APPEND_C()

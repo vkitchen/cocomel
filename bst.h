@@ -1,6 +1,6 @@
 #pragma once
 
-#include "string2.h"
+#include "str.h"
 #include "memory.h"
 
 template <typename TBacking, typename T>

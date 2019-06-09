@@ -4,7 +4,7 @@
 #include <utility>
 #include <math.h>
 #include "dynamic_array.h"
-#include "string2.h"
+#include "str.h"
 #include "file.h"
 #include "vbyte.h"
 #include "posting.h"

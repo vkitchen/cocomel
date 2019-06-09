@@ -4,7 +4,7 @@ CXXFLAGS := -Wall -Wextra -O2 -g -lm -std=c++11
 SRC := \
 	tokenizer.cpp \
 	memory.cpp \
-	string2.cpp \
+	str.cpp \
 	file.cpp \
 	posting.cpp \
 	vbyte.cpp

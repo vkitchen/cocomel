@@ -57,25 +57,21 @@ int main(int argc, char **argv)
 	tokenizer *tok = new tokenizer(file, file_length);
 	enum token_type token;
 
-	dynamic_array<std::pair<char *, uint32_t>> *docNos = new dynamic_array<std::pair<char *, uint32_t>>();
-	hash_table<posting, uint32_t> *dictionary = new hash_table<posting, uint32_t>();
-	uint32_t docI = 0;
+	dynamic_array<std::pair<char *, uint32_t>> docNos;
+	hash_table<posting, uint32_t> dictionary;
 	do
 		{
 		token = tok->next(tok_buffer);
 		if (token == DOCNO)
-			{
-			docNos->append(std::make_pair(tok_buffer.c_dup(), 0));
-			docI++;
-			}
+			docNos.append(std::make_pair(tok_buffer.c_dup(), 0));
 		else if (token == WORD)
 			{
-			docNos->back()->second++;
-			dictionary->insert(tok_buffer, docI);
+			docNos.back()->second++;
+			dictionary.insert(tok_buffer, docNos.length);
 			}
 		} while (token != END);
 
-	index_write("index.dat", file, docNos, dictionary);
+	index_write("index.dat", file, &docNos, &dictionary);
 
 	return 0;
 	}

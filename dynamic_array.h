@@ -7,8 +7,8 @@ template <typename T>
 class dynamic_array
 	{
 	public:
-		size_t capacity;
-		size_t length;
+		uint32_t capacity;
+		uint32_t length;
 		T *store;
 
 	public:

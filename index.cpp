@@ -24,8 +24,8 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 	size_t offset = 8;
 
 	((size_t *)&buffer[offset])[0] = docNos->length;
-	size_t docNos_offset = offset + sizeof(docNos->length);
-	offset += sizeof(docNos->length) + docNos->length * (sizeof(char *) + sizeof(size_t));
+	size_t docNos_offset = offset + sizeof(size_t);
+	offset += sizeof(size_t) + docNos->length * (sizeof(char *) + sizeof(size_t));
 	for (size_t i = 0; i < docNos->length; i++)
 		{
 		((size_t *)&buffer[docNos_offset])[0] = offset;

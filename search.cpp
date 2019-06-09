@@ -101,7 +101,7 @@ int main(void)
 	dynamic_array<char *> *terms = new dynamic_array<char *>();
 	while (scanf("%s", term) == 1)
 		{
-		string_uppercase(term);
+		string_lowercase(term);
 		terms->append(strdup(term));
 		}
 

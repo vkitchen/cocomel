@@ -86,7 +86,7 @@ inline int string_prefix(const char *pre, const char *str)
 
 inline char char_lower(char c)
 	{
-	if (c < 'a')
+	if ('A' <= c && c <= 'Z')
 		c += 'a' - 'A';
 
 	return c;
@@ -94,7 +94,7 @@ inline char char_lower(char c)
 
 inline char char_upper(char c)
 	{
-	if ('Z' < c)
+	if ('a' <= c && c <= 'z')
 		c -= 'a' - 'A';
 	
 	return c;

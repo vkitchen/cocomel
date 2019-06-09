@@ -61,22 +61,20 @@ class bst
 				}
 			}
 
-		void write(char **ptr_buffer, char **val_buffer)
+		void write(char *start, char **ptr_buffer, char **val_buffer)
 			{
 			if (left != NULL)
-				left->write(ptr_buffer, val_buffer);
+				left->write(start, ptr_buffer, val_buffer);
 
-			((size_t *)*ptr_buffer)[0] = *val_buffer - *ptr_buffer;
-			*ptr_buffer += sizeof(size_t);
-			size_t delta = string_copy(*val_buffer, key);
-			*val_buffer += delta;
+			((uint32_t *)*ptr_buffer)[0] = *val_buffer - start;
+			*ptr_buffer += sizeof(uint32_t);
+			*val_buffer += string_copy(*val_buffer, key);
 
-			((size_t *)*ptr_buffer)[0] = *val_buffer - *ptr_buffer;
-			*ptr_buffer += sizeof(size_t);
-			delta = store.write(*val_buffer);
-			*val_buffer += delta;
+			((uint32_t *)*ptr_buffer)[0] = *val_buffer - start;
+			*ptr_buffer += sizeof(uint32_t);
+			*val_buffer += store.write(*val_buffer);
 
 			if (right != NULL)
-				right->write(ptr_buffer, val_buffer);
+				right->write(start, ptr_buffer, val_buffer);
 			}
 	};

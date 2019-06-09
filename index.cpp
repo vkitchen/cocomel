@@ -11,7 +11,7 @@ const char *usage = "\
 Usage: index [file]\
 ";
 
-void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, size_t>> *docNos, hash_table<posting, uint32_t> *dictionary)
+void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, uint32_t>> *docNos, hash_table<posting, uint32_t> *dictionary)
 	{
 	FILE *fh = fopen(filename, "w");
 	if (fh == NULL)
@@ -21,21 +21,21 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 		}
 
 	// Write to output buffer
-	size_t offset = 8;
+	uint32_t offset = sizeof(uint32_t) * 2;
 
-	((size_t *)&buffer[offset])[0] = docNos->length;
-	size_t docNos_offset = offset + sizeof(size_t);
-	offset += sizeof(size_t) + docNos->length * (sizeof(char *) + sizeof(size_t));
+	((uint32_t *)buffer)[1] = docNos->length;
+	uint32_t docNos_offset = offset;
+	offset += docNos->length * sizeof(uint32_t) * 2;
 	for (size_t i = 0; i < docNos->length; i++)
 		{
-		((size_t *)&buffer[docNos_offset])[0] = offset;
-		((size_t *)&buffer[docNos_offset])[1] = docNos->store[i].second;
-		docNos_offset += sizeof(size_t) * 2;
+		((uint32_t *)&buffer[docNos_offset])[0] = offset;
+		((uint32_t *)&buffer[docNos_offset])[1] = docNos->store[i].second;
+		docNos_offset += sizeof(uint32_t) * 2;
 
 		offset += string_copy(&buffer[offset], docNos->store[i].first);
 		}
 
-	((size_t *)buffer)[0] = offset;
+	((uint32_t *)buffer)[0] = offset;
         offset += dictionary->write(&buffer[offset]);
 
 	fwrite(buffer, sizeof(char), offset, fh);
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
 	tokenizer *tok = new tokenizer(file, file_length);
 	enum token_type token;
 
-	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
+	dynamic_array<std::pair<char *, uint32_t>> *docNos = new dynamic_array<std::pair<char *, uint32_t>>();
 	hash_table<posting, uint32_t> *dictionary = new hash_table<posting, uint32_t>();
 	uint32_t docI = 0;
 	do

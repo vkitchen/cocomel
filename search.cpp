@@ -59,7 +59,7 @@ void results_sort(dynamic_array<std::pair<size_t, double>> *results)
 		}
 	}
 
-void rank(dynamic_array<std::pair<size_t, double>> *posting, dynamic_array<std::pair<char *, size_t>> *docNos, double avgdl)
+void rank(dynamic_array<std::pair<size_t, double>> *posting, dynamic_array<std::pair<uint32_t, uint32_t>> *docNos, double avgdl)
 	{
 	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
 	for (size_t i = 0; i < posting->length; i++)
@@ -81,19 +81,16 @@ int main(void)
 	file_slurp("index.dat", &index);
 
 	// Decode index
-	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
-	docNos->length = ((size_t *)index)[1];
-	docNos->store = (std::pair<char *, size_t> *)&index[2 * sizeof(size_t)];
+	dynamic_array<std::pair<uint32_t, uint32_t>> *docNos = new dynamic_array<std::pair<uint32_t, uint32_t>>();
+	docNos->length = ((uint32_t *)index)[1];
+	docNos->store = (std::pair<uint32_t, uint32_t> *)&index[2 * sizeof(uint32_t)];
 
-	for (size_t i = 0; i < docNos->length; i++)
-		docNos->store[i].first = index + (size_t)docNos->store[i].first;
-
-	size_t dict_offset = ((size_t *)index)[0];
+	size_t dict_offset = ((uint32_t *)index)[0];
 	hash_table<posting, uint32_t> *dictionary = hash_table<posting, uint32_t>::read(&index[dict_offset]);
 
 	// Find average document length
 	for (size_t i = 0; i < docNos->length; i++)
-		avgdl += (size_t)docNos->store[i].second;
+		avgdl += docNos->store[i].second;
 	avgdl /= docNos->length;
 
 	// Accept input
@@ -135,7 +132,7 @@ int main(void)
 		{
 		size_t docId = result_list->store[i].first - 1;
 		double rsv = result_list->store[i].second;
-		printf("%s %f\n", docNos->store[docId].first, rsv);
+		printf("%s %f\n", index + docNos->store[docId].first, rsv);
 		}
 
 	return 0;

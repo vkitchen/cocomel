@@ -6,7 +6,7 @@ template <typename TBacking, typename T>
 class hash_table
 	{
 	private:
-		size_t capacity;
+		static const size_t capacity = 1 << 16;
 		bst<TBacking, T> **store;
 		uint32_t *lengths;
 
@@ -18,7 +18,7 @@ class hash_table
 			while (*key != '\0')
 				result = (*key++ + 31 * result);
 
-			return result;
+			return result & capacity - 1;
 			}
 
 	public:
@@ -29,7 +29,6 @@ class hash_table
 
 		hash_table()
 			{
-			capacity = 1 << 16;
 			store = (bst<TBacking, T> **)memory_alloc(sizeof(bst<TBacking, T> *) * capacity);
 			lengths = (uint32_t *)memory_alloc(sizeof(uint32_t) * capacity);
 			for (size_t i = 0; i < capacity; i++)
@@ -41,7 +40,7 @@ class hash_table
 
 		void insert(str key, T val)
 			{
-			unsigned int index = hash(key.c_str()) & (1 << 16) - 1;
+			unsigned int index = hash(key.c_str());
 			if (store[index] == NULL)
 				{
 				store[index] = new bst<TBacking, T>(key, val);
@@ -53,7 +52,7 @@ class hash_table
 
 		void *find(char *key)
 			{
-			unsigned int index = hash(key) & (1 << 16) - 1;
+			unsigned int index = hash(key);
 			if (store[index] == NULL)
 				return NULL;
 
@@ -99,8 +98,7 @@ class hash_table
 		static hash_table *read(char *buffer)
 			{
 			hash_table *h = new hash_table();
-			h->capacity = 1 << 16;
-			h->store = (bst<TBacking, T> **)memory_alloc(sizeof(bst<TBacking, T> *) * h->capacity);
+			h->store = (bst<TBacking, T> **)memory_alloc(sizeof(bst<TBacking, T> *) * capacity);
 			h->lengths = NULL;
 
 			uint32_t count = ((uint32_t *)buffer)[0];
@@ -111,7 +109,7 @@ class hash_table
 				{
 				char *cell = buffer + stores[i];
 				char *key = cell + ((uint32_t *)cell)[1];
-				unsigned int index = hash(key) & (1 << 16) - 1;
+				unsigned int index = hash(key);
 				h->store[index] = (bst<TBacking, T> *)cell;
 				}
 

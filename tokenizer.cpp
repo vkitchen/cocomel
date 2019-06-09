@@ -2,14 +2,6 @@
 #include <ctype.h>
 #include "tokenizer.h"
 
-
-tokenizer::tokenizer(char *doc, size_t len)
-	{
-	document = doc;
-	length = len;
-	index = 0;
-	}
-
 enum token_type tokenizer::next(str buffer)
 	{
 	for (;;)

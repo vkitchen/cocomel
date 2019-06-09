@@ -8,8 +8,8 @@ class posting
 	{
 	private:
 		uint32_t id;
-		uint32_t id_capacity;
-		uint32_t id_length;
+		uint32_t id_capacity = 256;
+		uint32_t id_length = 0;
 		uint8_t *id_store;
 		dynamic_array<uint8_t> counts;
 

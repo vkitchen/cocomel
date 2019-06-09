@@ -23,10 +23,7 @@ class str
 		char *store;
 
 	public:
-		str(char *s)
-			{
-			store = s;
-			}
+		str(char *s) : store(s) {}
 
 		inline uint32_t length()
 			{

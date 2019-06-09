@@ -7,8 +7,6 @@
 
 posting::posting()
 	{
-	id_capacity = 256;
-	id_length = 0;
 	id_store = (uint8_t *)malloc(id_capacity * sizeof(uint8_t));
 	}
 

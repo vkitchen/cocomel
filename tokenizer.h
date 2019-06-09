@@ -8,8 +8,8 @@ enum token_type {DOCNO, WORD, END};
 class tokenizer
 	{
 	private:
+		size_t index = 0;
 		size_t length;
-		size_t index;
 		char *document;
 
 	public:
@@ -18,7 +18,7 @@ class tokenizer
 			return memory_alloc(size);
 			}
 
-		tokenizer(char *str, size_t length);
+		tokenizer(char *doc, size_t len) : length(len), document(doc) {}
 
 		enum token_type next(str buffer);
 	};

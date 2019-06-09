@@ -8,8 +8,8 @@ class bst
 	{
 	private:
 		char *key;
-		bst *left;
-		bst *right;
+		bst *left = NULL;
+		bst *right = NULL;
 		TBacking store;
 
 	public:
@@ -22,7 +22,6 @@ class bst
 			{
 			this->key = key.c_dup();
 			store.append(val);
-			left = right = NULL;
 			}
 		
 		void insert(str key, T val, uint32_t *length)

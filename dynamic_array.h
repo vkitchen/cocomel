@@ -7,8 +7,8 @@ template <typename T>
 class dynamic_array
 	{
 	public:
-		uint32_t capacity;
-		uint32_t length;
+		uint32_t capacity = 256;
+		uint32_t length = 0;
 		T *store;
 
 	public:
@@ -19,8 +19,6 @@ class dynamic_array
 
 		dynamic_array()
 			{
-			capacity = 256;
-			length = 0;
 			store = (T *)malloc(capacity * sizeof(T));
 			}
 

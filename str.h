@@ -1,4 +1,4 @@
-/* isalpha, isspace, isdigit taken from musl */
+/* ctype functions taken from musl */
 /*
 		STR.H
 		-----
@@ -87,6 +87,16 @@ inline char char_isspace(char c)
 	return c == ' ' || (unsigned)c-'\t' < 5;
 	}
 
+inline char char_islower(char c)
+	{
+	return (unsigned)c-'a' < 26;
+	}
+
+inline char char_isupper(char c)
+	{
+	return (unsigned)c-'A' < 26;
+	}
+
 inline char char_isalpha(char c)
 	{
 	return ((unsigned)c|32)-'a' < 26;
@@ -97,38 +107,30 @@ inline char char_isdigit(char c)
 	return (unsigned)c-'0' < 10;
 	}
 
-inline char char_lower(char c)
+inline char char_tolower(char c)
 	{
-	if ('A' <= c && c <= 'Z')
-		c += 'a' - 'A';
+	if (char_isupper(c))
+		return c | 32;
 
 	return c;
 	}
 
-inline char char_upper(char c)
+inline char char_toupper(char c)
 	{
-	if ('a' <= c && c <= 'z')
-		c -= 'a' - 'A';
+	if (char_islower(c))
+		return c & 0x5f;
 	
 	return c;
 	}
 
-inline void string_lowercase(char *str)
+inline void string_tolower(char *str)
 	{
-	while ((*str = char_lower(*str)))
+	while ((*str = char_tolower(*str)))
 		++str;
 	}
 
-/*
-	STRING_UPPERCASE()
-	------------------
-*/
-/*!
-		@brief Inplace uppercasing of a cstring
-		@param str [in,out] String to uppercase
-*/
-inline void string_uppercase(char *str)
+inline void string_toupper(char *str)
 	{
-	while ((*str = char_upper(*str)))
+	while ((*str = char_toupper(*str)))
 		++str;
 	}

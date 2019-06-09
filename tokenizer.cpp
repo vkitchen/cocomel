@@ -63,7 +63,7 @@ enum token_type tokenizer::next(str buffer)
 			int i = 0;
 			while (i < 256 && i + index < length && char_isalpha(document[index + i]))
 				{
-				buffer[i] = char_lower(document[index + i]);
+				buffer[i] = char_tolower(document[index + i]);
 				i++;
 				}
 			buffer[i] = '\0';

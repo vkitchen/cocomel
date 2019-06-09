@@ -11,9 +11,6 @@ class tokenizer
 		size_t index;
 		char *document;
 
-	private:
-		inline void advance();
-
 	public:
 		static void *operator new(size_t size)
 			{

@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#include "vector_kv.h"
 #include "dynamic_array.h"
 #include "posting.h"
 #include "hash_table.h"

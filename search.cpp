@@ -7,8 +7,6 @@
 #include "string2.h"
 #include "file.h"
 #include "vbyte.h"
-#include "vector.h"
-#include "vector_kv.h"
 #include "posting.h"
 #include "hash_table.h"
 
@@ -55,12 +53,12 @@ void results_sort(dynamic_array<std::pair<size_t, double>> *results) {
 	}
 }
 
-void rank(dynamic_array<std::pair<size_t, double>> *posting, struct vector_kv *docNos, double avgdl) {
+void rank(dynamic_array<std::pair<size_t, double>> *posting, dynamic_array<std::pair<char *, size_t>> *docNos, double avgdl) {
 	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
 	for (size_t i = 0; i < posting->length; i++) {
 		size_t docId = posting->store[i].first - 1;
 		size_t tf = posting->store[i].second;
-		double docLength = (size_t)docNos->store[docId*2 + 1];
+		double docLength = (size_t)docNos->store[docId].second;
 		double K = 1.2 * (0.25 + 0.75 * docLength / avgdl);
 		double w = wt * 2.2 * tf / (K + tf);
 		posting->store[i].second = w;
@@ -73,12 +71,12 @@ int main(void) {
 	struct string *index = file_slurp_c("index.dat");
 
 	// Decode index
-	struct vector_kv *docNos = (struct vector_kv *)malloc(sizeof(struct vector_kv));
+	dynamic_array<std::pair<char *, size_t>> *docNos = new dynamic_array<std::pair<char *, size_t>>();
 	docNos->length = ((size_t *)index->str)[1];
-	docNos->store = (void **)&index->str[2 * sizeof(size_t)];
+	docNos->store = (std::pair<char *, size_t> *)&index->str[2 * sizeof(size_t)];
 
 	for (size_t i = 0; i < docNos->length; i++) {
-		docNos->store[i*2] = index->str + (size_t)docNos->store[i*2];
+		docNos->store[i].first = index->str + (size_t)docNos->store[i].first;
 	}
 
 	size_t dict_offset = ((size_t *)index->str)[0];
@@ -86,16 +84,16 @@ int main(void) {
 
 	// Find average document length
 	for (size_t i = 0; i < docNos->length; i++) {
-		avgdl += (size_t)docNos->store[i*2 + 1];
+		avgdl += (size_t)docNos->store[i].second;
 	}
 	avgdl /= docNos->length;
 
 	// Accept input
 	char term[256];
-	struct vector *terms = vector_new();
+	dynamic_array<char *> *terms = new dynamic_array<char *>();
 	while (scanf("%s", term) == 1) {
 		string_uppercase_c(term);
-		vector_append(terms, strdup(term));
+		terms->append(strdup(term));
 	}
 
 	if (terms->length == 0) {
@@ -106,7 +104,7 @@ int main(void) {
 
 	// Find results for strings
 	for (size_t i = 0; i < terms->length; i++) {
-		terms->store[i] = dictionary->find((char *)terms->store[i]);
+		terms->store[i] = (char *)dictionary->find((char *)terms->store[i]);
 		if (terms->store[i] == NULL) {
 			printf("No results\n");
 			exit(0);
@@ -124,7 +122,7 @@ int main(void) {
 	for (size_t i = 0; i < result_list->length; i++) {
 		size_t docId = result_list->store[i].first - 1;
 		double rsv = result_list->store[i].second;
-		printf("%s %f\n", (char *)docNos->store[docId*2], rsv);
+		printf("%s %f\n", docNos->store[docId].first, rsv);
 	}
 
 	return 0;

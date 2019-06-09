@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <stddef.h>
+
 /*
 	MEMORY_ALLOC()
 	--------------

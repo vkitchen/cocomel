@@ -1,3 +1,4 @@
+/* isalpha, isspace, isdigit taken from musl */
 /*
 		STR.H
 		-----
@@ -79,6 +80,21 @@ inline int string_prefix(const char *pre, const char *str)
 		if (*pre++ != *str++)
 			return 0;
 	return 1;
+	}
+
+inline char char_isspace(char c)
+	{
+	return c == ' ' || (unsigned)c-'\t' < 5;
+	}
+
+inline char char_isalpha(char c)
+	{
+	return ((unsigned)c|32)-'a' < 26;
+	}
+
+inline char char_isdigit(char c)
+	{
+	return (unsigned)c-'0' < 10;
 	}
 
 inline char char_lower(char c)

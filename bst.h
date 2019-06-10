@@ -30,7 +30,7 @@ class bst
 
 			for (;;)
 				{
-				int cmp = strcmp(key.c_str(), tree->key);
+				int cmp = string_cmp(key.c_str(), tree->key);
 
 				if (cmp < 0)
 					{

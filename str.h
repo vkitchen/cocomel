@@ -76,10 +76,18 @@ inline size_t string_copy(char *dest, char *src)
 
 inline int string_prefix(const char *pre, const char *str)
 	{
-	while (*pre)
+	while (*pre && *str)
 		if (*pre++ != *str++)
 			return 0;
 	return 1;
+	}
+
+/* also from musl */
+inline int string_cmp(const char *l, const char *r)
+	{
+	for (; *l == *r && *l; l++, r++)
+		;
+	return *(unsigned char *)l - *(unsigned char *)r;
 	}
 
 inline char char_isspace(char c)

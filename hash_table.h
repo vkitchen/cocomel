@@ -61,7 +61,7 @@ class hash_table
 			uint32_t *vec = (uint32_t *)((char *)store[index] + sizeof(uint32_t));
 
 			for (size_t i = 0; i < length; i++)
-				if (strcmp(key, (char *)store[index] + vec[i*2]) == 0)
+				if (string_cmp(key, (char *)store[index] + vec[i*2]) == 0)
 					return (char *)store[index] + vec[i*2+1];
 
 			return NULL;

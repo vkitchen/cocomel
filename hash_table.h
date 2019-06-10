@@ -7,8 +7,8 @@ class hash_table
 	{
 	private:
 		static const size_t capacity = 1 << 16;
-		bst<TBacking, T> **store;
-		uint32_t *lengths;
+		bst<TBacking, T> *store[capacity];
+		uint32_t lengths[capacity];
 
 	private:
 		static inline unsigned int hash(char *key)
@@ -29,8 +29,6 @@ class hash_table
 
 		hash_table()
 			{
-			store = (bst<TBacking, T> **)memory_alloc(sizeof(bst<TBacking, T> *) * capacity);
-			lengths = (uint32_t *)memory_alloc(sizeof(uint32_t) * capacity);
 			for (size_t i = 0; i < capacity; i++)
 				{
 				store[i] = NULL;
@@ -98,8 +96,6 @@ class hash_table
 		static hash_table *read(char *buffer)
 			{
 			hash_table *h = new hash_table();
-			h->store = (bst<TBacking, T> **)memory_alloc(sizeof(bst<TBacking, T> *) * capacity);
-			h->lengths = NULL;
 
 			uint32_t count = ((uint32_t *)buffer)[0];
 

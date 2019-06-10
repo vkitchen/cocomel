@@ -3,6 +3,7 @@
 #include <string.h>
 #include <utility>
 #include <math.h>
+#include "tokenizer.h"
 #include "dynamic_array.h"
 #include "str.h"
 #include "file.h"
@@ -94,12 +95,23 @@ int main(void)
 	avgdl /= docNos->length;
 
 	// Accept input
-	char term[256];
+	char line[1024];
+	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
+	str tok_buffer(tok_buffer_store);
+	enum token_type token;
 	dynamic_array<char *> *terms = new dynamic_array<char *>();
-	while (scanf("%s", term) == 1)
+	while (fgets(line, sizeof(line), stdin) != NULL)
 		{
-		string_tolower(term);
-		terms->append(strdup(term));
+		tokenizer *tok = new tokenizer(line, strlen(line));
+		do
+			{
+			token = tok->next(tok_buffer);
+			if (token == WORD)
+				{
+				string_tolower(tok_buffer.c_str());
+				terms->append(tok_buffer.c_dup());
+				}
+			} while (token != END);
 		}
 
 	if (terms->length == 0)

@@ -99,9 +99,9 @@ int main(void)
 	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
 	str tok_buffer(tok_buffer_store);
 	enum token_type token;
-	dynamic_array<char *> *terms = new dynamic_array<char *>();
 	while (fgets(line, sizeof(line), stdin) != NULL)
 		{
+		dynamic_array<char *> *terms = new dynamic_array<char *>();
 		tokenizer *tok = new tokenizer(line, strlen(line));
 		do
 			{
@@ -112,39 +112,40 @@ int main(void)
 				terms->append(tok_buffer.c_dup());
 				}
 			} while (token != END);
-		}
 
-	if (terms->length == 0)
-		exit(0);
-
-	dynamic_array<dynamic_array<std::pair<size_t, double>> *> postings;
-
-	// Find results for strings
-	for (size_t i = 0; i < terms->length; i++)
-		{
-		terms->store[i] = (char *)dictionary->find((char *)terms->store[i]);
-		if (terms->store[i] == NULL)
-			{
-			printf("No results\n");
+		if (terms->length == 0)
 			exit(0);
-			}
-		else
+
+		dynamic_array<dynamic_array<std::pair<size_t, double>> *> postings;
+
+		// Find results for strings
+		for (size_t i = 0; i < terms->length; i++)
 			{
-			dynamic_array<std::pair<size_t, double>> *post = ((posting *)terms->store[i])->decompress();
-			rank(post, docNos, avgdl);
-			postings.append(post);
+			terms->store[i] = (char *)dictionary->find((char *)terms->store[i]);
+			if (terms->store[i] == NULL)
+				{
+				printf("No results\n");
+				exit(0);
+				}
+			else
+				{
+				dynamic_array<std::pair<size_t, double>> *post = ((posting *)terms->store[i])->decompress();
+				rank(post, docNos, avgdl);
+				postings.append(post);
+				}
 			}
-		}
 
-	dynamic_array<std::pair<size_t, double>> *result_list = intersect_postings(&postings);
+		dynamic_array<std::pair<size_t, double>> *result_list = intersect_postings(&postings);
 
-	results_sort(result_list);
+		results_sort(result_list);
 
-	for (size_t i = 0; i < result_list->length; i++)
-		{
-		size_t docId = result_list->store[i].first - 1;
-		double rsv = result_list->store[i].second;
-		printf("%s %f\n", index + docNos->store[docId].first, rsv);
+		for (size_t i = 0; i < result_list->length; i++)
+			{
+			size_t docId = result_list->store[i].first - 1;
+			double rsv = result_list->store[i].second;
+			printf("%s %f\n", index + docNos->store[docId].first, rsv);
+			}
+
 		}
 
 	return 0;

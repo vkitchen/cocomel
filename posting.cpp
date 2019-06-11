@@ -20,7 +20,7 @@ void posting::append(uint32_t id)
 		}
 	else
 		{
-		if (id_capacity - id_length < 10)
+		if (id_capacity - id_length < 5) // Max bytes vbyte can use for 32bit int
 			{
 			id_capacity *= 2;
 			id_store = (uint8_t *)realloc(id_store, id_capacity * sizeof(uint8_t));

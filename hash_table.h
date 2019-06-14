@@ -18,7 +18,7 @@ class hash_table
 			while (*key != '\0')
 				result = (*key++ + 31 * result);
 
-			return result & capacity - 1;
+			return result & (capacity - 1);
 			}
 
 	public:

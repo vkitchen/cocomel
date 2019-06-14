@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <utility>
 #include "dynamic_array.h"
 #include "posting.h"

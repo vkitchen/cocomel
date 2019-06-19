@@ -85,7 +85,7 @@ class hash_table
 					at += sizeof(uint32_t);
 					char *ptr_store = at; // All key, and val ptrs
 					at += lengths[i] * 2 * sizeof(uint32_t); // Keys and postings
-					store[i]->write(start, &ptr_store, &at);
+					at = store[i]->write(start, ptr_store, at);
 
 					((uint32_t *)buffer)[offset++] = start - buffer;
 					}

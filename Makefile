@@ -1,5 +1,7 @@
 
-CXXFLAGS := -Wall -Wextra -O2 -g -lm -std=c++11
+CXXFLAGS := -Wall -Wextra -O2 -g -std=c++11
+
+LDFLAGS := -lm -lz
 
 HEADERS := \
 	bst.h \
@@ -12,6 +14,7 @@ SRC := \
 	memory.cpp \
 	posting.cpp \
 	tokenizer.cpp \
+	tokenizer_zlib.cpp \
 	vbyte.cpp
 
 OBJECTS := $(SRC:%.cpp=%.o)
@@ -22,10 +25,10 @@ OBJECTS := $(SRC:%.cpp=%.o)
 all: index search
 
 index: index.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) -o $@ index.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ index.cpp $(OBJECTS)
 
 search: search.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) -o $@ search.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ search.cpp $(OBJECTS)
 
 CLEAN := $(OBJECTS) index search
 clean:

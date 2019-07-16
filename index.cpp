@@ -5,11 +5,12 @@
 #include "posting.h"
 #include "hash_table.h"
 #include "tokenizer.h"
+#include "tokenizer_zlib.h"
 #include "str.h"
 #include "file.h"
 
 const char *usage = "\
-Usage: index [file]\
+Usage: index [file ...]\
 ";
 
 void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, uint32_t>> *docNos, hash_table<posting, uint32_t> *dictionary)
@@ -45,7 +46,7 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 
 int main(int argc, char **argv)
 	{
-	if (argc != 2)
+	if (argc < 2)
 		{
 		puts(usage);
 		return 1;
@@ -53,26 +54,62 @@ int main(int argc, char **argv)
 
 	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
 	str tok_buffer(tok_buffer_store);
-	char *file;
-	size_t file_length = file_slurp(argv[1], &file);
-	tokenizer *tok = new tokenizer(file, file_length);
 	enum token_type token;
 
 	dynamic_array<std::pair<char *, uint32_t>> docNos;
 	hash_table<posting, uint32_t> dictionary;
-	do
-		{
-		token = tok->next(tok_buffer);
-		if (token == DOCNO)
-			docNos.append(std::make_pair(tok_buffer.c_dup(), 0));
-		else if (token == WORD)
-			{
-			docNos.back()->second++;
-			dictionary.insert(tok_buffer, docNos.length);
-			}
-		} while (token != END);
 
-	index_write("index.dat", file, &docNos, &dictionary);
+	tokenizer tok;
+	tokenizer_zlib tok_zlib;
+
+	for (int i = 1; i < argc; i++)
+		{
+		if (string_suffix(".tar.gz", argv[i]))
+			{
+			tok_zlib.init(argv[i]);
+			do
+				{
+				token = tok_zlib.next(tok_buffer);
+				if (token == DOCNO)
+					{
+					if (docNos.length > 0 && docNos.length % 10000 == 0)
+						fprintf(stderr, "%d Documents\n", docNos.length);
+					docNos.append(std::make_pair(tok_buffer.c_dup(), 0));
+					}
+				else if (token == WORD)
+					{
+					docNos.back()->second++;
+					dictionary.insert(tok_buffer, docNos.length);
+					}
+				} while (token != END);
+
+			tok_zlib.cleanup();
+			}
+		else
+			{
+			char *file;
+			size_t file_length = file_slurp(argv[i], &file);
+			tok.init(file, file_length);
+			do
+				{
+				token = tok.next(tok_buffer);
+				if (token == DOCNO)
+					{
+					if (docNos.length > 0 && docNos.length % 10000 == 0)
+						fprintf(stderr, "%d Documents\n", docNos.length);
+					docNos.append(std::make_pair(tok_buffer.c_dup(), 0));
+					}
+				else if (token == WORD)
+					{
+					docNos.back()->second++;
+					dictionary.insert(tok_buffer, docNos.length);
+					}
+				} while (token != END);
+			}
+		}
+
+	char *out_buffer = (char *)malloc(1024*1024*1024);
+	index_write("index.dat", out_buffer, &docNos, &dictionary);
 
 	return 0;
 	}

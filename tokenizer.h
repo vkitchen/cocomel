@@ -18,7 +18,11 @@ class tokenizer
 			return memory_alloc(size);
 			}
 
-		tokenizer(char *doc, size_t len) : length(len), document(doc) {}
+		void init(char *doc, size_t len)
+			{
+			document = doc;
+			length = len;
+			}
 
 		enum token_type next(str buffer);
 	};

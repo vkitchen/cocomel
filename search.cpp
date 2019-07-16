@@ -99,13 +99,14 @@ int main(void)
 	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
 	str tok_buffer(tok_buffer_store);
 	enum token_type token;
+	tokenizer tok;
 	while (fgets(line, sizeof(line), stdin) != NULL)
 		{
 		dynamic_array<char *> *terms = new dynamic_array<char *>();
-		tokenizer *tok = new tokenizer(line, strlen(line));
+		tok.init(line, strlen(line));
 		do
 			{
-			token = tok->next(tok_buffer);
+			token = tok.next(tok_buffer);
 			if (token == WORD)
 				{
 				string_tolower(tok_buffer.c_str());

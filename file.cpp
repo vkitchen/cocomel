@@ -39,3 +39,10 @@ size_t file_slurp(char const *filename, char **into)
 
 	return file_length;
 	}
+
+size_t file_size(char const *filename)
+	{
+	struct stat details;
+	stat(filename, &details);
+	return details.st_size;
+	}

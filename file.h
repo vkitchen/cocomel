@@ -23,3 +23,5 @@
 		@return String containing the contents of the file
 */
 size_t file_slurp(char const *filename, char **into);
+
+size_t file_size(char const *filename);

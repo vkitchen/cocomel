@@ -74,10 +74,31 @@ inline size_t string_copy(char *dest, char *src)
 	return at - src + 1;
 	}
 
+inline size_t string_n_copy(char *dest, char *src, size_t n)
+	{
+	char *at = src;
+	while (*at && (size_t)(at - src) < n - 1)
+		*dest++ = *at++;
+	*dest = '\0';
+	return at - src;
+	}
+
 inline int string_prefix(const char *pre, const char *str)
 	{
 	while (*pre && *str)
 		if (*pre++ != *str++)
+			return 0;
+	return 1;
+	}
+
+inline int string_suffix(const char *suf, const char *str)
+	{
+	size_t suf_len = strlen(suf);
+	size_t str_len = strlen(str);
+	if (suf_len > str_len)
+		return 0;
+	for (size_t i = 0; i < suf_len; i++)
+		if (str[i + (str_len - suf_len)] != suf[i])
 			return 0;
 	return 1;
 	}

@@ -10,8 +10,9 @@
 #include "vbyte.h"
 #include "posting.h"
 #include "hash_table.h"
+#include "search.h"
 
-dynamic_array<std::pair<size_t, double>> *intersect_postings(dynamic_array<dynamic_array<std::pair<size_t, double>> *> *postings)
+static dynamic_array<std::pair<size_t, double>> *intersect_postings(dynamic_array<dynamic_array<std::pair<size_t, double>> *> *postings)
 	{
 	dynamic_array<std::pair<size_t, double>> *result = new dynamic_array<std::pair<size_t, double>>();
 
@@ -45,7 +46,7 @@ dynamic_array<std::pair<size_t, double>> *intersect_postings(dynamic_array<dynam
 	return result;
 	}
 
-void results_sort(dynamic_array<std::pair<size_t, double>> *results)
+static void results_sort(dynamic_array<std::pair<size_t, double>> *results)
 	{
 	for (size_t i = 1; i < results->length; i++)
 		{
@@ -60,7 +61,7 @@ void results_sort(dynamic_array<std::pair<size_t, double>> *results)
 		}
 	}
 
-void rank(dynamic_array<std::pair<size_t, double>> *posting, dynamic_array<std::pair<uint32_t, uint32_t>> *docNos, double avgdl)
+static void rank(dynamic_array<std::pair<size_t, double>> *posting, dynamic_array<std::pair<uint32_t, uint32_t>> *docNos, double avgdl)
 	{
 	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
 	for (size_t i = 0; i < posting->length; i++)
@@ -74,12 +75,9 @@ void rank(dynamic_array<std::pair<size_t, double>> *posting, dynamic_array<std::
 		}
 	}
 
-int main(void)
+dynamic_array<std::pair<size_t, double>> *search(char *index, char *line)
 	{
 	double avgdl = 0;
-
-	char *index;
-	file_slurp("index.dat", &index);
 
 	// Decode index
 	dynamic_array<std::pair<uint32_t, uint32_t>> *docNos = new dynamic_array<std::pair<uint32_t, uint32_t>>();
@@ -94,60 +92,46 @@ int main(void)
 		avgdl += docNos->store[i].second;
 	avgdl /= docNos->length;
 
-	// Accept input
-	char line[1024];
 	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
 	str tok_buffer(tok_buffer_store);
 	enum token_type token;
 	tokenizer tok;
-	while (fgets(line, sizeof(line), stdin) != NULL)
+
+	// Perform the search
+	dynamic_array<char *> *terms = new dynamic_array<char *>();
+	tok.init(line, strlen(line));
+	do
 		{
-		dynamic_array<char *> *terms = new dynamic_array<char *>();
-		tok.init(line, strlen(line));
-		do
+		token = tok.next(tok_buffer);
+		if (token == WORD)
 			{
-			token = tok.next(tok_buffer);
-			if (token == WORD)
-				{
-				string_tolower(tok_buffer.c_str());
-				terms->append(tok_buffer.c_dup());
-				}
-			} while (token != END);
-
-		if (terms->length == 0)
-			exit(0);
-
-		dynamic_array<dynamic_array<std::pair<size_t, double>> *> postings;
-
-		// Find results for strings
-		for (size_t i = 0; i < terms->length; i++)
-			{
-			terms->store[i] = (char *)dictionary->find((char *)terms->store[i]);
-			if (terms->store[i] == NULL)
-				{
-				printf("No results\n");
-				exit(0);
-				}
-			else
-				{
-				dynamic_array<std::pair<size_t, double>> *post = ((posting *)terms->store[i])->decompress();
-				rank(post, docNos, avgdl);
-				postings.append(post);
-				}
+			string_tolower(tok_buffer.c_str());
+			terms->append(tok_buffer.c_dup());
 			}
+		} while (token != END);
 
-		dynamic_array<std::pair<size_t, double>> *result_list = intersect_postings(&postings);
+	if (terms->length == 0)
+		exit(0);
 
-		results_sort(result_list);
+	dynamic_array<dynamic_array<std::pair<size_t, double>> *> postings;
 
-		for (size_t i = 0; i < result_list->length; i++)
+	// Find results for strings
+	for (size_t i = 0; i < terms->length; i++)
+		{
+		terms->store[i] = (char *)dictionary->find((char *)terms->store[i]);
+		if (terms->store[i] == NULL)
+			return NULL;
+		else
 			{
-			size_t docId = result_list->store[i].first - 1;
-			double rsv = result_list->store[i].second;
-			printf("%s %f\n", index + docNos->store[docId].first, rsv);
+			dynamic_array<std::pair<size_t, double>> *post = ((posting *)terms->store[i])->decompress();
+			rank(post, docNos, avgdl);
+			postings.append(post);
 			}
-
 		}
 
-	return 0;
+	dynamic_array<std::pair<size_t, double>> *result_list = intersect_postings(&postings);
+
+	results_sort(result_list);
+
+	return result_list;
 	}

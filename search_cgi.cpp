@@ -30,16 +30,20 @@ int main(void)
 	docNos->length = ((uint32_t *)index)[1];
 	docNos->store = (std::pair<uint32_t, uint32_t> *)&index[2 * sizeof(uint32_t)];
 
-	puts("Content-Type: text/html; charset=iso-8859-1\n");
+	puts("Content-Type: text/html; charset=utf-8\n");
 
 	puts("<!DOCTYPE html>");
 	puts("<html>");
-	puts("<head><title>cocomel search results - Vaughan.Kitchen</title></head>");
+	puts("<head>");
+	puts("<meta charset='utf-8'>");
+	puts("<link rel='stylesheet' type='text/css' href='/main.css'>");
+	puts("<title>cocomel search results - Vaughan.Kitchen</title>");
+	puts("</head>");
 	puts("<body>");
-	puts("<h1>Vaughan Kitchen</h1>");
+	puts("<h1 class='site-logo'><a href='/'>Vaughan Kitchen</a></h1>");
 	puts("<h3>(leading a life un-styled)</h3>");
 	puts("<h4>Site search powered by <a href='http://github.com/vkitchen/cocomel'>cocomel</a></h4>");
-	puts("<form action='search.sh' method='get'>");
+	puts("<form class='site-search' action='/cgi/search.sh' method='get'>");
 	puts("<input type='text' name='search' placeholder='Search anything...'>");
 	puts("<input type='submit' value='Search'>");
 	puts("</form>");

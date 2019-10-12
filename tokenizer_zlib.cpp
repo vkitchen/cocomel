@@ -26,7 +26,13 @@ enum token_type tokenizer_zlib::next_file(str buffer)
 		if (length == 0)
 			continue;
 
-		size_t ncopied = string_n_copy(buffer.c_str(), (char *)&tar->name, 100);
+		size_t ncopied = 0;
+		if (*(char *)&tar->prefix) {
+			ncopied += string_n_copy(buffer.c_str(), (char *)&tar->prefix, 156);
+			buffer.c_str()[ncopied] = '/';
+			ncopied++;
+		}
+		ncopied += string_n_copy(&buffer.c_str()[ncopied], (char *)&tar->name, 101);
 		buffer.resize(ncopied);
 
 		break;

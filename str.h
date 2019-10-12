@@ -74,6 +74,10 @@ inline size_t string_copy(char *dest, char *src)
 	return at - src + 1;
 	}
 
+/*
+	Takes buffer size (including terminating null-byte)
+	Returns new string size not including null-byte
+*/
 inline size_t string_n_copy(char *dest, char *src, size_t n)
 	{
 	char *at = src;

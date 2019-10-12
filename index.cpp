@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 		return 1;
 		}
 
-	char tok_buffer_store[260]; // Provide underlying storage for tok_buffer
+	char tok_buffer_store[516]; // Provide underlying storage for tok_buffer
 	str tok_buffer(tok_buffer_store);
 	enum token_type token;
 

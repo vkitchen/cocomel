@@ -5,3 +5,5 @@ vgcore.*
 *.o
 index
 search
+search-cgi
+search-cli

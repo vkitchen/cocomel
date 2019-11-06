@@ -25,14 +25,16 @@ OBJECTS := $(SRC:%.cpp=%.o)
 
 all: index search-cli search-cgi
 
+# LDFLAGS must go on the end
+# https://stackoverflow.com/questions/9145177/undefined-reference-to-gzopen-error
 index: index.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ index.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ index.cpp $(OBJECTS) $(LDFLAGS)
 
 search-cli: search_cli.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ search_cli.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ search_cli.cpp $(OBJECTS) $(LDFLAGS)
 
 search-cgi: search_cgi.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ search_cgi.cpp $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ search_cgi.cpp $(OBJECTS) $(LDFLAGS)
 
 CLEAN := $(OBJECTS) index search-cli search-cgi
 clean:

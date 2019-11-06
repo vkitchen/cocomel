@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <cstddef>
+
 /*
 	FILE_SLURP()
 	------------

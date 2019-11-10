@@ -1,15 +1,14 @@
+CXXFLAGS = -Wall -Wextra -O2 -g -std=c++11
 
-CXXFLAGS := -Wall -Wextra -O2 -g -std=c++11
+LDFLAGS = -lm -lz
 
-LDFLAGS := -lm -lz
-
-HEADERS := \
+HEADERS = \
 	bst.h \
 	dynamic_array.h \
 	hash_table.h \
 	str.h
 
-SRC := \
+SRC = \
 	file.cpp \
 	memory.cpp \
 	posting.cpp \
@@ -18,25 +17,27 @@ SRC := \
 	tokenizer_zlib.cpp \
 	vbyte.cpp
 
-OBJECTS := $(SRC:%.cpp=%.o)
+OBJECTS = $(SRC:.cpp=.o)
 
-%.o: %.cpp %.h $(HEADERS)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+.SUFFIXES: .cpp .o
+
+.cpp.o: $(HEADERS)
+	$(CXX) $(CXXFLAGS) -c $<
 
 all: index search-cli search-cgi
 
-# LDFLAGS must go on the end
+# LDFLAGS at the end
+# Might no longer occur now that we use index.o instead of index.cpp TODO
 # https://stackoverflow.com/questions/9145177/undefined-reference-to-gzopen-error
-index: index.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) -o $@ index.cpp $(OBJECTS) $(LDFLAGS)
+index: index.o $(OBJECTS) $(HEADERS)
+	$(CXX) $(CXXFLAGS) -o $@ index.o $(OBJECTS) $(LDFLAGS)
 
-search-cli: search_cli.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) -o $@ search_cli.cpp $(OBJECTS) $(LDFLAGS)
+search-cli: search_cli.o $(OBJECTS) $(HEADERS)
+	$(CXX) $(CXXFLAGS) -o $@ search_cli.o $(OBJECTS) $(LDFLAGS)
 
-search-cgi: search_cgi.cpp $(OBJECTS) $(HEADERS)
-	$(CXX) $(CXXFLAGS) -o $@ search_cgi.cpp $(OBJECTS) $(LDFLAGS)
+search-cgi: search_cgi.o $(OBJECTS) $(HEADERS)
+	$(CXX) $(CXXFLAGS) -o $@ search_cgi.o $(OBJECTS) $(LDFLAGS)
 
-CLEAN := $(OBJECTS) index search-cli search-cgi
 clean:
-	rm -f $(CLEAN)
+	rm -f index search-cli search-cgi $(OBJECTS)
 

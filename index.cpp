@@ -107,8 +107,7 @@ int main(int argc, char **argv)
 				} while (token != END);
 			}
 		}
-
-	char *out_buffer = (char *)malloc(1024*1024*1024);
+	char *out_buffer = (char *)malloc(512*1024*1024);
 	index_write("index.dat", out_buffer, &docNos, &dictionary);
 
 	return 0;

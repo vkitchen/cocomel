@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
-#include <utility>
-#include "dynamic_array.h"
+#include "dynamic_array_64.h"
 #include "posting.h"
 #include "hash_table.h"
 #include "tokenizer.h"
@@ -13,7 +12,8 @@ const char *usage = "\
 Usage: index [file ...]\
 ";
 
-void index_write(char const *filename, char *buffer, dynamic_array<std::pair<char *, uint32_t>> *docNos, hash_table<posting, uint32_t> *dictionary)
+/*
+void index_write(char const *filename, char *buffer, struct dynamic_array_64 *docNos, hash_table<posting, uint32_t> *dictionary)
 	{
 	FILE *fh = fopen(filename, "w");
 	if (fh == NULL)
@@ -43,6 +43,7 @@ void index_write(char const *filename, char *buffer, dynamic_array<std::pair<cha
 	fwrite(buffer, sizeof(char), offset, fh);
 	fclose(fh);
 	}
+*/
 
 int main(int argc, char **argv)
 	{
@@ -53,62 +54,67 @@ int main(int argc, char **argv)
 		}
 
 	char tok_buffer_store[516]; // Provide underlying storage for tok_buffer
-	str tok_buffer(tok_buffer_store);
+	struct str tok_buffer;
+	tok_buffer.store = tok_buffer_store;
 	enum token_type token;
 
-	dynamic_array<std::pair<char *, uint32_t>> docNos;
-	hash_table<posting, uint32_t> dictionary;
+	struct dynamic_array_64 docNos;
+	dynamic_array_64_init(&docNos);
+	struct hash_table dictionary;
+	hash_table_init(&dictionary);
 
-	tokenizer tok;
-	tokenizer_zlib tok_zlib;
+	struct tokenizer tok;
+	struct tokenizer_zlib tok_zlib;
 
 	for (int i = 1; i < argc; i++)
 		{
 		if (string_suffix(".tar.gz", argv[i]))
 			{
-			tok_zlib.init(argv[i]);
+			tokenizer_zlib_init(&tok_zlib, argv[i]);
 			do
 				{
-				token = tok_zlib.next(tok_buffer);
+				token = tokenizer_zlib_next(&tok_zlib, tok_buffer);
 				if (token == DOCNO)
 					{
 					if (docNos.length > 0 && docNos.length % 10000 == 0)
 						fprintf(stderr, "%d Documents\n", docNos.length);
-					docNos.append(std::make_pair(tok_buffer.c_dup(), 0));
+					dynamic_array_64_append(&docNos, (uint64_t)str_dup_c(tok_buffer));
+					dynamic_array_64_append(&docNos, 0);
 					}
 				else if (token == WORD)
 					{
-					docNos.back()->second++;
-					dictionary.insert(tok_buffer, docNos.length);
+					(*dynamic_array_64_back(&docNos))++;
+					hash_table_insert(&dictionary, tok_buffer, docNos.length);
 					}
 				} while (token != END);
 
-			tok_zlib.cleanup();
+			tokenizer_zlib_cleanup(&tok_zlib);
 			}
 		else
 			{
 			char *file;
 			size_t file_length = file_slurp(argv[i], &file);
-			tok.init(file, file_length);
+			tokenizer_init(&tok, file, file_length);
 			do
 				{
-				token = tok.next(tok_buffer);
+				token = tokenizer_next(&tok, tok_buffer);
 				if (token == DOCNO)
 					{
 					if (docNos.length > 0 && docNos.length % 10000 == 0)
 						fprintf(stderr, "%d Documents\n", docNos.length);
-					docNos.append(std::make_pair(tok_buffer.c_dup(), 0));
+					dynamic_array_64_append(&docNos, (uint64_t)str_dup_c(tok_buffer));
+					dynamic_array_64_append(&docNos, 0);
 					}
 				else if (token == WORD)
 					{
-					docNos.back()->second++;
-					dictionary.insert(tok_buffer, docNos.length);
+					(*dynamic_array_64_back(&docNos))++;
+					hash_table_insert(&dictionary, tok_buffer, docNos.length);
 					}
 				} while (token != END);
 			}
 		}
 	char *out_buffer = (char *)malloc(512*1024*1024);
-	index_write("index.dat", out_buffer, &docNos, &dictionary);
+	// index_write("index.dat", out_buffer, &docNos, &dictionary);
 
 	return 0;
 	}

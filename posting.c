@@ -1,39 +1,44 @@
 #include <stdlib.h>
 #include <string.h>
-#include <utility>
 #include "vbyte.h"
-#include "dynamic_array.h"
+#include "dynamic_array_8.h"
+
 #include "posting.h"
 
-posting::posting()
+void posting_init(struct posting *p)
 	{
-	id_store = (uint8_t *)malloc(id_capacity * sizeof(uint8_t));
+	p->id = 0;
+	p->id_capacity = 256;
+	p->id_length = 0;
+	p->id_store = malloc(p->id_capacity);
+	dynamic_array_8_init(&p->counts);
 	}
 
-void posting::append(uint32_t id)
+void posting_append(struct posting *p, uint32_t id)
 	{
-	if (this->id == id)
+	if (p->id == id)
 		{
-		uint8_t *count = counts.back();
+		uint8_t *count = dynamic_array_8_back(&p->counts);
 		if (*count < 255)
 			(*count)++;
 		}
 	else
 		{
-		if (id_capacity - id_length < 5) // Max bytes vbyte can use for 32bit int
+		if (p->id_capacity - p->id_length < 5) // Max bytes vbyte can use for 32bit int
 			{
-			id_capacity *= 2;
-			id_store = (uint8_t *)realloc(id_store, id_capacity * sizeof(uint8_t));
+			p->id_capacity *= 2;
+			p->id_store = realloc(p->id_store, p->id_capacity);
 			}
-		id_length += vbyte_store(&id_store[id_length], id - this->id);
+		p->id_length += vbyte_store(&p->id_store[p->id_length], id - p->id);
 
-		counts.append(1);
+		dynamic_array_8_append(&p->counts, 1);
 
-		this->id = id;
+		p->id = id;
 		}
 	}
 
-size_t posting::write(char *buffer)
+/*
+size_t posting_write(struct posting *p, char *buffer)
 	{
 	size_t offset = 2 * sizeof(uint32_t);
 
@@ -49,8 +54,7 @@ size_t posting::write(char *buffer)
 	return offset;
 	}
 
-
-dynamic_array<std::pair<size_t, double>> *posting::decompress()
+struct dynamic_array_64 *posting_decompress(struct posting *p)
 	{
 	size_t id_length = ((uint32_t *)this)[0];
 	size_t count_length = ((uint32_t *)this)[1];
@@ -73,3 +77,5 @@ dynamic_array<std::pair<size_t, double>> *posting::decompress()
 		}
 	return out;
 	}
+*/
+

@@ -37,23 +37,23 @@ void posting_append(struct posting *p, uint32_t id)
 		}
 	}
 
-/*
 size_t posting_write(struct posting *p, char *buffer)
 	{
 	size_t offset = 2 * sizeof(uint32_t);
 
-	memcpy(&buffer[offset], id_store, id_length);
-	offset += id_length;
+	memcpy(&buffer[offset], p->id_store, p->id_length);
+	offset += p->id_length;
 
-	memcpy(&buffer[offset], counts.store, counts.length);
-	offset += counts.length;
+	memcpy(&buffer[offset], p->counts.store, p->counts.length);
+	offset += p->counts.length;
 
-	((uint32_t *)buffer)[0] = id_length;
-	((uint32_t *)buffer)[1] = counts.length;
+	((uint32_t *)buffer)[0] = p->id_length;
+	((uint32_t *)buffer)[1] = p->counts.length;
 
 	return offset;
 	}
 
+/*
 struct dynamic_array_64 *posting_decompress(struct posting *p)
 	{
 	size_t id_length = ((uint32_t *)this)[0];

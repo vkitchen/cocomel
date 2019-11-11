@@ -48,35 +48,31 @@ void bst_insert(struct bst *b, struct str key, uint32_t val, uint32_t *length)
 		}
 	}
 
-/*
-		char *write(char *start, char *ptr_buffer, char *val_buffer)
+char *bst_write(struct bst *b, char *start, char *ptr_buffer, char *val_buffer)
+	{
+	while (b != NULL)
+		{
+		if (b->left == NULL)
 			{
-			bst *tree = this;
-			while (tree != NULL)
-				{
-				if (tree->left == NULL)
-					{
-					((uint32_t *)ptr_buffer)[0] = val_buffer - start;
-					ptr_buffer += sizeof(uint32_t);
-					val_buffer += string_copy(val_buffer, tree->key);
+			((uint32_t *)ptr_buffer)[0] = val_buffer - start;
+			ptr_buffer += sizeof(uint32_t);
+			val_buffer += string_copy(val_buffer, b->key);
 
-					((uint32_t *)ptr_buffer)[0] = val_buffer - start;
-					ptr_buffer += sizeof(uint32_t);
-					val_buffer += tree->store.write(val_buffer);
+			((uint32_t *)ptr_buffer)[0] = val_buffer - start;
+			ptr_buffer += sizeof(uint32_t);
+			val_buffer += posting_write(&b->store, val_buffer);
 
-					tree = tree->right;
-					}
-				else
-					{
-					bst *temp = tree->left;
-					tree->left = temp->right;
-					temp->right = tree;
-					tree = temp;
-					}
-				}
-
-			return val_buffer;
+			b = b->right;
 			}
-	};
-*/
+		else
+			{
+			struct bst *temp = b->left;
+			b->left = temp->right;
+			temp->right = b;
+			b = temp;
+			}
+		}
+
+	return val_buffer;
+	}
 

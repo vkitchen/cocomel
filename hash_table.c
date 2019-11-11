@@ -51,7 +51,7 @@ struct posting *hash_table_find(struct hash_table *h, char *key)
 
 			return NULL;
 	}
-
+*/
 uint32_t hash_table_write(struct hash_table *h, char *buffer)
 	{
 			uint32_t count = 0;
@@ -64,22 +64,22 @@ uint32_t hash_table_write(struct hash_table *h, char *buffer)
 
 			size_t offset = 1; // First index for length
 			for (size_t i = 0; i < HTCAP; i++)
-				if (store[i] != NULL)
+				if (h->store[i] != NULL)
 					{
 					char *start = at;
 
-					((uint32_t *)at)[0] = lengths[i];
+					((uint32_t *)at)[0] = h->lengths[i];
 					at += sizeof(uint32_t);
 					char *ptr_store = at; // All key, and val ptrs
-					at += lengths[i] * 2 * sizeof(uint32_t); // Keys and postings
-					at = store[i]->write(start, ptr_store, at);
+					at += h->lengths[i] * 2 * sizeof(uint32_t); // Keys and postings
+					at = bst_write(h->store[i], start, ptr_store, at);
 
 					((uint32_t *)buffer)[offset++] = start - buffer;
 					}
 
 			return at - buffer;
 	}
-
+/*
 struct hash_table *hash_table_read(struct hash_table *h, char *buffer)
 	{
 			hash_table *h = new hash_table();

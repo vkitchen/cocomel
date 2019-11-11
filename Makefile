@@ -12,6 +12,7 @@ SRC = \
 	char.c \
 	dynamic_array_8.c \
 	dynamic_array_64.c \
+	dynamic_array_kv_64.c \
 	file.c \
 	hash_table.c \
 	memory.c \

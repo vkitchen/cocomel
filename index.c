@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
-#include "dynamic_array_64.h"
+#include "dynamic_array_kv_64.h"
 #include "posting.h"
 #include "hash_table.h"
 #include "tokenizer.h"
@@ -12,8 +12,7 @@ const char *usage = "\
 Usage: index [file ...]\
 ";
 
-/*
-void index_write(char const *filename, char *buffer, struct dynamic_array_64 *docNos, hash_table<posting, uint32_t> *dictionary)
+void index_write(char const *filename, char *buffer, struct dynamic_array_kv_64 *docNos, struct hash_table *dictionary)
 	{
 	FILE *fh = fopen(filename, "w");
 	if (fh == NULL)
@@ -31,19 +30,18 @@ void index_write(char const *filename, char *buffer, struct dynamic_array_64 *do
 	for (size_t i = 0; i < docNos->length; i++)
 		{
 		((uint32_t *)&buffer[docNos_offset])[0] = offset;
-		((uint32_t *)&buffer[docNos_offset])[1] = docNos->store[i].second;
+		((uint32_t *)&buffer[docNos_offset])[1] = dynamic_array_kv_64_at(docNos, i)[1];
 		docNos_offset += sizeof(uint32_t) * 2;
 
-		offset += string_copy(&buffer[offset], docNos->store[i].first);
+		offset += string_copy(&buffer[offset], (char *)dynamic_array_kv_64_at(docNos, i)[0]);
 		}
 
 	((uint32_t *)buffer)[0] = offset;
-        offset += dictionary->write(&buffer[offset]);
+        offset += hash_table_write(dictionary, &buffer[offset]);
 
 	fwrite(buffer, sizeof(char), offset, fh);
 	fclose(fh);
 	}
-*/
 
 int main(int argc, char **argv)
 	{
@@ -58,8 +56,8 @@ int main(int argc, char **argv)
 	tok_buffer.store = tok_buffer_store;
 	enum token_type token;
 
-	struct dynamic_array_64 docNos;
-	dynamic_array_64_init(&docNos);
+	struct dynamic_array_kv_64 docNos;
+	dynamic_array_kv_64_init(&docNos);
 	struct hash_table dictionary;
 	hash_table_init(&dictionary);
 
@@ -78,12 +76,11 @@ int main(int argc, char **argv)
 					{
 					if (docNos.length > 0 && docNos.length % 10000 == 0)
 						fprintf(stderr, "%d Documents\n", docNos.length);
-					dynamic_array_64_append(&docNos, (uint64_t)str_dup_c(tok_buffer));
-					dynamic_array_64_append(&docNos, 0);
+					dynamic_array_kv_64_append(&docNos, (uint64_t)str_dup_c(tok_buffer), 0);
 					}
 				else if (token == WORD)
 					{
-					(*dynamic_array_64_back(&docNos))++;
+					dynamic_array_kv_64_back(&docNos)[1]++;
 					hash_table_insert(&dictionary, tok_buffer, docNos.length);
 					}
 				} while (token != END);
@@ -102,19 +99,18 @@ int main(int argc, char **argv)
 					{
 					if (docNos.length > 0 && docNos.length % 10000 == 0)
 						fprintf(stderr, "%d Documents\n", docNos.length);
-					dynamic_array_64_append(&docNos, (uint64_t)str_dup_c(tok_buffer));
-					dynamic_array_64_append(&docNos, 0);
+					dynamic_array_kv_64_append(&docNos, (uint64_t)str_dup_c(tok_buffer), 0);
 					}
 				else if (token == WORD)
 					{
-					(*dynamic_array_64_back(&docNos))++;
+					dynamic_array_kv_64_back(&docNos)[1]++;
 					hash_table_insert(&dictionary, tok_buffer, docNos.length);
 					}
 				} while (token != END);
 			}
 		}
 	char *out_buffer = (char *)malloc(512*1024*1024);
-	// index_write("index.dat", out_buffer, &docNos, &dictionary);
+	index_write("index.dat", out_buffer, &docNos, &dictionary);
 
 	return 0;
 	}

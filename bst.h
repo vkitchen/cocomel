@@ -13,5 +13,5 @@ struct bst
 
 void bst_init(struct bst *b, struct str key, uint32_t val);
 void bst_insert(struct bst *b, struct str key, uint32_t val, uint32_t *length);
-char *bst_write(char *start, char *ptr_buffer, char *val_buffer);
+char *bst_write(struct bst *b, char *start, char *ptr_buffer, char *val_buffer);
 

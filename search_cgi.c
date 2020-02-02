@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <utility>
-#include "dynamic_array.h"
+#include "dynamic_array_kv_32.h"
+#include "dynamic_array_kv_64.h"
 #include "file.h"
 #include "search.h"
 
@@ -26,9 +26,10 @@ int main(void)
 	file_slurp("index.dat", &index);
 
 	// Decode index
-	dynamic_array<std::pair<uint32_t, uint32_t>> *docNos = new dynamic_array<std::pair<uint32_t, uint32_t>>();
-	docNos->length = ((uint32_t *)index)[1];
-	docNos->store = (std::pair<uint32_t, uint32_t> *)&index[2 * sizeof(uint32_t)];
+	struct dynamic_array_kv_32 docNos;
+	dynamic_array_kv_32_init(&docNos);
+	docNos.length = ((uint32_t *)index)[1];
+	docNos.store = (uint32_t *)&index[2 * sizeof(uint32_t)];
 
 	puts("Content-Type: text/html; charset=utf-8\n");
 
@@ -43,7 +44,7 @@ int main(void)
 	puts("<h1 class='site-logo'><a href='/'>Vaughan Kitchen</a></h1>");
 	puts("<h3>(leading a life un-styled)</h3>");
 	puts("<h4>Site search powered by <a href='http://github.com/vkitchen/cocomel'>cocomel</a></h4>");
-	puts("<form class='site-search' action='/cgi/search.sh' method='get'>");
+	puts("<form class='site-search' action='/cgi-bin/search' method='get'>");
 	puts("<input type='text' name='search' placeholder='Search anything...'>");
 	puts("<input type='submit' value='Search'>");
 	puts("</form>");
@@ -56,7 +57,7 @@ int main(void)
 		sscanf(data, "search=%s", line);
 		if (line != NULL && line[0] != '\0')
 			{
-			dynamic_array<std::pair<size_t, double>> *result_list = search(index, line);
+			struct dynamic_array_kv_64 *result_list = search(index, line);
 
 			if (result_list == NULL)
 				puts("No results");
@@ -66,8 +67,8 @@ int main(void)
 				puts("<ul>");
 				for (size_t i = 0; i < result_list->length; i++)
 					{
-					size_t docId = result_list->store[i].first - 1;
-					printf("<li><a href='/%s'>%s</a></li>\n", uri_encode(index + docNos->store[docId].first), index + docNos->store[docId].first);
+					size_t docId = dynamic_array_kv_64_at(result_list, i)[0] - 1;
+					printf("<li><a href='/%s'>%s</a></li>\n", uri_encode(index + dynamic_array_kv_32_at(&docNos, docId)[0]), index + dynamic_array_kv_32_at(&docNos, docId)[0]);
 					}
 				puts("</ul>");
 				}

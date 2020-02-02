@@ -34,24 +34,24 @@ void hash_table_insert(struct hash_table *h, struct str key, uint32_t val)
 	else
 		bst_insert(h->store[index], key, val, &h->lengths[index]);
 	}
-/*
+
 struct posting *hash_table_find(struct hash_table *h, char *key)
 	{
 			uint32_t index = hash(key);
-			if (store[index] == NULL)
+			if (h->store[index] == NULL)
 				return NULL;
 
-			uint32_t length = *(uint32_t *)store[index];
+			uint32_t length = *(uint32_t *)h->store[index];
 
-			uint32_t *vec = (uint32_t *)((char *)store[index] + sizeof(uint32_t));
+			uint32_t *vec = (uint32_t *)((char *)h->store[index] + sizeof(uint32_t));
 
 			for (size_t i = 0; i < length; i++)
-				if (string_cmp(key, (char *)store[index] + vec[i*2]) == 0)
-					return (char *)store[index] + vec[i*2+1];
+				if (string_cmp(key, (char *)h->store[index] + vec[i*2]) == 0)
+					return (struct posting *)((char *)h->store[index] + vec[i*2+1]);
 
 			return NULL;
 	}
-*/
+
 uint32_t hash_table_write(struct hash_table *h, char *buffer)
 	{
 			uint32_t count = 0;
@@ -79,11 +79,9 @@ uint32_t hash_table_write(struct hash_table *h, char *buffer)
 
 			return at - buffer;
 	}
-/*
+
 struct hash_table *hash_table_read(struct hash_table *h, char *buffer)
 	{
-			hash_table *h = new hash_table();
-
 			uint32_t count = ((uint32_t *)buffer)[0];
 
 			uint32_t *stores = &((uint32_t *)buffer)[1];
@@ -93,10 +91,9 @@ struct hash_table *hash_table_read(struct hash_table *h, char *buffer)
 				char *cell = buffer + stores[i];
 				char *key = cell + ((uint32_t *)cell)[1];
 				unsigned int index = hash(key);
-				h->store[index] = (bst<TBacking, T> *)cell;
+				h->store[index] = (struct bst *)cell;
 				}
 
 			return h;
 	}
-*/
 

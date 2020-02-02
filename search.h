@@ -1,7 +1,7 @@
 #pragma once
 
-#include "dynamic_array.h"
+#include "dynamic_array_kv_64.h"
 
 // XXX WARNING not intended to be called multiple times
-dynamic_array<std::pair<size_t, double>> *search(char *index, char *line);
+struct dynamic_array_kv_64 *search(char *index, char *line);
 

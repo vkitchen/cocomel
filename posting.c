@@ -53,15 +53,16 @@ size_t posting_write(struct posting *p, char *buffer)
 	return offset;
 	}
 
-/*
-struct dynamic_array_64 *posting_decompress(struct posting *p)
+
+struct dynamic_array_kv_64 *posting_decompress(struct posting *p)
 	{
-	size_t id_length = ((uint32_t *)this)[0];
-	size_t count_length = ((uint32_t *)this)[1];
-	uint8_t *id_store = (uint8_t *)this + 2 * sizeof(uint32_t);
+	size_t id_length = ((uint32_t *)p)[0];
+	size_t count_length = ((uint32_t *)p)[1];
+	uint8_t *id_store = (uint8_t *)p + 2 * sizeof(uint32_t);
 	uint8_t *count_store = id_store + id_length;
 
-	dynamic_array<std::pair<size_t, double>> *out = new dynamic_array<std::pair<size_t, double>>;
+	struct dynamic_array_kv_64 *out = malloc(sizeof(struct dynamic_array_kv_64));
+	dynamic_array_kv_64_init(out);
 	size_t prevI = 0;
 	uint32_t docI = 0;
 	size_t di = 0;
@@ -72,10 +73,9 @@ struct dynamic_array_64 *posting_decompress(struct posting *p)
 		docI += prevI;
 		prevI = docI;
 		size_t count = count_store[ci];
-		out->append(std::make_pair(docI, count));
+		dynamic_array_kv_64_append(out, docI, count);
 		ci++;
 		}
 	return out;
 	}
-*/
 

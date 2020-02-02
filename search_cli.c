@@ -30,7 +30,7 @@ int main(void)
 		for (size_t i = 0; i < result_list->length; i++)
 			{
 			size_t docId = dynamic_array_kv_64_at(result_list, i)[0] - 1;
-			double rsv = dynamic_array_kv_64_at(result_list, i)[1];
+			double rsv = *(double *)&dynamic_array_kv_64_at(result_list, i)[1];
 			printf("%s %f\n", index + dynamic_array_kv_32_at(&docNos, docId)[0], rsv);
 			}
 

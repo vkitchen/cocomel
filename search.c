@@ -53,7 +53,8 @@ static void results_sort(struct dynamic_array_kv_64 *results)
 	for (size_t i = 1; i < results->length; i++)
 		{
 		uint64_t tmp_a = dynamic_array_kv_64_at(results, i)[0];
-		double tmp_b = dynamic_array_kv_64_at(results, i)[1];
+		// non-negative floats sort like ints. avoid the cast here
+		uint64_t tmp_b = dynamic_array_kv_64_at(results, i)[1];
 
 		size_t j = i;
 		while (j > 0 && tmp_b > dynamic_array_kv_64_at(results, j-1)[1])
@@ -77,7 +78,7 @@ static void rank(struct dynamic_array_kv_64 *posting, struct dynamic_array_kv_32
 		double docLength = (size_t)dynamic_array_kv_32_at(docNos, docId)[1];
 		double K = 1.2 * (0.25 + 0.75 * docLength / avgdl);
 		double w = wt * 2.2 * tf / (K + tf);
-		dynamic_array_kv_64_at(posting, i)[1] = w;
+		dynamic_array_kv_64_at(posting, i)[1] = *(uint64_t *)&w;
 		}
 	}
 

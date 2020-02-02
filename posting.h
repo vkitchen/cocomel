@@ -1,4 +1,5 @@
-#pragma once
+#ifndef POSTING_H
+#define POSTING_H
 
 #include <stdint.h>
 #include "dynamic_array_8.h"
@@ -17,4 +18,6 @@ void posting_init(struct posting *p);
 void posting_append(struct posting *p, uint32_t id);
 size_t posting_write(struct posting *p, char *buffer);
 struct dynamic_array_kv_64 *posting_decompress(struct posting *p);
+
+#endif
 

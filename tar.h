@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TAR_H
+#define TAR_H
 
 struct tar_header
 	{
@@ -21,3 +22,6 @@ struct tar_header
 
 	char pad[12]; /* unused */
 	};
+
+#endif
+

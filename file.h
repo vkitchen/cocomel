@@ -11,7 +11,8 @@
 	@copyright 2017 Vaughan Kitchen
 */
 
-#pragma once
+#ifndef FILE_H
+#define FILE_H
 
 #include <stddef.h>
 
@@ -26,4 +27,6 @@
 */
 size_t file_slurp(char const *filename, char **into);
 size_t file_size(char const *filename);
+
+#endif
 

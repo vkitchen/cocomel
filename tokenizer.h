@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TOKENIZER_H
+#define TOKENIZER_H
 
 #include "memory.h"
 #include "str.h"
@@ -14,4 +15,6 @@ struct tokenizer
 
 void tokenizer_init(struct tokenizer *t, char *doc, size_t len);
 enum token_type tokenizer_next(struct tokenizer *t, struct str buffer);
+
+#endif
 

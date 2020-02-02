@@ -11,7 +11,8 @@
 	@copyright 2017 Vaughan Kitchen
 */
 
-#pragma once
+#ifndef MEMORY_H
+#define MEMORY_H
 
 #include <stddef.h>
 
@@ -25,3 +26,6 @@
 		@return Pointer to the allocated memory or NULL on error
 */
 void *memory_alloc(size_t size);
+
+#endif
+

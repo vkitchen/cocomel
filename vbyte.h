@@ -15,9 +15,13 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef VBYTE_H
+#define VBYTE_H
 
 #include <stdint.h>
 
 int vbyte_read(uint8_t *p, uint32_t *out);
 int vbyte_store(uint8_t *p, uint32_t value);
+
+#endif
+

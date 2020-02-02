@@ -12,7 +12,8 @@
 	@copyright 2017 Vaughan Kitchen
 */
 
-#pragma once
+#ifndef STR_H
+#define STR_H
 
 #include <stdint.h>
 #include <string.h>
@@ -35,4 +36,6 @@ int string_suffix(const char *suf, const char *str);
 int string_cmp(const char *l, const char *r);
 void string_tolower(char *str);
 void string_toupper(char *str);
+
+#endif
 

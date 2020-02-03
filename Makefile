@@ -4,23 +4,29 @@ LDFLAGS = -lm -lz
 
 HEADERS = \
 	bst.h \
+	char.h \
+	dynamic_array_8.h \
+	dynamic_array_64.h \
+	dynamic_array_kv_32.h \
+	dynamic_array_kv_64.h \
+	file.h \
 	hash_table.h \
-	str.h
+	memory.h \
+	posting.h \
+	search.h \
+	str.h \
+	tar.h \
+	tokenizer.h \
+	tokenizer_zlib.h \
+	vbyte.h
 
 SRC = \
 	bst.c \
-	char.c \
-	dynamic_array_8.c \
-	dynamic_array_64.c \
-	dynamic_array_kv_32.c \
-	dynamic_array_kv_64.c \
 	file.c \
 	hash_table.c \
 	memory.c \
 	posting.c \
 	search.c \
-	str.c \
-	tokenizer.c \
 	tokenizer_zlib.c \
 	vbyte.c
 

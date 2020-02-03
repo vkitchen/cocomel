@@ -3,7 +3,7 @@
 
 #include "hash_table.h"
 
-static uint32_t hash(char *key)
+static inline uint32_t hash(char *key)
 	{
 	uint32_t result = 0;
 	

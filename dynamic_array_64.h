@@ -11,9 +11,28 @@ struct dynamic_array_64
 	uint64_t *store;
 	};
 
-void dynamic_array_64_init(struct dynamic_array_64 *a);
-void dynamic_array_64_append(struct dynamic_array_64 *a, uint64_t val);
-uint64_t *dynamic_array_64_back(struct dynamic_array_64 *a);
+static inline void dynamic_array_64_init(struct dynamic_array_64 *a)
+	{
+	a->capacity = 256;
+	a->length = 0;
+	a->store = malloc(a->capacity * sizeof(uint64_t));
+	}
+
+static inline void dynamic_array_64_append(struct dynamic_array_64 *a, uint64_t val)
+	{
+	if (a->length == a->capacity)
+		{
+		a->capacity *= 2;
+		a->store = realloc(a->store, a->capacity * sizeof(uint64_t));
+		}
+	a->store[a->length] = val;
+	a->length++;
+	}
+
+static inline uint64_t *dynamic_array_64_back(struct dynamic_array_64 *a)
+	{
+	return &a->store[a->length-1];
+	}
 
 #endif
 

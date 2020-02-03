@@ -4,14 +4,6 @@
 
 #include "bst.h"
 
-void bst_init(struct bst *b, struct str key, uint32_t val)
-	{
-	b->left = b->right = NULL;
-	b->key = str_dup_c(key);
-	posting_init(&b->store);
-	posting_append(&b->store, val);
-	}
-		
 void bst_insert(struct bst *b, struct str key, uint32_t val, uint32_t *length)
 	{
 	for (;;)

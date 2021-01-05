@@ -1,11 +1,9 @@
 #ifndef TOKENIZER_H
 #define TOKENIZER_H
 
-#include "fucs/fucs.h"
-
 #include "char.h"
-#include "memory.h"
 #include "str.h"
+#include "fucs.h"
 
 struct tokenizer
 	{
@@ -31,28 +29,6 @@ static inline enum token_type tokenizer_next(struct tokenizer *t, struct str buf
 		// EOF
 		if (t->index == t->length)
 			break;
-		// Doc ID
-		else if (string_prefix("<DOCNO>", &t->document[t->index]))
-			{
-			t->index += sizeof("<DOCNO>");
-
-			while(t->index < t->length && char_isspace(t->document[t->index]))
-				t->index++;
-
-			int i = 0;
-			char *buf = str_c(buffer);
-			while (i < 256 && i + t->index < t->length && t->document[t->index + i] != '<' && !char_isspace(t->document[t->index + i]))
-				{
-				buf[i] = t->document[t->index + i];
-				i++;
-				}
-			buf[i] = '\0';
-			str_resize(buffer, i);
-
-			t->index += i;
-
-			return DOCNO;
-			}
 		// Ignored tags
 		else if (t->document[t->index] == '<')
 			{

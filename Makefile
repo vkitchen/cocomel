@@ -43,13 +43,16 @@ all: index search-cli search-cgi
 # Might no longer occur now that we use index.o instead of index.cpp TODO
 # https://stackoverflow.com/questions/9145177/undefined-reference-to-gzopen-error
 index: index.o $(OBJECTS) $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ index.o $(OBJECTS) $(LDFLAGS)
+	make gen -C fucs
+	(cd fucs; ./gen)
+	make -C fucs
+	$(CC) $(CFLAGS) -o $@ index.o fucs/fucs.o $(OBJECTS) $(LDFLAGS)
 
 search-cli: search_cli.o $(OBJECTS) $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ search_cli.o $(OBJECTS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ search_cli.o fucs/fucs.o $(OBJECTS) $(LDFLAGS)
 
 search-cgi: search_cgi.o $(OBJECTS) $(HEADERS)
-	$(CC) $(CFLAGS) -o $@ search_cgi.o $(OBJECTS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ search_cgi.o fucs/fucs.o $(OBJECTS) $(LDFLAGS)
 
 clean:
 	rm -f index search-cli search-cgi $(OBJECTS) index.o search_cli.o search_cgi.o

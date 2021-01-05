@@ -109,7 +109,12 @@ int main(int argc, char **argv)
 				} while (token != END);
 			}
 		}
-	char *out_buffer = (char *)malloc(512*1024*1024);
+	char *out_buffer = (char *)malloc(256*1024*1024);
+	if (out_buffer == NULL)
+		{
+		fprintf(stderr, "Failed to allocate output buffer\n");
+		exit(1);
+		}
 	index_write("index.dat", out_buffer, &docNos, &dictionary);
 
 	return 0;

@@ -68,6 +68,9 @@ static void results_sort(struct dynamic_array_kv_64 *results)
 		}
 	}
 
+/*
+ * Okapi BM25 from Trec-3? Has some issues with numbers going negative
+ *
 static void rank(struct dynamic_array_kv_64 *posting, struct dynamic_array_kv_32 *docNos, double avgdl)
 	{
 	double wt = log2((docNos->length - posting->length + 0.5) / (posting->length + 0.5));
@@ -79,6 +82,32 @@ static void rank(struct dynamic_array_kv_64 *posting, struct dynamic_array_kv_32
 		double K = 1.2 * (0.25 + 0.75 * docLength / avgdl);
 		double w = wt * 2.2 * tf / (K + tf);
 		dynamic_array_kv_64_at(posting, i)[1] = *(uint64_t *)&w;
+		}
+	}
+*/
+
+/*
+ * Atire BM25
+ * Trotman, A., X. Jia, M. Crane, Towards an Efficient and Effective Search Engine, SIGIR 2012 Workshop on Open Source Information Retrieval, p. 40-47
+ */
+static void rank(struct dynamic_array_kv_64 *posting, struct dynamic_array_kv_32 *docNos, double avgdl)
+	{
+	// IDF = ln(N/df_t)
+	double wt = log(docNos->length / posting->length);
+	for (size_t i = 0; i < posting->length; i++)
+		{
+		size_t docId = dynamic_array_kv_64_at(posting, i)[0] - 1;
+		size_t tf = dynamic_array_kv_64_at(posting, i)[1];                   // term frequency / tf_td
+		double docLength = (size_t)dynamic_array_kv_32_at(docNos, docId)[1]; // L_d
+		//                   (k_1 + 1) * tf_td
+		// IDF * ----------------------------------------- (over)
+		//       k_1 * (1 - b + b * (L_d / L_avg)) + tf_td
+		double k1 = 0.9;
+		double b = 0.4;
+		double dividend = (k1 + 1.0) * tf;
+		double divisor = k1 * (1 - b + b * (docLength / avgdl) + tf);
+		double rsv = wt * dividend / divisor;                                // retrieval status value
+		dynamic_array_kv_64_at(posting, i)[1] = *(uint64_t *)&rsv;
 		}
 	}
 

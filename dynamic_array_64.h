@@ -1,3 +1,10 @@
+/*
+	DYNAMIC_ARRAY_64.H
+	------------------
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef DYNAMIC_ARRAY_64_H
 #define DYNAMIC_ARRAY_64_H
 

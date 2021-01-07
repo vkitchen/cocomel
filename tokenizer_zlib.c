@@ -1,6 +1,13 @@
+/*
+	TOKENIZER_ZLIB.C
+	----------------
+	Copyright (c) 2019, 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
-#include "char.h"
+#include "char_musl.h"
 #include "string.h"
 #include "tokenizer.h"
 

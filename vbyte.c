@@ -1,5 +1,11 @@
 /*
- * Copyright (C) 2005-2016 Christoph Rupp (chris@crupp.de).
+ * Code derived from that of libvbyte (https://github.com/cruppstahl/libvbyte).
+ * Changes are predominantly:
+ *   - Reformatting to match coding style of Cocomel
+ *   - Removing some optimisations as to be easier to understand
+ *
+ * Original work Copyright (C) 2005-2016 Christoph Rupp (chris@crupp.de).
+ * Modified work Copyright (C) 2018, 2019, 2021 Vaughan Kitchen
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

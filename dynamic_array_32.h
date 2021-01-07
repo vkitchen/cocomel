@@ -1,3 +1,10 @@
+/*
+	DYNAMIC_ARRAY_32.H
+	------------------
+	Copyright (c) 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef DYNAMIC_ARRAY_32_H
 #define DYNAMIC_ARRAY_32_H
 

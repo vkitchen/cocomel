@@ -1,3 +1,10 @@
+/*
+	BST.H
+	-----
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef BST_H
 #define BST_H
 

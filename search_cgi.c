@@ -1,3 +1,10 @@
+/*
+	SEARCH_CGI.C
+	------------
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include "dynamic_array_kv_32.h"

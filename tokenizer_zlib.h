@@ -1,3 +1,10 @@
+/*
+	TOKENIZER_ZLIB.H
+	----------------
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef TOKENIZER_ZLIB_H
 #define TOKENIZER_ZLIB_H
 

@@ -1,3 +1,10 @@
+/*
+	INDEX.C
+	-------
+	Copyright (c) 2018, 2019, 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #include <stdio.h>
 #include <stdint.h>
 #include "dynamic_array_kv_64.h"

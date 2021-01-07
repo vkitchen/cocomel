@@ -4,7 +4,7 @@ LDFLAGS = -lm -lz
 
 HEADERS = \
 	bst.h \
-	char.h \
+	char_musl.h \
 	dynamic_array_8.h \
 	dynamic_array_64.h \
 	dynamic_array_kv_32.h \
@@ -15,6 +15,7 @@ HEADERS = \
 	posting.h \
 	search.h \
 	str.h \
+	str_musl.h \
 	tar.h \
 	tokenizer.h \
 	tokenizer_zlib.h \

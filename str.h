@@ -1,15 +1,8 @@
-/* ctype functions taken from musl */
 /*
-		STR.H
-		-----
-		Copyright (c) 2017 Vaughan Kitchen
-		Released under the MIT license (https://opensource.org/licenses/MIT)
-*/
-/*!
-	@file
-	@brief Define a String type more useful than cstrings and helpers around that type
-	@author Vaughan Kitchen
-	@copyright 2017 Vaughan Kitchen
+	STR.H
+	-----
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
 */
 
 #ifndef STR_H
@@ -17,8 +10,10 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "char.h"
+#include "char_musl.h"
 #include "memory.h"
+
+#include "str_musl.h"
 
 struct str
 	{
@@ -48,16 +43,6 @@ static inline char *str_dup_c(struct str s)
 	return dest;
 	}
 
-/*
-	STRING_COPY()
-	-------------
-*/
-/*!
-		@brief Copies a cstring from src to dest
-		@param src [in] String to copy
-		@param dest [out] Buffer to copy to
-		@return Number of characters copied
-*/
 static inline size_t string_copy(char *dest, char *src)
 	{
 	char *at = src;
@@ -98,27 +83,6 @@ static inline int string_suffix(const char *suf, const char *str)
 		if (str[i + (str_len - suf_len)] != suf[i])
 			return 0;
 	return 1;
-	}
-
-/* also from musl */
-static inline int string_cmp(const char *l, const char *r)
-	{
-	for (; *l == *r && *l; l++, r++)
-		;
-	return *(unsigned char *)l - *(unsigned char *)r;
-	}
-
-
-static inline void string_tolower(char *str)
-	{
-	while ((*str = char_tolower(*str)))
-		++str;
-	}
-
-static inline void string_toupper(char *str)
-	{
-	while ((*str = char_toupper(*str)))
-		++str;
 	}
 
 #endif

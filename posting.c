@@ -1,3 +1,10 @@
+/*
+	POSTING.C
+	---------
+	Copyright (c) 2018-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #include <stdlib.h>
 #include <string.h>
 #include "vbyte.h"

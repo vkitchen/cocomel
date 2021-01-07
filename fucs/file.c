@@ -1,8 +1,8 @@
 /*
-		FILE.C
-		------
-		Copyright (c) 2017 Vaughan Kitchen
-		Released under the MIT license (https://opensource.org/licenses/MIT)
+	FILE.C
+	------
+	Copyright (c) 2017-2019, 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
 */
 
 #include <stdio.h>
@@ -11,10 +11,6 @@
 #include <unistd.h>
 #include "file.h"
 
-/*
-	FILE_SLURP()
-	------------
-*/
 size_t file_slurp(char const *filename, char **into)
 	{
 	FILE *fh;

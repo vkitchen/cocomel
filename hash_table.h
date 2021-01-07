@@ -1,3 +1,10 @@
+/*
+	HASH_TABLE.H
+	------------
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 

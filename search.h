@@ -1,3 +1,10 @@
+/*
+	SEARCH.H
+	--------
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef SEARCH_H
 #define SEARCH_H
 

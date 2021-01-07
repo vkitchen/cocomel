@@ -1,3 +1,10 @@
+/*
+	TAR.H
+	-----
+	Copyright (c) 2019-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef TAR_H
 #define TAR_H
 

@@ -1,3 +1,10 @@
+/*
+	POSTING.H
+	---------
+	Copyright (c) 2018-2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef POSTING_H
 #define POSTING_H
 

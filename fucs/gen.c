@@ -1,3 +1,10 @@
+/*
+	GEN.C
+	-----
+	Copyright (c) 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

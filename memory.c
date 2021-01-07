@@ -1,8 +1,8 @@
 /*
-		MEMORY.C
-		--------
-		Copyright (c) 2017 Vaughan Kitchen
-		Released under the MIT license (https://opensource.org/licenses/MIT)
+	MEMORY.C
+	--------
+	Copyright (c) 2017-2019, 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
 */
 
 #include <stdlib.h>

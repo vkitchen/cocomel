@@ -1,7 +1,14 @@
+/*
+	TOKENIZER.H
+	-----------
+	Copyright (c) 2021 Vaughan Kitchen
+	Released under the ISC license (https://opensource.org/licenses/ISC)
+*/
+
 #ifndef TOKENIZER_H
 #define TOKENIZER_H
 
-#include "char.h"
+#include "char_musl.h"
 #include "str.h"
 #include "fucs.h"
 

@@ -12,6 +12,7 @@
 
 size_t file_slurp(char const *filename, char **into);
 size_t file_size(char const *filename);
+int file_exists(char const *filename);
 
 #endif
 

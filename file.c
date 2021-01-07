@@ -42,3 +42,8 @@ size_t file_size(char const *filename)
 	stat(filename, &details);
 	return details.st_size;
 	}
+
+int file_exists(char const *filename)
+	{
+	return access(filename, F_OK) != -1;
+	}

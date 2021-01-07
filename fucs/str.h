@@ -20,26 +20,31 @@ struct str
 	char *store;
 	};
 
-static inline uint32_t str_length(struct str s)
+static inline uint32_t str_cap(struct str s)
 	{
-	return *(uint32_t *)s.store;
+	return ((uint32_t *)s.store)[0];
+	}
+
+static inline uint32_t str_len(struct str s)
+	{
+	return ((uint32_t *)s.store)[1];
 	}
 
 static inline void str_resize(struct str s, uint32_t size)
 	{
-	((uint32_t *)s.store)[0] = size;
+	((uint32_t *)s.store)[1] = size;
 	}
 
 static inline char *str_c(struct str s)
 	{
-	return &s.store[4];
+	return &s.store[2 * sizeof(uint32_t)];
 	}
 
 static inline char *str_dup_c(struct str s)
 	{
-	uint32_t len = str_length(s);
+	uint32_t len = str_len(s);
 	char *dest = malloc(len + 1);
-	memcpy(dest, &s.store[4], len + 1);
+	memcpy(dest, str_c(s), len + 1);
 	return dest;
 	}
 

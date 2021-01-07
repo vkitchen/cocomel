@@ -11,10 +11,53 @@
 #include "file.h"
 #include "search.h"
 
+void read_snippets_header(FILE *fh, struct dynamic_array_kv_32 *offsets)
+	{
+	fseek(fh, -sizeof(uint32_t), SEEK_END);
+
+	fread(&offsets->length, sizeof(uint32_t), 1, fh);
+	offsets->capacity = offsets->length;
+
+	fseek(fh, -(sizeof(uint32_t) + 2 * offsets->length * sizeof(uint32_t)), SEEK_END);
+
+	offsets->store = malloc(2 * offsets->length * sizeof(uint32_t));
+	fread(offsets->store, sizeof(uint32_t), 2 * offsets->length, fh);
+	}
+
+void print_snippet(FILE *fh, struct dynamic_array_kv_32 *offsets, size_t index)
+	{
+	size_t doc_len = dynamic_array_kv_32_at(offsets, index)[1];
+	char *doc = malloc(doc_len + 1);
+	fseek(fh, dynamic_array_kv_32_at(offsets, index)[0], SEEK_SET);
+	fread(doc, sizeof(char), doc_len, fh);
+	doc[doc_len] = '\0';
+	printf("Snippet: %.300s\n", doc);
+	}
+
 int main(void)
 	{
+	int snippets_enabled = 0;
+
 	char *index;
 	file_slurp("index.dat", &index);
+
+	if (file_exists("snippets.dat"))
+		snippets_enabled = 1;
+
+	FILE *snippets_fh;
+	struct dynamic_array_kv_32 snippet_offsets;
+
+	if (snippets_enabled)
+		{
+		snippets_fh = fopen("snippets.dat", "rb");
+		if (snippets_fh == NULL)
+			{
+			fprintf(stderr, "ERROR: Failed to open snippets.dat for reading\n");
+			exit(1);
+			}
+
+		read_snippets_header(snippets_fh, &snippet_offsets);
+		}
 
 	// Decode index
 	struct dynamic_array_kv_32 docNos;
@@ -39,6 +82,8 @@ int main(void)
 			size_t docId = dynamic_array_kv_64_at(result_list, i)[0] - 1;
 			double rsv = *(double *)&dynamic_array_kv_64_at(result_list, i)[1];
 			printf("%s %f\n", index + dynamic_array_kv_32_at(&docNos, docId)[0], rsv);
+			if (snippets_enabled)
+				print_snippet(snippets_fh, &snippet_offsets, docId);
 			}
 
 		}

@@ -56,5 +56,6 @@ search-cgi: search_cgi.o $(OBJECTS) $(HEADERS)
 	$(CC) $(CFLAGS) -o $@ search_cgi.o fucs/fucs.o $(OBJECTS) $(LDFLAGS)
 
 clean:
+	make clean -C fucs
 	rm -f index search-cli search-cgi $(OBJECTS) index.o search_cli.o search_cgi.o
 

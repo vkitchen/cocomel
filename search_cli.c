@@ -6,6 +6,7 @@
 */
 
 #include <stdio.h>
+#include "config.h"
 #include "dynamic_array_kv_32.h"
 #include "dynamic_array_kv_64.h"
 #include "file.h"
@@ -36,13 +37,15 @@ void print_snippet(FILE *fh, struct dynamic_array_kv_32 *offsets, size_t index)
 
 int main(void)
 	{
-	int snippets_enabled = 0;
 
 	char *index;
 	file_slurp("index.dat", &index);
 
-	if (file_exists("snippets.dat"))
-		snippets_enabled = 1;
+	if (!file_exists("snippets.dat"))
+		{
+		fputs("ERROR: snippets file missing\n", stderr);
+		exit(1);
+		}
 
 	FILE *snippets_fh;
 	struct dynamic_array_kv_32 snippet_offsets;

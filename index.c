@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include "config.h"
 #include "dynamic_array_64.h"
 #include "dynamic_array_kv_32.h"
 #include "dynamic_array_kv_64.h"
@@ -21,7 +22,6 @@ const char *usage = "\
 Usage: index [option] [file ...]\n\
 \n\
 Options:\n\
-  --snippets  Enable snippet support in the index\
 ";
 
 void index_write(char const *filename, char *buffer, struct dynamic_array_kv_64 *docNos, struct hash_table *dictionary)
@@ -94,19 +94,12 @@ void snippets_write(char const *filename, struct dynamic_array_64 *tokenized_doc
 
 int main(int argc, char **argv)
 	{
-	int snippets_enabled = 0;
 	int first_file_arg = 1;
 
 	if (argc < 2)
 		{
 		puts(usage);
 		return 1;
-		}
-
-	if (string_cmp(argv[1], "--snippets") == 0)
-		{
-		snippets_enabled = 1;
-		first_file_arg++;
 		}
 
 	char tok_buffer_store[512 + 2 * sizeof(uint32_t)]; // Provide underlying storage for tok_buffer

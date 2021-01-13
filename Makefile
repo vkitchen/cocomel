@@ -5,10 +5,17 @@ LDFLAGS = -lm -lz
 HEADERS = \
 	bst.h \
 	char_musl.h \
+	config.h \
 	dynamic_array_8.h \
+	dynamic_array_16.h \
+	dynamic_array_32.h \
 	dynamic_array_64.h \
+	dynamic_array_size.h \
+	dynamic_array_kv_8.h \
+	dynamic_array_kv_16.h \
 	dynamic_array_kv_32.h \
 	dynamic_array_kv_64.h \
+	dynamic_array_kv_size.h \
 	file.h \
 	hash_table.h \
 	memory.h \

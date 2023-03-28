@@ -6,6 +6,7 @@
 const std = @import("std");
 const file = @import("file.zig");
 const tokenizer = @import("tokenizer.zig");
+const hashtable = @import("hash_table.zig");
 
 const usage = \\
 \\Usage: index [file ...]
@@ -35,9 +36,13 @@ pub fn main() !void {
 	const tok = try allocator.create(tokenizer.Tokenizer);
 	tokenizer.init(tok, doc);
 
+	const dictionary = try allocator.create(hashtable.HashTable);
+	hashtable.init(dictionary);
+
 	while (true) {
 		const t = tokenizer.next(tok);
 		if (t.type == tokenizer.TokenType.eof) break;
+		try hashtable.insert(dictionary, allocator, t.token);
 		std.debug.print("Token: {s}\n", .{t.token});
 	}
 }

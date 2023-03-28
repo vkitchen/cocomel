@@ -65,7 +65,7 @@ fn hash(key: []const u8) u32
 	var result: u32 = 0;
 	
 	for (key) |c|
-		result = (c + 31 * result);
+		result = (c +% 31 *% result);
 
 	return result & (HTCAP - 1);
 	}

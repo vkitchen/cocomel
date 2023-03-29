@@ -43,6 +43,12 @@ pub fn main() !void {
 		const t = tokenizer.next(tok);
 		if (t.type == tokenizer.TokenType.eof) break;
 		try hashtable.insert(dictionary, allocator, t.token);
-		std.debug.print("Token: {s}\n", .{t.token});
 	}
+
+	const index_file = try std.fs.cwd().createFile(
+		"index.dat",
+		.{ .read = true },
+	);
+	defer index_file.close();
+	try hashtable.write(dictionary, index_file);
 }

@@ -90,3 +90,20 @@ pub fn insert(h: *HashTable, allocator: std.mem.Allocator, key: []const u8) !voi
 	else
 		try bst_insert(h.store[index].?, allocator, key);
 	}
+
+fn bst_write(file: std.fs.File, root: *BST) !void
+	{
+	try file.writeAll(root.key);
+	if (root.left != null)
+		try bst_write(file, root.left.?);
+	if (root.right != null)
+		try bst_write(file, root.right.?);
+	}
+
+pub fn write(h: *HashTable, file: std.fs.File) !void
+	{
+	var i: usize = 0;
+	while (i < HTCAP) : (i += 1)
+		if (h.store[i] != null)
+			try bst_write(file, h.store[i].?);
+	}

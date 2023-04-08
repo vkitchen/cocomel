@@ -5,9 +5,12 @@
 
 const std = @import("std");
 
-pub const TokenType = enum { docno, word, eof };
+pub const Token = struct {
+    pub const Type = enum { docno, word, eof };
 
-pub const Token = struct { token: []const u8, type: TokenType };
+    token: []const u8,
+    type: Type,
+};
 
 pub const Tokenizer = struct {
     index: usize,
@@ -40,7 +43,7 @@ pub const Tokenizer = struct {
 
                 const out = Token{
                     .token = t.doc[t.index .. t.index + i],
-                    .type = TokenType.docno,
+                    .type = Token.Type.docno,
                 };
 
                 t.index += i;
@@ -64,7 +67,7 @@ pub const Tokenizer = struct {
 
                 const out = Token{
                     .token = t.doc[t.index .. t.index + i],
-                    .type = TokenType.word,
+                    .type = Token.Type.word,
                 };
 
                 t.index += i;
@@ -81,7 +84,7 @@ pub const Tokenizer = struct {
 
                 const out = Token{
                     .token = t.doc[t.index .. t.index + i],
-                    .type = TokenType.word,
+                    .type = Token.Type.word,
                 };
 
                 t.index += i;
@@ -95,7 +98,7 @@ pub const Tokenizer = struct {
         }
         const out = Token{
             .token = t.doc[0..0],
-            .type = TokenType.eof,
+            .type = Token.Type.eof,
         };
         return out;
     }

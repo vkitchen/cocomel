@@ -5,7 +5,8 @@
 
 const std = @import("std");
 const file = @import("file.zig");
-const tokenizer = @import("tokenizer.zig");
+const Tokenizer = @import("tokenizer.zig").Tokenizer;
+const Token = @import("tokenizer.zig").Token;
 const hashtable = @import("hash_table.zig");
 
 const usage =
@@ -32,7 +33,7 @@ pub fn main() !void {
 
     const doc = try file.slurp(allocator, args[1]);
 
-    const tok = try allocator.create(tokenizer.Tokenizer);
+    const tok = try allocator.create(Tokenizer);
     tok.init(doc);
 
     const dictionary = try allocator.create(hashtable.HashTable);
@@ -41,8 +42,8 @@ pub fn main() !void {
     var doc_count: usize = 0;
     while (true) {
         const t = tok.next();
-        if (t.type == tokenizer.TokenType.eof) break;
-        if (t.type == tokenizer.TokenType.docno) {
+        if (t.type == Token.Type.eof) break;
+        if (t.type == Token.Type.docno) {
             if (doc_count > 0 and doc_count % 1000 == 0)
                 std.debug.print("{d} Documents\n", .{doc_count});
             doc_count += 1;

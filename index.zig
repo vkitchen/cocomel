@@ -33,16 +33,16 @@ pub fn main() !void {
 
     var tok = Tokenizer.init(doc);
 
+    var docs = std.ArrayList([]const u8).init(allocator);
     var dictionary = try HashTable.init(allocator);
 
-    var doc_count: usize = 0;
     while (true) {
         const t = tok.next();
         if (t.type == Token.Type.eof) break;
         if (t.type == Token.Type.docno) {
-            if (doc_count > 0 and doc_count % 1000 == 0)
-                std.debug.print("{d} Documents\n", .{doc_count});
-            doc_count += 1;
+            if (docs.items.len > 0 and docs.items.len % 1000 == 0)
+                std.debug.print("{d} Documents\n", .{docs.items.len});
+            try docs.append(t.token);
         }
         try dictionary.insert(allocator, t.token);
     }

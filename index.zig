@@ -39,11 +39,21 @@ pub fn main() !void {
 	const dictionary = try allocator.create(hashtable.HashTable);
 	hashtable.init(dictionary);
 
+	var doc_count: usize = 0;
 	while (true) {
 		const t = tokenizer.next(tok);
 		if (t.type == tokenizer.TokenType.eof) break;
+		if (t.type == tokenizer.TokenType.docno)
+			{
+			if (doc_count > 0 and doc_count % 1000 == 0)
+				std.debug.print("{d} Documents\n", .{doc_count});
+			doc_count += 1;
+			}
 		try hashtable.insert(dictionary, allocator, t.token);
 	}
+
+	std.debug.print("{s}\n", .{"Finished indexing"});
+	std.debug.print("{s}\n", .{"Writing indexing"});
 
 	const index_file = try std.fs.cwd().createFile(
 		"index.dat",

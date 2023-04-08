@@ -29,8 +29,6 @@ pub fn main() !void {
         return;
     }
 
-    std.debug.print("{s} {s}\n", .{ args[0], args[1] });
-
     const doc = try file.slurp(allocator, args[1]);
 
     var tok = Tokenizer.init(doc);
@@ -50,8 +48,7 @@ pub fn main() !void {
         try hashtable.insert(dictionary, allocator, t.token);
     }
 
-    std.debug.print("{s}\n", .{"Finished indexing"});
-    std.debug.print("{s}\n", .{"Writing indexing"});
+    std.debug.print("{s}\n", .{"Writing index..."});
 
     const index_file = try std.fs.cwd().createFile("index.dat", .{});
     defer index_file.close();

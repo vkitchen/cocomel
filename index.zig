@@ -33,8 +33,7 @@ pub fn main() !void {
 
     const doc = try file.slurp(allocator, args[1]);
 
-    const tok = try allocator.create(Tokenizer);
-    tok.init(doc);
+    var tok = Tokenizer.init(doc);
 
     const dictionary = try allocator.create(hashtable.HashTable);
     hashtable.init(dictionary);

@@ -16,7 +16,11 @@ pub const Tokenizer = struct {
     index: usize,
     doc: []const u8,
 
-    pub fn init(t: *Tokenizer, doc: []const u8) void {
+    pub fn init(doc: []const u8) Tokenizer {
+        return .{ .index = 0, .doc = doc };
+    }
+
+    pub fn reinit(t: *Tokenizer, doc: []const u8) void {
         t.index = 0;
         t.doc = doc;
     }

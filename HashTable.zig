@@ -61,8 +61,10 @@ pub fn insert(h: *@This(), allocator: std.mem.Allocator, key: []const u8, doc_id
 
     var i = hash(key, h.cap);
     while (h.store[i] != null) {
-        if (std.mem.eql(u8, h.store[i].?.term, key))
+        if (std.mem.eql(u8, h.store[i].?.term, key)) {
+            try h.store[i].?.ids.append(doc_id);
             return;
+        }
         i = i + 1 & (h.cap - 1);
     }
 

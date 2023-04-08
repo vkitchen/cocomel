@@ -7,7 +7,7 @@ const std = @import("std");
 const file = @import("file.zig");
 const Tokenizer = @import("tokenizer.zig").Tokenizer;
 const Token = @import("tokenizer.zig").Token;
-const hashtable = @import("hash_table.zig");
+const HashTable = @import("HashTable.zig");
 
 const usage =
     \\
@@ -33,8 +33,7 @@ pub fn main() !void {
 
     var tok = Tokenizer.init(doc);
 
-    const dictionary = try allocator.create(hashtable.HashTable);
-    hashtable.init(dictionary);
+    var dictionary = try HashTable.init(allocator);
 
     var doc_count: usize = 0;
     while (true) {
@@ -45,12 +44,12 @@ pub fn main() !void {
                 std.debug.print("{d} Documents\n", .{doc_count});
             doc_count += 1;
         }
-        try hashtable.insert(dictionary, allocator, t.token);
+        try dictionary.insert(allocator, t.token);
     }
 
     std.debug.print("{s}\n", .{"Writing index..."});
 
     const index_file = try std.fs.cwd().createFile("index.dat", .{});
     defer index_file.close();
-    try hashtable.write(dictionary, index_file);
+    try dictionary.write(index_file);
 }

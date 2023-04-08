@@ -23,11 +23,7 @@ pub fn init(allocator: std.mem.Allocator) !@This() {
     h.cap = 1 << 16;
     h.len = 0;
     h.store = try allocator.alloc(?[]u8, h.cap);
-
-    var i: u32 = 0;
-    while (i < h.cap) : (i += 1)
-        h.store[i] = null;
-
+    std.mem.set(?[]const u8, h.store, null);
     return h;
 }
 
@@ -35,12 +31,9 @@ fn expand(h: *@This(), allocator: std.mem.Allocator) !void {
     std.debug.print("{s}\n", .{"Expanding table"});
     var new_cap = h.cap << 1;
     var new_store = try allocator.alloc(?[]const u8, new_cap);
+    std.mem.set(?[]const u8, new_store, null);
 
     var i: u32 = 0;
-    while (i < new_cap) : (i += 1)
-        new_store[i] = null;
-
-    i = 0;
     while (i < h.cap) : (i += 1) {
         if (h.store[i] != null) {
             var i_ = hash(h.store[i].?, new_cap);

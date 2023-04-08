@@ -53,10 +53,7 @@ pub fn main() !void {
     std.debug.print("{s}\n", .{"Finished indexing"});
     std.debug.print("{s}\n", .{"Writing indexing"});
 
-    const index_file = try std.fs.cwd().createFile(
-        "index.dat",
-        .{ .read = true },
-    );
+    const index_file = try std.fs.cwd().createFile("index.dat", .{});
     defer index_file.close();
     try hashtable.write(dictionary, index_file);
 }

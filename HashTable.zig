@@ -22,7 +22,7 @@ pub fn init(allocator: std.mem.Allocator) !@This() {
     var h: @This() = undefined;
     h.cap = 1 << 16;
     h.len = 0;
-    h.store = try allocator.alloc(?[]u8, h.cap);
+    h.store = try allocator.alloc(?[]const u8, h.cap);
     std.mem.set(?[]const u8, h.store, null);
     return h;
 }

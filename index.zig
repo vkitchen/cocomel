@@ -44,12 +44,12 @@ pub fn main() !void {
                 std.debug.print("{d} Documents\n", .{docs.items.len});
             try docs.append(t.token);
         }
-        try dictionary.insert(allocator, t.token);
+        try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len));
     }
 
     std.debug.print("{s}\n", .{"Writing index..."});
 
-    const index_file = try std.fs.cwd().createFile("index.dat", .{});
-    defer index_file.close();
-    try dictionary.write(index_file);
+    // const index_file = try std.fs.cwd().createFile("index.dat", .{});
+    // defer index_file.close();
+    // try dictionary.write(index_file);
 }

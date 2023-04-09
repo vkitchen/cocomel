@@ -78,41 +78,59 @@ pub const HashTable = struct {
         h.len += 1;
     }
 
-    pub fn write(h: *Self, out: anytype, bytes_written: u32) !u32 {
-        var file_offset = bytes_written;
+    pub fn write(h: *Self, out: anytype, bytes_written: *u32) !u32 {
         var i: u32 = 0;
 
         // Write contents
         while (i < h.cap) : (i += 1) {
             if (h.store[i] != null) {
                 const posting = h.store[i].?;
-                const term_offset = file_offset;
 
+                const term_offset = bytes_written.*;
+                try out.writeIntNative(u32, @truncate(u32, posting.term.len));
+                bytes_written.* += @sizeOf(u32);
                 try out.writeAll(posting.term);
-                file_offset += @truncate(u32, posting.term.len);
+                bytes_written.* += @truncate(u32, posting.term.len);
 
-                const ids_offset = file_offset;
+                const ids_offset = bytes_written.*;
                 try out.writeIntNative(u32, @truncate(u32, posting.ids.items.len));
-                file_offset += @sizeOf(u32);
+                bytes_written.* += @sizeOf(u32);
                 for (posting.ids.items) |id| {
                     try out.writeIntNative(u32, id);
-                    file_offset += @sizeOf(u32);
+                    bytes_written.* += @sizeOf(u32);
                 }
 
                 try out.writeIntNative(u32, term_offset);
                 try out.writeIntNative(u32, ids_offset);
-                h.store[i] = @intToPtr(?*Posting, file_offset);
-                file_offset += @sizeOf(u32) * 2;
+                h.store[i] = @intToPtr(*Posting, bytes_written.*);
+                bytes_written.* += @sizeOf(u32) * 2;
             }
         }
 
         // Write table
-        const table_offset = file_offset;
+        const table_offset = bytes_written.*;
+        try out.writeIntNative(u32, h.cap);
+        bytes_written.* += @sizeOf(u32);
+
         i = 0;
         while (i < h.cap) : (i += 1) {
             try out.writeIntNative(u32, @truncate(u32, @ptrToInt(h.store[i].?)));
+            bytes_written.* += @sizeOf(u32);
         }
 
         return table_offset;
     }
 };
+
+pub fn find(index: []const u8, offset: u32, key: []const u8) []const u8 {
+    const cap = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
+    const table = offset + @sizeOf(u32);
+    const posting_offset = table + hash(key, cap) * @sizeOf(u32);
+
+    const posting = std.mem.bytesToValue(u32, index[posting_offset .. posting_offset + @sizeOf(u32)][0..4]);
+    // const ids_offset = std.mem.bytesToValue(u32, index[posting_offset + 4 .. posting_offset + 8][0..4]);
+    const term = std.mem.bytesToValue(u32, index[posting .. posting + @sizeOf(u32)][0..4]);
+    const term_length = std.mem.bytesToValue(u32, index[term .. term + @sizeOf(u32)][0..4]);
+    const term_string = term + @sizeOf(u32);
+    return index[term_string .. term_string + term_length];
+}

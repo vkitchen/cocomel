@@ -75,17 +75,21 @@ pub fn main() !void {
     // Document IDs array
     const docs_offset = bytes_written;
     try out.writeIntNative(u32, @truncate(u32, offsets.items.len));
+    bytes_written += @sizeOf(u32);
     for (offsets.items) |o| {
         try out.writeIntNative(u32, o);
         bytes_written += @sizeOf(u32);
     }
 
     // Dictionary
-    const dictionary_offset = try dictionary.write(out, bytes_written);
+    const dictionary_offset = try dictionary.write(out, &bytes_written);
 
     // Metadata
     try out.writeIntNative(u32, docs_offset);
     try out.writeIntNative(u32, dictionary_offset);
+    bytes_written += 2 * @sizeOf(u32);
 
     try buf.flush();
+
+    std.debug.print("Wrote index of size {d}\n", .{bytes_written});
 }

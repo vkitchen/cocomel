@@ -17,7 +17,7 @@ fn ten_ids(index: []const u8, offset: u32, ids: [11]u32) [10][]const u8 {
 
     var i: u32 = 1;
     while (i < ids[0] + 1) : (i += 1) {
-        const stride = (ids[i] - 1) * @sizeOf(u32); // TODO why -1?
+        const stride = ids[i] * @sizeOf(u32);
         const name_offset = std.mem.bytesToValue(u32, index[docs_start + stride .. docs_start + stride + @sizeOf(u32)][0..4]);
         const name_length = std.mem.bytesToValue(u32, index[name_offset .. name_offset + @sizeOf(u32)][0..4]);
         const name_start = name_offset + @sizeOf(u32);

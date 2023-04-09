@@ -46,7 +46,9 @@ pub fn main() !void {
                 std.debug.print("{d} Documents\n", .{docs.items.len});
             try docs.append(t.token);
         }
-        try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len));
+        if (docs.items.len == 0)
+            continue;
+        try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
     }
 
     // Write index

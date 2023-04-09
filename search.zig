@@ -27,5 +27,7 @@ pub fn main() !void {
     var input = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
     std.debug.print("Searching {s}\n", .{input.?});
-    std.debug.print("Result {s}\n", .{hashTable.find(index, hash_offset, input.?)});
+    var result = hashTable.find(index, hash_offset, input.?);
+    if (result != null)
+        std.debug.print("Result {s}\n", .{result.?});
 }

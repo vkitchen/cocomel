@@ -122,12 +122,14 @@ pub const HashTable = struct {
     }
 };
 
-pub fn find(index: []const u8, offset: u32, key: []const u8) []const u8 {
+pub fn find(index: []const u8, offset: u32, key: []const u8) ?[]const u8 {
     const cap = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
     const table = offset + @sizeOf(u32);
     const posting_offset = table + hash(key, cap) * @sizeOf(u32);
 
     const posting = std.mem.bytesToValue(u32, index[posting_offset .. posting_offset + @sizeOf(u32)][0..4]);
+    if (posting == 0)
+        return null;
     // const ids_offset = std.mem.bytesToValue(u32, index[posting_offset + 4 .. posting_offset + 8][0..4]);
     const term = std.mem.bytesToValue(u32, index[posting .. posting + @sizeOf(u32)][0..4]);
     const term_length = std.mem.bytesToValue(u32, index[term .. term + @sizeOf(u32)][0..4]);

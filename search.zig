@@ -28,6 +28,13 @@ pub fn main() !void {
 
     std.debug.print("Searching {s}\n", .{input.?});
     var result = hashTable.find(index, hash_offset, input.?);
-    if (result != null)
-        std.debug.print("Result {s}\n", .{result.?});
+    if (result != null) {
+        std.debug.print("Result count {d}\n", .{result.?[0]});
+        var i: u32 = 1;
+        while (i < result.?[0]) : (i += 1) {
+            std.debug.print("Result {d}: {d}\n", .{ i, result.?[i] });
+        }
+    } else {
+        std.debug.print("{s}\n", .{"No results..."});
+    }
 }

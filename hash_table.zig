@@ -122,17 +122,40 @@ pub const HashTable = struct {
     }
 };
 
-pub fn find(index: []const u8, offset: u32, key: []const u8) ?[]const u8 {
+fn top10(index: []const u8, offset: u32) [11]u32 {
+    const ids_offset = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
+    const ids_len = std.mem.bytesToValue(u32, index[ids_offset .. ids_offset + @sizeOf(u32)][0..4]);
+    std.debug.print("IDS len {d}\n", .{ids_len});
+    var out: [11]u32 = undefined;
+    out[0] = std.math.min(10, ids_len);
+
+    var i: u32 = 0;
+    while (i < out[0]) : (i += 1) {
+        const stride = (i + 1) * @sizeOf(u32);
+        out[i + 1] = std.mem.bytesToValue(u32, index[ids_offset + stride .. ids_offset + stride + @sizeOf(u32)][0..4]);
+    }
+
+    return out;
+}
+
+pub fn find(index: []const u8, offset: u32, key: []const u8) ?[11]u32 {
     const cap = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
     const table = offset + @sizeOf(u32);
-    const posting_offset = table + hash(key, cap) * @sizeOf(u32);
 
-    const posting = std.mem.bytesToValue(u32, index[posting_offset .. posting_offset + @sizeOf(u32)][0..4]);
-    if (posting == 0)
-        return null;
-    // const ids_offset = std.mem.bytesToValue(u32, index[posting_offset + 4 .. posting_offset + 8][0..4]);
-    const term = std.mem.bytesToValue(u32, index[posting .. posting + @sizeOf(u32)][0..4]);
-    const term_length = std.mem.bytesToValue(u32, index[term .. term + @sizeOf(u32)][0..4]);
-    const term_string = term + @sizeOf(u32);
-    return index[term_string .. term_string + term_length];
+    var i = hash(key, cap);
+    while (true) {
+        const posting_offset = table + i * @sizeOf(u32);
+
+        const posting = std.mem.bytesToValue(u32, index[posting_offset .. posting_offset + @sizeOf(u32)][0..4]);
+        if (posting == 0)
+            return null;
+        const term_store = std.mem.bytesToValue(u32, index[posting .. posting + @sizeOf(u32)][0..4]);
+        const term_length = std.mem.bytesToValue(u32, index[term_store .. term_store + @sizeOf(u32)][0..4]);
+        const term_start = term_store + @sizeOf(u32);
+        const term = index[term_start .. term_start + term_length];
+        if (std.mem.eql(u8, term, key))
+            return top10(index, posting + @sizeOf(u32));
+
+        i = i + 1 & (cap - 1);
+    }
 }

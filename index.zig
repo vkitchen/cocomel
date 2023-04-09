@@ -7,7 +7,7 @@ const std = @import("std");
 const file = @import("file.zig");
 const Tokenizer = @import("tokenizer.zig").Tokenizer;
 const Token = @import("tokenizer.zig").Token;
-const HashTable = @import("HashTable.zig");
+const HashTable = @import("hash_table.zig").HashTable;
 
 const usage =
     \\

@@ -55,15 +55,18 @@ pub fn main() !void {
     const index_file = try std.fs.cwd().createFile("index.dat", .{});
     defer index_file.close();
 
+    var buf = std.io.bufferedWriter(index_file.writer());
+    var out = buf.writer();
+
     // Header
-    try index_file.writer().writeAll(file_format);
+    try out.writeAll(file_format);
     var bytes_written: u32 = file_format.len;
 
     // Document ID strings
     var offsets = std.ArrayList(u32).init(allocator); // TODO we don't want this intermediate
     for (docs.items) |d| {
-        try index_file.writer().writeIntNative(u32, @truncate(u32, d.len));
-        try index_file.writer().writeAll(d);
+        try out.writeIntNative(u32, @truncate(u32, d.len));
+        try out.writeAll(d);
         try offsets.append(bytes_written);
         bytes_written += @sizeOf(u32);
         bytes_written += @truncate(u32, d.len);
@@ -71,16 +74,18 @@ pub fn main() !void {
 
     // Document IDs array
     const docs_offset = bytes_written;
-    try index_file.writer().writeIntNative(u32, @truncate(u32, offsets.items.len));
+    try out.writeIntNative(u32, @truncate(u32, offsets.items.len));
     for (offsets.items) |o| {
-        try index_file.writer().writeIntNative(u32, o);
+        try out.writeIntNative(u32, o);
         bytes_written += @sizeOf(u32);
     }
 
     // Dictionary
-    const dictionary_offset = try dictionary.write(index_file, bytes_written);
+    const dictionary_offset = try dictionary.write(out, bytes_written);
 
     // Metadata
-    try index_file.writer().writeIntNative(u32, docs_offset);
-    try index_file.writer().writeIntNative(u32, dictionary_offset);
+    try out.writeIntNative(u32, docs_offset);
+    try out.writeIntNative(u32, dictionary_offset);
+
+    try buf.flush();
 }

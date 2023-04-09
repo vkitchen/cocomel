@@ -65,6 +65,8 @@ pub const HashTable = struct {
         var i = hash(key, h.cap);
         while (h.store[i] != null) {
             if (std.mem.eql(u8, h.store[i].?.term, key)) {
+                if (h.store[i].?.ids.items[h.store[i].?.ids.items.len - 1] == doc_id)
+                    return;
                 try h.store[i].?.ids.append(doc_id);
                 return;
             }

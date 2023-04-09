@@ -127,7 +127,6 @@ pub const HashTable = struct {
 fn top10(index: []const u8, offset: u32) [11]u32 {
     const ids_offset = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
     const ids_len = std.mem.bytesToValue(u32, index[ids_offset .. ids_offset + @sizeOf(u32)][0..4]);
-    std.debug.print("IDS len {d}\n", .{ids_len});
     var out: [11]u32 = undefined;
     out[0] = std.math.min(10, ids_len);
 

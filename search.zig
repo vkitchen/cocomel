@@ -31,7 +31,7 @@ pub fn main() !void {
     if (result != null) {
         std.debug.print("Result count {d}\n", .{result.?[0]});
         var i: u32 = 1;
-        while (i < result.?[0]) : (i += 1) {
+        while (i < result.?[0] + 1) : (i += 1) {
             std.debug.print("Result {d}: {d}\n", .{ i, result.?[i] });
         }
     } else {

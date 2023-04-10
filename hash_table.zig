@@ -8,6 +8,7 @@ const std = @import("std");
 const Posting = struct {
     term: []const u8,
     ids: std.ArrayList(u32),
+    freqs: std.ArrayList(u8),
 };
 
 fn hash(key: []const u8, cap: u32) u32 {
@@ -65,18 +66,28 @@ pub const HashTable = struct {
         var i = hash(key, h.cap);
         while (h.store[i] != null) {
             if (std.mem.eql(u8, h.store[i].?.term, key)) {
-                if (h.store[i].?.ids.items[h.store[i].?.ids.items.len - 1] == doc_id)
+                if (h.store[i].?.ids.items[h.store[i].?.ids.items.len - 1] == doc_id) {
+                    if (h.store[i].?.freqs.items[h.store[i].?.freqs.items.len - 1] == 255)
+                        return;
+                    h.store[i].?.freqs.items[h.store[i].?.freqs.items.len - 1] += 1;
                     return;
+                }
                 try h.store[i].?.ids.append(doc_id);
+                try h.store[i].?.freqs.append(1);
                 return;
             }
             i = i + 1 & (h.cap - 1);
         }
 
         h.store[i] = try allocator.create(Posting);
-        h.store[i].?.ids = std.ArrayList(u32).init(allocator);
         h.store[i].?.term = key;
+
+        h.store[i].?.ids = std.ArrayList(u32).init(allocator);
         try h.store[i].?.ids.append(doc_id);
+
+        h.store[i].?.freqs = std.ArrayList(u8).init(allocator);
+        try h.store[i].?.freqs.append(1);
+
         h.len += 1;
     }
 
@@ -102,10 +113,19 @@ pub const HashTable = struct {
                     bytes_written.* += @sizeOf(u32);
                 }
 
+                const freqs_offset = bytes_written.*;
+                try out.writeIntNative(u32, @truncate(u32, posting.freqs.items.len));
+                bytes_written.* += @sizeOf(u32);
+                for (posting.freqs.items) |freq| {
+                    try out.writeIntNative(u8, freq);
+                    bytes_written.* += @sizeOf(u8);
+                }
+
                 try out.writeIntNative(u32, term_offset);
                 try out.writeIntNative(u32, ids_offset);
+                try out.writeIntNative(u32, freqs_offset);
                 h.store[i] = @intToPtr(*Posting, bytes_written.*);
-                bytes_written.* += @sizeOf(u32) * 2;
+                bytes_written.* += @sizeOf(u32) * 3;
             }
         }
 
@@ -119,6 +139,8 @@ pub const HashTable = struct {
             try out.writeIntNative(u32, @truncate(u32, @ptrToInt(h.store[i].?)));
             bytes_written.* += @sizeOf(u32);
         }
+
+        std.debug.print("Terms count {d}\n", .{h.len});
 
         return table_offset;
     }

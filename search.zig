@@ -7,25 +7,14 @@ const std = @import("std");
 const file = @import("file.zig");
 const hashTable = @import("hash_table.zig");
 
-fn ten_ids(index: []const u8, offset: u32, ids: [11]u32) [10][]const u8 {
-    var out: [10][]const u8 = undefined;
-
-    const docs_length = std.mem.bytesToValue(u32, index[offset .. offset + 4][0..4]);
+fn name(index: []const u8, offset: u32, doc_id: u32) []const u8 {
     const docs_start = offset + @sizeOf(u32);
 
-    std.debug.print("No. docs {d}\n", .{docs_length});
-
-    var i: u32 = 1;
-    while (i < ids[0] + 1) : (i += 1) {
-        const stride = ids[i] * @sizeOf(u32);
-        const name_offset = std.mem.bytesToValue(u32, index[docs_start + stride .. docs_start + stride + @sizeOf(u32)][0..4]);
-        const name_length = std.mem.bytesToValue(u32, index[name_offset .. name_offset + @sizeOf(u32)][0..4]);
-        const name_start = name_offset + @sizeOf(u32);
-        const name = index[name_start .. name_start + name_length];
-        out[i - 1] = name;
-    }
-
-    return out;
+    const stride = doc_id * @sizeOf(u32);
+    const name_offset = std.mem.bytesToValue(u32, index[docs_start + stride .. docs_start + stride + @sizeOf(u32)][0..4]);
+    const name_length = std.mem.bytesToValue(u32, index[name_offset .. name_offset + @sizeOf(u32)][0..4]);
+    const name_start = name_offset + @sizeOf(u32);
+    return index[name_start .. name_start + name_length];
 }
 
 pub fn main() !void {
@@ -41,6 +30,16 @@ pub fn main() !void {
     const docs_offset = std.mem.bytesToValue(u32, index[index.len - 8 .. index.len - 4][0..4]);
     const hash_offset = std.mem.bytesToValue(u32, index[index.len - 4 .. index.len][0..4]);
 
+    const docs_count = std.mem.bytesToValue(u32, index[docs_offset .. docs_offset + 4][0..4]);
+    std.debug.print("No. docs {d}\n", .{docs_count});
+
+    var results = try allocator.alloc(hashTable.Result, docs_count);
+    var i: u32 = 0;
+    while (i < docs_count) : (i += 1) {
+        results[i].doc_id = i;
+        results[i].score = 0;
+    }
+
     std.debug.print("{s}", .{"Query> "});
     const stdin = std.io.getStdIn().reader();
 
@@ -48,15 +47,12 @@ pub fn main() !void {
     var input = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
     std.debug.print("Searching {s}\n", .{input.?});
-    var result = hashTable.find(index, hash_offset, input.?);
-    if (result != null) {
-        std.debug.print("Result count {d}\n", .{result.?[0]});
-        var names = ten_ids(index, docs_offset, result.?);
-        var i: u32 = 1;
-        while (i < result.?[0] + 1) : (i += 1) {
-            std.debug.print("Result {d}: {s}\n", .{ i, names[i - 1] });
+    hashTable.find(index, hash_offset, input.?, results);
+    std.debug.print("Results: {s}\n", .{""});
+    i = 0;
+    while (i < docs_count) : (i += 1) {
+        if (results[i].score > 0) {
+            std.debug.print("Result: {s}. Score: {d}\n", .{ name(index, docs_offset, results[i].doc_id), results[i].score });
         }
-    } else {
-        std.debug.print("{s}\n", .{"No results..."});
     }
 }

@@ -6,6 +6,9 @@
 const std = @import("std");
 const file = @import("file.zig");
 const hashTable = @import("hash_table.zig");
+const tokenizer = @import("tokenizer.zig");
+const QueryTokenizer = tokenizer.QueryTokenizer;
+const Token = tokenizer.Token;
 
 fn name(index: []const u8, offset: u32, doc_id: u32) []const u8 {
     const docs_start = offset + @sizeOf(u32);
@@ -47,18 +50,33 @@ pub fn main() !void {
     std.debug.print("{s}", .{"Query> "});
     const stdin = std.io.getStdIn().reader();
 
-    var buf: [10]u8 = undefined;
+    var buf: [100]u8 = undefined;
     var input = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
-    std.debug.print("Searching {s}\n", .{input.?});
-    hashTable.find(index, hash_offset, input.?, results);
+    var tok = QueryTokenizer.init(input.?);
+
+    while (true) {
+        const t = tok.next();
+        if (t.type == Token.Type.eof) break;
+        hashTable.find(index, hash_offset, t.token, results);
+    }
+
+    std.debug.print("Searching: {s}\n", .{input.?});
     std.sort.sort(hashTable.Result, results, {}, cmpResults);
 
-    std.debug.print("Results: {s}\n", .{""});
+    var results_count: u32 = 0;
     i = 0;
     while (i < docs_count) : (i += 1) {
-        if (results[i].score > 0) {
-            std.debug.print("Result: {s}. Score: {d}\n", .{ name(index, docs_offset, results[i].doc_id), results[i].score });
-        }
+        if (results[i].score == 0)
+            break;
+
+        results_count += 1;
+    }
+
+    std.debug.print("Top 10 Results ({d} total):\n", .{results_count});
+
+    i = 0;
+    while (i < std.math.min(10, results_count)) : (i += 1) {
+        std.debug.print("{s} Score: {d}\n", .{ name(index, docs_offset, results[i].doc_id), results[i].score });
     }
 }

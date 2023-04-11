@@ -17,6 +17,10 @@ fn name(index: []const u8, offset: u32, doc_id: u32) []const u8 {
     return index[name_start .. name_start + name_length];
 }
 
+fn cmpResults(context: void, a: hashTable.Result, b: hashTable.Result) bool {
+    return std.sort.desc(u32)(context, a.score, b.score);
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -48,6 +52,8 @@ pub fn main() !void {
 
     std.debug.print("Searching {s}\n", .{input.?});
     hashTable.find(index, hash_offset, input.?, results);
+    std.sort.sort(hashTable.Result, results, {}, cmpResults);
+
     std.debug.print("Results: {s}\n", .{""});
     i = 0;
     while (i < docs_count) : (i += 1) {

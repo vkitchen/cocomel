@@ -37,7 +37,6 @@ pub const HashTable = struct {
     }
 
     fn expand(h: *Self, allocator: std.mem.Allocator) !void {
-        std.debug.print("{s}\n", .{"Expanding table"});
         var new_cap = h.cap << 1;
         var new_store = try allocator.alloc(?*Posting, new_cap);
         std.mem.set(?*Posting, new_store, null);
@@ -56,7 +55,6 @@ pub const HashTable = struct {
         allocator.free(h.store);
         h.cap = new_cap;
         h.store = new_store;
-        std.debug.print("{s}\n", .{"Expanded"});
     }
 
     pub fn insert(h: *Self, allocator: std.mem.Allocator, key: []const u8, doc_id: u32) !void {

@@ -42,7 +42,7 @@ pub fn main() !void {
         const t = tok.next();
         if (t.type == Token.Type.eof) break;
         if (t.type == Token.Type.docno) {
-            if (docs.items.len > 0 and docs.items.len % 1000 == 0)
+            if (docs.items.len > 0 and docs.items.len % 10000 == 0)
                 std.debug.print("{d} Documents\n", .{docs.items.len});
             try docs.append(t.token);
         }

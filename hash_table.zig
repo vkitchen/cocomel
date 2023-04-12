@@ -6,7 +6,7 @@
 const std = @import("std");
 
 const Posting = struct {
-    term: []const u8,
+    term: []u8,
     ids: std.ArrayList(u32),
     freqs: std.ArrayList(u8),
 };
@@ -75,7 +75,8 @@ pub const HashTable = struct {
         }
 
         h.store[i] = try allocator.create(Posting);
-        h.store[i].?.term = key;
+        h.store[i].?.term = try allocator.alloc(u8, key.len);
+        std.mem.copy(u8, h.store[i].?.term, key);
 
         h.store[i].?.ids = std.ArrayList(u32).init(allocator);
         try h.store[i].?.ids.append(doc_id);

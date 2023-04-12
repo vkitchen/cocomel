@@ -38,13 +38,15 @@ pub fn main() !void {
     var docs = std.ArrayList([]const u8).init(allocator);
     var dictionary = try HashTable.init(allocator);
 
+    var buffer: [100]u8 = undefined;
     while (true) {
-        const t = tok.next();
+        const t = tok.next(&buffer);
         if (t.type == Token.Type.eof) break;
         if (t.type == Token.Type.docno) {
             if (docs.items.len > 0 and docs.items.len % 10000 == 0)
                 std.debug.print("{d} Documents\n", .{docs.items.len});
             try docs.append(t.token);
+            continue;
         }
         if (docs.items.len == 0)
             continue;

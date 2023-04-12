@@ -98,7 +98,7 @@ pub const Tokenizer = struct {
         t.doc = doc;
     }
 
-    pub fn next(t: *Self) Token {
+    pub fn next(t: *Self, buffer: []u8) Token {
         while (true) {
             // Whitespace
             while (t.index < t.doc.len and std.ascii.isWhitespace(t.doc[t.index])) {
@@ -107,14 +107,16 @@ pub const Tokenizer = struct {
             // EOF
             if (t.index == t.doc.len) {
                 break;
-            } else if (std.mem.startsWith(u8, t.doc[t.index..], "<DOCNO>")) {
+            }
+            // Doc ID
+            else if (std.mem.startsWith(u8, t.doc[t.index..], "<DOCNO>")) {
                 t.index += std.mem.len("<DOCNO>");
 
                 while (t.index < t.doc.len and std.ascii.isWhitespace(t.doc[t.index]))
                     t.index += 1;
 
                 var i: usize = 0;
-                while (i < 256 and i + t.index < t.doc.len and t.doc[t.index + i] != '<' and !std.ascii.isWhitespace(t.doc[t.index + i])) {
+                while (i + t.index < t.doc.len and t.doc[t.index + i] != '<' and !std.ascii.isWhitespace(t.doc[t.index + i])) {
                     i += 1;
                 }
 
@@ -138,12 +140,13 @@ pub const Tokenizer = struct {
             // Number
             else if (std.ascii.isDigit(t.doc[t.index])) {
                 var i: usize = 0;
-                while (i < 256 and i + t.index < t.doc.len and std.ascii.isDigit(t.doc[t.index + i])) {
+                while (i < buffer.len and i + t.index < t.doc.len and std.ascii.isDigit(t.doc[t.index + i])) {
+                    buffer[i] = t.doc[t.index + i];
                     i += 1;
                 }
 
                 const out = Token{
-                    .token = t.doc[t.index .. t.index + i],
+                    .token = buffer[0..i],
                     .type = Token.Type.word,
                 };
 
@@ -154,13 +157,13 @@ pub const Tokenizer = struct {
             // Word
             else if (std.ascii.isAlpha(t.doc[t.index])) {
                 var i: usize = 0;
-                while (i < 256 and i + t.index < t.doc.len and std.ascii.isAlpha(t.doc[t.index + i])) {
-                    // buffer[i] = char_tolower(t.doc[t.index + i]);
+                while (i < buffer.len and i + t.index < t.doc.len and std.ascii.isAlpha(t.doc[t.index + i])) {
+                    buffer[i] = std.ascii.toLower(t.doc[t.index + i]);
                     i += 1;
                 }
 
                 const out = Token{
-                    .token = t.doc[t.index .. t.index + i],
+                    .token = buffer[0..i],
                     .type = Token.Type.word,
                 };
 

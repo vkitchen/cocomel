@@ -29,7 +29,7 @@ pub const HashTable = struct {
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         var h: Self = undefined;
-        h.cap = 1 << 16;
+        h.cap = 1 << 19;
         h.len = 0;
         h.store = try allocator.alloc(?*Posting, h.cap);
         std.mem.set(?*Posting, h.store, null);

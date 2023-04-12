@@ -65,9 +65,7 @@ pub const HashTable = struct {
         while (h.store[i] != null) {
             if (std.mem.eql(u8, h.store[i].?.term, key)) {
                 if (h.store[i].?.ids.items[h.store[i].?.ids.items.len - 1] == doc_id) {
-                    if (h.store[i].?.freqs.items[h.store[i].?.freqs.items.len - 1] == 255)
-                        return;
-                    h.store[i].?.freqs.items[h.store[i].?.freqs.items.len - 1] += 1;
+                    h.store[i].?.freqs.items[h.store[i].?.freqs.items.len - 1] +|= 1;
                     return;
                 }
                 try h.store[i].?.ids.append(doc_id);

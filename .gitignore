@@ -1,10 +1,6 @@
-vgcore.*
 *.txt
 *.xml
 *.tar.gz
 *.dat
-*.o
 index
 search
-search-cgi
-search-cli

@@ -8,7 +8,7 @@ const std = @import("std");
 pub const Token = struct {
     pub const Type = enum { docno, word, eof };
 
-    token: []const u8,
+    token: []u8,
     type: Type,
 };
 
@@ -16,9 +16,9 @@ pub const QueryTokenizer = struct {
     const Self = @This();
 
     index: usize,
-    doc: []const u8,
+    doc: []u8,
 
-    pub fn init(doc: []const u8) Self {
+    pub fn init(doc: []u8) Self {
         return .{ .index = 0, .doc = doc };
     }
 
@@ -87,9 +87,9 @@ pub const Tokenizer = struct {
     const Self = @This();
 
     index: usize,
-    doc: []const u8,
+    doc: []u8,
 
-    pub fn init(doc: []const u8) Self {
+    pub fn init(doc: []u8) Self {
         return .{ .index = 0, .doc = doc };
     }
 

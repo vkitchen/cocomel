@@ -35,7 +35,7 @@ pub fn main() !void {
 
     var tok = Tokenizer.init(doc);
 
-    var docs = std.ArrayList([]const u8).init(allocator);
+    var docs = std.ArrayList([]u8).init(allocator);
     var dictionary = try HashTable.init(allocator);
 
     var buffer: [100]u8 = undefined;
@@ -67,21 +67,20 @@ pub fn main() !void {
     var bytes_written: u32 = file_format.len;
 
     // Document ID strings
-    var offsets = std.ArrayList(u32).init(allocator); // TODO we don't want this intermediate
-    for (docs.items) |d| {
+    for (docs.items) |d, i| {
         try out.writeIntNative(u32, @truncate(u32, d.len));
         try out.writeAll(d);
-        try offsets.append(bytes_written);
+        docs.items[i].ptr = @intToPtr([*]u8, bytes_written);
         bytes_written += @sizeOf(u32);
         bytes_written += @truncate(u32, d.len);
     }
 
     // Document IDs array
     const docs_offset = bytes_written;
-    try out.writeIntNative(u32, @truncate(u32, offsets.items.len));
+    try out.writeIntNative(u32, @truncate(u32, docs.items.len));
     bytes_written += @sizeOf(u32);
-    for (offsets.items) |o| {
-        try out.writeIntNative(u32, o);
+    for (docs.items) |d| {
+        try out.writeIntNative(u32, @truncate(u32, @ptrToInt(d.ptr)));
         bytes_written += @sizeOf(u32);
     }
 

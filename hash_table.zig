@@ -41,14 +41,13 @@ pub const HashTable = struct {
         var new_store = try allocator.alloc(?*Posting, new_cap);
         std.mem.set(?*Posting, new_store, null);
 
-        var i: u32 = 0;
-        while (i < h.cap) : (i += 1) {
-            if (h.store[i] != null) {
-                var i_ = hash(h.store[i].?.term, new_cap);
-                while (new_store[i_] != null)
-                    i_ = i_ + 1 & new_cap - 1;
+        for (h.store) |p| {
+            if (p != null) {
+                var i = hash(p.?.term, new_cap);
+                while (new_store[i] != null)
+                    i = i + 1 & new_cap - 1;
 
-                new_store[i_] = h.store[i];
+                new_store[i] = p;
             }
         }
 
@@ -88,12 +87,10 @@ pub const HashTable = struct {
     }
 
     pub fn write(h: *Self, out: anytype, bytes_written: *u32) !u32 {
-        var i: u32 = 0;
-
         // Write contents
-        while (i < h.cap) : (i += 1) {
-            if (h.store[i] != null) {
-                const posting = h.store[i].?;
+        for (h.store) |p, i| {
+            if (p != null) {
+                const posting = p.?;
 
                 const term_offset = bytes_written.*;
                 try out.writeIntNative(u32, @truncate(u32, posting.term.len));
@@ -130,9 +127,8 @@ pub const HashTable = struct {
         try out.writeIntNative(u32, h.cap);
         bytes_written.* += @sizeOf(u32);
 
-        i = 0;
-        while (i < h.cap) : (i += 1) {
-            try out.writeIntNative(u32, @truncate(u32, @ptrToInt(h.store[i].?)));
+        for (h.store) |p| {
+            try out.writeIntNative(u32, @truncate(u32, @ptrToInt(p.?)));
             bytes_written.* += @sizeOf(u32);
         }
 

@@ -65,9 +65,8 @@ pub fn main() !void {
     std.sort.sort(hashTable.Result, results, {}, cmpResults);
 
     var results_count: u32 = 0;
-    i = 0;
-    while (i < docs_count) : (i += 1) {
-        if (results[i].score == 0)
+    for (results) |result| {
+        if (result.score == 0)
             break;
 
         results_count += 1;

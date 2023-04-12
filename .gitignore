@@ -1,7 +1,8 @@
 vgcore.*
 *.txt
-*.dat
 *.xml
+*.tar.gz
+*.dat
 *.o
 index
 search

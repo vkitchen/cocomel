@@ -2,5 +2,6 @@
 *.xml
 *.tar.gz
 *.dat
+*.o
 index
 search

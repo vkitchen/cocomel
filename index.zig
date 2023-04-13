@@ -17,6 +17,11 @@ const usage =
 
 const file_format = "cocomel v1\n";
 
+const Doc = struct {
+    name: []u8,
+    len: u32 = 0,
+};
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -35,7 +40,7 @@ pub fn main() !void {
 
     var tok = Tokenizer.init(doc);
 
-    var docs = std.ArrayList([]u8).init(allocator);
+    var docs = std.ArrayList(Doc).init(allocator);
     var dictionary = try HashTable.init(allocator);
 
     var buffer: [100]u8 = undefined;
@@ -45,12 +50,13 @@ pub fn main() !void {
         if (t.type == Token.Type.docno) {
             if (docs.items.len > 0 and docs.items.len % 10000 == 0)
                 std.debug.print("{d} Documents\n", .{docs.items.len});
-            try docs.append(t.token);
+            try docs.append(.{ .name = t.token });
             continue;
         }
         if (docs.items.len == 0)
             continue;
         try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
+        docs.items[docs.items.len - 1].len += 1;
     }
 
     // Write index
@@ -68,11 +74,12 @@ pub fn main() !void {
 
     // Document ID strings
     for (docs.items) |d, i| {
-        try out.writeIntNative(u32, @truncate(u32, d.len));
-        try out.writeAll(d);
-        docs.items[i].ptr = @intToPtr([*]u8, bytes_written);
-        bytes_written += @sizeOf(u32);
-        bytes_written += @truncate(u32, d.len);
+        try out.writeIntNative(u32, d.len);
+        try out.writeIntNative(u32, @truncate(u32, d.name.len));
+        try out.writeAll(d.name);
+        docs.items[i].name.ptr = @intToPtr([*]u8, bytes_written);
+        bytes_written += 2 * @sizeOf(u32);
+        bytes_written += @truncate(u32, d.name.len);
     }
 
     // Document IDs array
@@ -80,7 +87,7 @@ pub fn main() !void {
     try out.writeIntNative(u32, @truncate(u32, docs.items.len));
     bytes_written += @sizeOf(u32);
     for (docs.items) |d| {
-        try out.writeIntNative(u32, @truncate(u32, @ptrToInt(d.ptr)));
+        try out.writeIntNative(u32, @truncate(u32, @ptrToInt(d.name.ptr)));
         bytes_written += @sizeOf(u32);
     }
 

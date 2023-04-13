@@ -144,35 +144,39 @@ pub const Result = struct {
     score: u32,
 };
 
-fn postings(index: []const u8, offset: u32, results: []Result) void {
-    const ids_offset = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
-    const ids_len = std.mem.bytesToValue(u32, index[ids_offset .. ids_offset + @sizeOf(u32)][0..4]);
+pub fn read32(index: []const u8, offset: usize) u32 {
+    return std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
+}
 
-    const scores_offset = std.mem.bytesToValue(u32, index[offset + @sizeOf(u32) .. offset + 2 * @sizeOf(u32)][0..4]);
-    // const scores_len = std.mem.bytesToValue(u32, index[scores_offset .. scores_offset + @sizeOf(u32)][0..4]);
+fn postings(index: []const u8, offset: u32, results: []Result) void {
+    const ids_offset = read32(index, offset);
+    const ids_len = read32(index, ids_offset);
+
+    const scores_offset = read32(index, offset + @sizeOf(u32));
+    // const scores_len = read32(index, scores_offset);
     const scores = scores_offset + @sizeOf(u32);
 
     var i: u32 = 0;
     while (i < ids_len) : (i += 1) {
         const stride = @sizeOf(u32) + i * @sizeOf(u32);
-        const doc_id = std.mem.bytesToValue(u32, index[ids_offset + stride .. ids_offset + stride + @sizeOf(u32)][0..4]);
+        const doc_id = read32(index, ids_offset + stride);
         results[doc_id].score += index[scores + i];
     }
 }
 
 pub fn find(index: []const u8, offset: u32, key: []const u8, results: []Result) void {
-    const cap = std.mem.bytesToValue(u32, index[offset .. offset + @sizeOf(u32)][0..4]);
+    const cap = read32(index, offset);
     const table = offset + @sizeOf(u32);
 
     var i = hash(key, cap);
     while (true) {
         const posting_offset = table + i * @sizeOf(u32);
 
-        const posting = std.mem.bytesToValue(u32, index[posting_offset .. posting_offset + @sizeOf(u32)][0..4]);
+        const posting = read32(index, posting_offset);
         if (posting == 0)
             return;
-        const term_store = std.mem.bytesToValue(u32, index[posting .. posting + @sizeOf(u32)][0..4]);
-        const term_length = std.mem.bytesToValue(u32, index[term_store .. term_store + @sizeOf(u32)][0..4]);
+        const term_store = read32(index, posting);
+        const term_length = read32(index, term_store);
         const term_start = term_store + @sizeOf(u32);
         const term = index[term_start .. term_start + term_length];
         if (std.mem.eql(u8, term, key))

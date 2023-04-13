@@ -14,8 +14,8 @@ fn name(index: []const u8, offset: u32, doc_id: u32) []const u8 {
     const docs_start = offset + @sizeOf(u32);
 
     const stride = doc_id * @sizeOf(u32);
-    const name_offset = std.mem.bytesToValue(u32, index[docs_start + stride .. docs_start + stride + @sizeOf(u32)][0..4]);
-    const name_length = std.mem.bytesToValue(u32, index[name_offset .. name_offset + @sizeOf(u32)][0..4]);
+    const name_offset = hashTable.read32(index, docs_start + stride);
+    const name_length = hashTable.read32(index, name_offset);
     const name_start = name_offset + @sizeOf(u32);
     return index[name_start .. name_start + name_length];
 }
@@ -34,10 +34,10 @@ pub fn main() !void {
     const index = try file.slurp(allocator, "index.dat");
     std.debug.print("Index size {d}\n", .{index.len});
 
-    const docs_offset = std.mem.bytesToValue(u32, index[index.len - 8 .. index.len - 4][0..4]);
-    const hash_offset = std.mem.bytesToValue(u32, index[index.len - 4 .. index.len][0..4]);
+    const docs_offset = hashTable.read32(index, index.len - 8);
+    const hash_offset = hashTable.read32(index, index.len - 4);
 
-    const docs_count = std.mem.bytesToValue(u32, index[docs_offset .. docs_offset + 4][0..4]);
+    const docs_count = hashTable.read32(index, docs_offset);
     std.debug.print("No. docs {d}\n", .{docs_count});
 
     var results = try allocator.alloc(hashTable.Result, docs_count);

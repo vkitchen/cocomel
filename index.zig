@@ -42,50 +42,52 @@ pub fn main() !void {
 
     var buffer: [100]u8 = undefined;
 
-    if (std.mem.endsWith(u8, args[1], ".xml")) {
-        const doc = try file.slurp(allocator, args[1]);
-        var tok = Tokenizer.init(doc);
-        while (true) {
-            const t = tok.next(&buffer);
-            if (t.type == Token.Type.eof) break;
-            if (t.type == Token.Type.docno) {
-                if (docs.items.len > 0 and docs.items.len % 10000 == 0)
-                    std.debug.print("{d} Documents\n", .{docs.items.len});
-                try docs.append(.{ .name = t.token });
-                continue;
+    for (args[1..]) |filename| {
+        if (std.mem.endsWith(u8, filename, ".xml")) {
+            const doc = try file.slurp(allocator, filename);
+            var tok = Tokenizer.init(doc);
+            while (true) {
+                const t = tok.next(&buffer);
+                if (t.type == Token.Type.eof) break;
+                if (t.type == Token.Type.docno) {
+                    if (docs.items.len > 0 and docs.items.len % 10000 == 0)
+                        std.debug.print("{d} Documents\n", .{docs.items.len});
+                    try docs.append(.{ .name = t.token });
+                    continue;
+                }
+                if (docs.items.len == 0)
+                    continue;
+                try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
+                docs.items[docs.items.len - 1].len += 1;
             }
-            if (docs.items.len == 0)
-                continue;
-            try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
-            docs.items[docs.items.len - 1].len += 1;
-        }
-    } else if (std.mem.endsWith(u8, args[1], ".tar.gz")) {
-        var doc = try std.fs.cwd().openFile("recipes-clean.tar.gz", .{});
-        defer doc.close();
+        } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
+            var doc = try std.fs.cwd().openFile("recipes-clean.tar.gz", .{});
+            defer doc.close();
 
-        var gzip_stream = try std.compress.gzip.gzipStream(allocator, doc.reader());
-        defer gzip_stream.deinit();
+            var gzip_stream = try std.compress.gzip.gzipStream(allocator, doc.reader());
+            defer gzip_stream.deinit();
 
-        var tok = TarTokenizer.init(gzip_stream);
-        while (true) {
-            const t = try tok.next(&buffer);
-            if (t.type == Token.Type.eof) break;
-            if (t.type == Token.Type.docno) {
-                if (docs.items.len > 0 and docs.items.len % 1000 == 0)
-                    std.debug.print("{d} Documents\n", .{docs.items.len});
-                var docno = try allocator.alloc(u8, t.token.len);
-                std.mem.copy(u8, docno, t.token);
-                try docs.append(.{ .name = docno });
-                continue;
+            var tok = TarTokenizer.init(gzip_stream);
+            while (true) {
+                const t = try tok.next(&buffer);
+                if (t.type == Token.Type.eof) break;
+                if (t.type == Token.Type.docno) {
+                    if (docs.items.len > 0 and docs.items.len % 1000 == 0)
+                        std.debug.print("{d} Documents\n", .{docs.items.len});
+                    var docno = try allocator.alloc(u8, t.token.len);
+                    std.mem.copy(u8, docno, t.token);
+                    try docs.append(.{ .name = docno });
+                    continue;
+                }
+                if (docs.items.len == 0)
+                    continue;
+                try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
+                docs.items[docs.items.len - 1].len += 1;
             }
-            if (docs.items.len == 0)
-                continue;
-            try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
-            docs.items[docs.items.len - 1].len += 1;
+        } else {
+            std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});
+            std.process.exit(1);
         }
-    } else {
-        std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{args[1]});
-        std.process.exit(1);
     }
 
     // Write index

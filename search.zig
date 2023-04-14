@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const file = @import("file.zig");
-const index = @import("index_structure.zig");
+const index = @import("index.zig");
 const tokenizer = @import("tokenizer.zig");
 const QueryTokenizer = tokenizer.QueryTokenizer;
 const Token = tokenizer.Token;

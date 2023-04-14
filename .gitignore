@@ -3,5 +3,5 @@
 *.tar.gz
 *.dat
 *.o
-index
-search
+zig-cache/
+zig-out/

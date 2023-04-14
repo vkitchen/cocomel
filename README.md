@@ -4,6 +4,10 @@
 
 This project is licensed under the ISC License
 
+## Compiling
+
+Run `zig build`
+
 ## Usage
 
 The file to be indexed must contain documents in XML or HTML concated together, each prefixed with a `<DOCNO>identifier</DOCNO>` tag.

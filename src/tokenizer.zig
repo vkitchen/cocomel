@@ -328,6 +328,17 @@ pub const TarTokenizer = struct {
             }
             // Ignored tags
             else if (char == '<') {
+                if (!try t.eof() and try t.getChar() == 's') {
+                    const nextChar = try t.getChar();
+                    if (nextChar == 'c' and try t.getChar() == 'r' and try t.getChar() == 'i' and try t.getChar() == 'p' and try t.getChar() == 't') {
+                        while (!try t.eof() and try t.peek() != '<')
+                            _ = try t.getChar();
+                    }
+                    if (nextChar == 't' and try t.getChar() == 'y' and try t.getChar() == 'l' and try t.getChar() == 'e') {
+                        while (!try t.eof() and try t.peek() != '<')
+                            _ = try t.getChar();
+                    }
+                }
                 while (!try t.eof() and try t.peek() != '>')
                     _ = try t.getChar();
                 continue;

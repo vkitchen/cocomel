@@ -42,6 +42,14 @@ pub fn main() !void {
 
     var buffer: [100]u8 = undefined;
 
+    const snippets_file = try std.fs.cwd().createFile("snippets.dat", .{});
+    defer snippets_file.close();
+
+    var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
+    var snippets_writer = snippets_buf.writer();
+    var snippets_written: u32 = 0;
+    var snippets_indices = std.ArrayList(u32).init(allocator);
+
     for (args[1..]) |filename| {
         if (std.mem.endsWith(u8, filename, ".xml")) {
             const doc = try file.slurp(allocator, filename);
@@ -53,12 +61,16 @@ pub fn main() !void {
                     if (docs.items.len > 0 and docs.items.len % 10000 == 0)
                         std.debug.print("{d} Documents\n", .{docs.items.len});
                     try docs.append(.{ .name = t.token });
+                    try snippets_indices.append(snippets_written);
                     continue;
                 }
                 if (docs.items.len == 0)
                     continue;
                 try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
                 docs.items[docs.items.len - 1].len += 1;
+                try snippets_writer.writeAll(t.token);
+                try snippets_writer.writeByte(' ');
+                snippets_written += @truncate(u32, t.token.len + 1);
             }
         } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
             var doc = try std.fs.cwd().openFile("recipes-clean.tar.gz", .{});
@@ -77,18 +89,25 @@ pub fn main() !void {
                     var docno = try allocator.alloc(u8, t.token.len);
                     std.mem.copy(u8, docno, t.token);
                     try docs.append(.{ .name = docno });
+                    try snippets_indices.append(snippets_written);
                     continue;
                 }
                 if (docs.items.len == 0)
                     continue;
                 try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
                 docs.items[docs.items.len - 1].len += 1;
+                try snippets_writer.writeAll(t.token);
+                try snippets_writer.writeByte(' ');
+                snippets_written += @truncate(u32, t.token.len + 1);
             }
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});
             std.process.exit(1);
         }
     }
+
+    try snippets_indices.append(snippets_written);
+    try snippets_buf.flush();
 
     // Write index
     std.debug.print("{s}\n", .{"Writing index..."});
@@ -125,10 +144,19 @@ pub fn main() !void {
     // Dictionary
     const dictionary_offset = try dictionary.write(out, &bytes_written);
 
+    // Snippets
+    const snippets_offset = bytes_written;
+    try out.writeIntNative(u32, @truncate(u32, snippets_indices.items.len));
+    for (snippets_indices.items) |s| {
+        try out.writeIntNative(u32, s);
+        bytes_written += @sizeOf(u32);
+    }
+
     // Metadata
+    try out.writeIntNative(u32, snippets_offset);
     try out.writeIntNative(u32, docs_offset);
     try out.writeIntNative(u32, dictionary_offset);
-    bytes_written += 2 * @sizeOf(u32);
+    bytes_written += 3 * @sizeOf(u32);
 
     try buf.flush();
 

@@ -73,7 +73,7 @@ pub fn main() !void {
                 snippets_written += @truncate(u32, t.token.len + 1);
             }
         } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
-            var doc = try std.fs.cwd().openFile("recipes-clean.tar.gz", .{});
+            var doc = try std.fs.cwd().openFile(filename, .{});
             defer doc.close();
 
             var gzip_stream = try std.compress.gzip.gzipStream(allocator, doc.reader());

@@ -20,14 +20,16 @@ pub const Index = struct {
     const Self = @This();
 
     index: []const u8,
-    docs_offset: u32,
     hash_offset: u32,
+    docs_offset: u32,
+    snippets_offset: u32,
     docs_count: u32,
     average_length: f64,
 
     pub fn init(index: []const u8) Self {
         const hash_offset = read32(index, index.len - 4);
         const docs_offset = read32(index, index.len - 8);
+        const snippets_offset = read32(index, index.len - 12);
 
         const docs_count = read32(index, docs_offset);
 
@@ -42,8 +44,9 @@ pub const Index = struct {
 
         return .{
             .index = index,
-            .docs_offset = docs_offset,
             .hash_offset = hash_offset,
+            .docs_offset = docs_offset,
+            .snippets_offset = snippets_offset,
             .docs_count = docs_count,
             .average_length = average_length,
         };
@@ -57,6 +60,19 @@ pub const Index = struct {
         const name_length = read32(this.index, name_offset);
         const name_start = name_offset + @sizeOf(u32);
         return this.index[name_start .. name_start + name_length];
+    }
+
+    pub fn snippet(this: *const Self, doc_id: u32, buf: []u8, snippets_file: std.fs.File) ![]const u8 {
+        const snippets_start = this.snippets_offset + @sizeOf(u32);
+
+        const stride = doc_id * @sizeOf(u32);
+        const start = read32(this.index, snippets_start + stride);
+        const end = read32(this.index, snippets_start + stride + @sizeOf(u32));
+        const read_size = std.math.min(buf.len, end - start);
+        try snippets_file.seekTo(start);
+        const bytes_read = try snippets_file.readAll(buf[0..read_size]);
+
+        return buf[0..bytes_read];
     }
 
     fn doc_length(this: *const Self, offset: u32, doc_id: u32) u32 {

@@ -27,8 +27,11 @@ pub fn main() !void {
     std.debug.print("Index size {d}\n", .{index_file.len});
 
     const index = Index.init(index_file);
-
     std.debug.print("No. docs {d}\n", .{index.docs_count});
+
+    var snippets_file = try std.fs.cwd().openFile("snippets.dat", .{});
+    defer snippets_file.close();
+    var snippets_buf: [500]u8 = undefined;
 
     var ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length);
 
@@ -64,10 +67,11 @@ pub fn main() !void {
         results_count += 1;
     }
 
-    std.debug.print("Top 10 Results ({d} total):\n", .{results_count});
+    std.debug.print("Top 10 Results ({d} total):\n\n", .{results_count});
 
     i = 0;
     while (i < std.math.min(10, results_count)) : (i += 1) {
-        std.debug.print("{s} Score: {d:.4}\n", .{ index.name(results[i].doc_id), results[i].score });
+        std.debug.print("{d:.4} {s}\n", .{ results[i].score, index.name(results[i].doc_id) });
+        std.debug.print("{s}\n\n", .{try index.snippet(results[i].doc_id, &snippets_buf, snippets_file)});
     }
 }

@@ -213,7 +213,6 @@ pub const TarTokenizer = struct {
     index: usize = 0,
     len: usize = 0,
     buf: [4096]u8 = undefined,
-    head_buf: [@sizeOf(TarHeader)]u8 = undefined,
     name_buf: [255]u8 = undefined,
     doc: std.compress.gzip.GzipStream(std.fs.File.Reader),
 
@@ -254,22 +253,9 @@ pub const TarTokenizer = struct {
     }
 
     fn getDocId(t: *Self) !Token {
-        // Piece together partial headers
-        // TODO we probably don't need this as tar is 512 byte aligned
-        var header: *TarHeader = undefined;
-        if (@sizeOf(TarHeader) > t.buf.len - t.index) {
-            std.debug.print("Overrun header\n", .{});
-            const bytes_copied = t.buf.len - t.index;
-            const bytes_remaining = @sizeOf(TarHeader) - bytes_copied;
-            std.mem.copy(u8, t.head_buf[0..], t.buf[t.index..]);
-            try t.read();
-            std.mem.copy(u8, t.head_buf[bytes_copied..], t.buf[0..bytes_remaining]);
-            header = @ptrCast(*TarHeader, &t.head_buf);
-            t.index = bytes_remaining;
-        } else {
-            header = @ptrCast(*TarHeader, t.buf[t.index..]);
-            t.index += @sizeOf(TarHeader);
-        }
+        // Header is 512 byte aligned. Can just read
+        const header: *TarHeader = @ptrCast(*TarHeader, t.buf[t.index..]);
+        t.index += @sizeOf(TarHeader);
         t.bytes_consumed += @sizeOf(TarHeader);
         t.next_header += @sizeOf(TarHeader);
 

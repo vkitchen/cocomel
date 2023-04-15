@@ -76,10 +76,12 @@ pub fn main() !void {
             var doc = try std.fs.cwd().openFile(filename, .{});
             defer doc.close();
 
-            var gzip_stream = try std.compress.gzip.gzipStream(allocator, doc.reader());
+            var buf = std.io.bufferedReader(doc.reader());
+            var gzip_stream = try std.compress.gzip.gzipStream(allocator, buf.reader());
             defer gzip_stream.deinit();
 
-            var tok = TarTokenizer.init(gzip_stream);
+            const tokType = TarTokenizer(@TypeOf(gzip_stream));
+            var tok = tokType.init(gzip_stream);
             while (true) {
                 const t = try tok.next(&buffer);
                 if (t.type == Token.Type.eof) break;

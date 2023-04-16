@@ -57,7 +57,7 @@ pub const QueryTokenizer = struct {
             else if (std.ascii.isAlpha(t.doc[t.index])) {
                 var i: usize = 0;
                 while (i < 256 and i + t.index < t.doc.len and std.ascii.isAlpha(t.doc[t.index + i])) {
-                    // buffer[i] = char_tolower(t.doc[t.index + i]);
+                    t.doc[i] = std.ascii.toLower(t.doc[i]);
                     i += 1;
                 }
 

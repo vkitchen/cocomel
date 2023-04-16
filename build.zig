@@ -15,4 +15,8 @@ pub fn build(b: *Builder) !void {
     cgi.setTarget(try CrossTarget.parse(.{ .arch_os_abi = "x86_64-linux-musl" }));
     cgi.setBuildMode(Mode.ReleaseFast);
     cgi.install();
+
+    const test_step = b.step("test", "Run tests");
+    const unit_tests = b.addTest("src/stem_s.zig");
+    test_step.dependOn(&unit_tests.step);
 }

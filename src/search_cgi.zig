@@ -12,6 +12,7 @@ const QueryTokenizer = tokenizer.QueryTokenizer;
 const Token = tokenizer.Token;
 const Ranker = @import("ranking_fn.zig").Ranker;
 const stem = @import("stem_s.zig").stem;
+const expandQuery = @import("query_expansion.zig").expandQuery;
 
 fn cmpResults(context: void, a: Result, b: Result) bool {
     return std.sort.desc(f64)(context, a.score, b.score);
@@ -70,17 +71,25 @@ pub fn main() !void {
         results[i].score = 0;
     }
 
-    var query = std.os.getenv("QUERY_STRING");
-    var qq = query.?[2..];
+    var q = std.os.getenv("QUERY_STRING");
+    var qq = q.?[2..];
     var input = try allocator.alloc(u8, qq.len);
     std.mem.copy(u8, input, qq);
 
     var tok = QueryTokenizer.init(input);
 
+    var query = std.ArrayList([]u8).init(allocator);
+
     while (true) {
         const t = tok.next();
         if (t.type == Token.Type.eof) break;
         var term = stem(t.token);
+        try query.append(term);
+    }
+
+    try expandQuery(allocator, &query);
+
+    for (query.items) |term| {
         try stdout.print("<h4>Searching: {s}</h4>\n", .{term});
         index.find(term, &ranker, results);
     }

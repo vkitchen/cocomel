@@ -82,7 +82,6 @@ pub fn main() !void {
         if (t.type == Token.Type.eof) break;
         var term = stem(t.token);
         try stdout.print("<h4>Searching: {s}</h4>\n", .{term});
-        std.debug.print("Searching: {s}\n", .{term});
         index.find(term, &ranker, results);
     }
 

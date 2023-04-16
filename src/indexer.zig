@@ -9,6 +9,7 @@ const Tokenizer = @import("tokenizer.zig").Tokenizer;
 const TarTokenizer = @import("tokenizer.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
 const HashTable = @import("dictionary.zig").HashTable;
+const stem = @import("stem_s.zig").stem;
 
 const usage =
     \\
@@ -96,11 +97,12 @@ pub fn main() !void {
                 }
                 if (docs.items.len == 0)
                     continue;
-                try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
+                var term = stem(t.token);
+                try dictionary.insert(allocator, term, @truncate(u32, docs.items.len - 1));
                 docs.items[docs.items.len - 1].len += 1;
-                try snippets_writer.writeAll(t.token);
+                try snippets_writer.writeAll(term);
                 try snippets_writer.writeByte(' ');
-                snippets_written += @truncate(u32, t.token.len + 1);
+                snippets_written += @truncate(u32, term.len + 1);
             }
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});

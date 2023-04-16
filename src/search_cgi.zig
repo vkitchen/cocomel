@@ -11,6 +11,7 @@ const tokenizer = @import("tokenizer.zig");
 const QueryTokenizer = tokenizer.QueryTokenizer;
 const Token = tokenizer.Token;
 const Ranker = @import("ranking_fn.zig").Ranker;
+const stem = @import("stem_s.zig").stem;
 
 fn cmpResults(context: void, a: Result, b: Result) bool {
     return std.sort.desc(f64)(context, a.score, b.score);
@@ -79,10 +80,12 @@ pub fn main() !void {
     while (true) {
         const t = tok.next();
         if (t.type == Token.Type.eof) break;
-        index.find(t.token, &ranker, results);
+        var term = stem(t.token);
+        try stdout.print("<h4>Searching: {s}</h4>\n", .{term});
+        std.debug.print("Searching: {s}\n", .{term});
+        index.find(term, &ranker, results);
     }
 
-    try stdout.print("<h4>Searching: {s}</h4>\n", .{input});
     std.sort.sort(Result, results, {}, cmpResults);
 
     var results_count: u32 = 0;

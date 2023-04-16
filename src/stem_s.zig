@@ -3,23 +3,21 @@
 //	Copyright (c) Vaughan Kitchen
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
-pub fn stem(term: []u8) []u8 {
-    const end = term.len - 1;
+const std = @import("std");
 
-    if (term.len > 3 and term[end - 2] == 'i' and term[end - 1] == 'e' and term[end] == 's') {
-        term[end - 2] = 'y';
-        return term[0 .. end - 1];
-    } else if (term.len > 2 and term[end - 1] == 'e' and term[end] == 's') {
-        return term[0 .. end - 1];
-    } else if (term.len > 1 and term[end] == 's')
-        return term[0..end];
+pub fn stem(term: []u8) []u8 {
+    if (std.mem.endsWith(u8, term, "ies")) {
+        term[term.len - 3] = 'y';
+        return term[0 .. term.len - 2];
+    } else if (std.mem.endsWith(u8, term, "es")) {
+        return term[0 .. term.len - 2];
+    } else if (std.mem.endsWith(u8, term, "s"))
+        return term[0 .. term.len - 1];
 
     return term;
 }
 
 test "s stripping stemmer" {
-    const std = @import("std");
-
     var buffer: [100]u8 = undefined;
 
     const cookies = "cookies";

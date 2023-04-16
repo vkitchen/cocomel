@@ -5,7 +5,9 @@
 
 const std = @import("std");
 
-const dal = [_][]const u8{ "dal", "dahl", "dhal", "daal" };
+const lentils = [_][]const u8{ "lentil", "dal", "dahl", "dhal", "daal" };
+const chickpeas = [_][]const u8{ "chickpea", "garbanzo", "chana", "chole" };
+const spinach = [_][]const u8{ "spinach", "saag", "palak" };
 
 fn in(haystack: []const []const u8, needle: []u8) bool {
     for (haystack) |hay| {
@@ -37,7 +39,11 @@ pub fn expandQuery(allocator: std.mem.Allocator, terms: *std.ArrayList([]u8)) !v
     var i: usize = 0;
     while (i < len) : (i += 1) {
         const term = terms.items[i];
-        if (in(&dal, term))
-            try addAll(allocator, terms, &dal);
+        if (in(&lentils, term))
+            try addAll(allocator, terms, &lentils);
+        if (in(&chickpeas, term))
+            try addAll(allocator, terms, &chickpeas);
+        if (in(&spinach, term))
+            try addAll(allocator, terms, &spinach);
     }
 }

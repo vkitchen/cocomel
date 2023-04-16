@@ -345,11 +345,15 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                 }
                 // Word
                 else if (std.ascii.isAlpha(char)) {
-                    buffer[0] = std.ascii.toLower(char);
+                    buffer[0] = char;
 
                     var i: usize = 1;
-                    while (i < buffer.len and !try t.eof() and std.ascii.isAlpha(try t.peek())) : (i += 1)
-                        buffer[i] = std.ascii.toLower(try t.getChar());
+                    while (i < buffer.len and !try t.eof() and (std.ascii.isAlpha(try t.peek()) or try t.peek() == '\'')) : (i += 1)
+                        buffer[i] = try t.getChar();
+                    if (try t.peek() == ',' or try t.peek() == '.') {
+                        buffer[i] = try t.getChar();
+                        i += 1;
+                    }
 
                     return Token{
                         .token = buffer[0..i],

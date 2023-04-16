@@ -24,6 +24,17 @@ const Doc = struct {
     len: u32 = 0,
 };
 
+fn stripPunct(out: []u8, in: []u8) []u8 {
+    var i: usize = 0;
+    for (in) |c| {
+        if (std.ascii.isAlpha(c)) {
+            out[i] = c;
+            i += 1;
+        }
+    }
+    return out[0..i];
+}
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -97,12 +108,17 @@ pub fn main() !void {
                 }
                 if (docs.items.len == 0)
                     continue;
-                var term = stem(t.token);
+                // Add to snippets
+                try snippets_writer.writeAll(t.token);
+                try snippets_writer.writeByte(' ');
+                snippets_written += @truncate(u32, t.token.len + 1);
+
+                // Add to index
+                _ = std.ascii.lowerString(t.token, t.token);
+                var term = stripPunct(t.token, t.token);
+                term = stem(term);
                 try dictionary.insert(allocator, term, @truncate(u32, docs.items.len - 1));
                 docs.items[docs.items.len - 1].len += 1;
-                try snippets_writer.writeAll(term);
-                try snippets_writer.writeByte(' ');
-                snippets_written += @truncate(u32, term.len + 1);
             }
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});

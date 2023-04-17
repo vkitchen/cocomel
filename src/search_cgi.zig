@@ -24,29 +24,16 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
+    var snippets_file = try std.fs.cwd().openFile("snippets.dat", .{});
+    defer snippets_file.close();
+    var snippets_buf: [500]u8 = undefined;
+
     var timer = try std.time.Timer.start();
 
     const index_file = try file.slurp(allocator, "index.dat");
     const index = Index.init(index_file);
 
     var time_index_read = timer.lap();
-
-    var snippets_file = try std.fs.cwd().openFile("snippets.dat", .{});
-    defer snippets_file.close();
-    var snippets_buf: [500]u8 = undefined;
-
-    var ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length);
-
-    var results = try allocator.alloc(Result, index.docs_count);
-    {
-        var i: u32 = 0;
-        while (i < index.docs_count) : (i += 1) {
-            results[i].doc_id = i;
-            results[i].score = 0;
-        }
-    }
-
-    var time_init = timer.lap();
 
     var q = std.os.getenv("QUERY_STRING");
     var qq = q.?[2..];
@@ -64,19 +51,26 @@ pub fn main() !void {
         try query.append(term);
     }
 
-    var time_query_parse = timer.lap();
-
     try expandQuery(allocator, &query);
 
-    var time_query_expansion = timer.lap();
+    var time_query_parse = timer.lap();
+
+    var ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length);
+
+    var results = try allocator.alloc(Result, index.docs_count);
+    {
+        var i: u32 = 0;
+        while (i < index.docs_count) : (i += 1) {
+            results[i].doc_id = i;
+            results[i].score = 0;
+        }
+    }
 
     for (query.items) |term| {
         index.find(term, &ranker, results);
     }
 
     std.sort.sort(Result, results, {}, cmpResults);
-
-    var time_search = timer.lap();
 
     var results_count: u32 = 0;
     for (results) |result| {
@@ -86,7 +80,7 @@ pub fn main() !void {
         results_count += 1;
     }
 
-    var time_count_results = timer.lap();
+    var time_search = timer.lap();
 
     try stdout.print("Content-type: text/html; charset=utf-8\n\n", .{});
 
@@ -139,11 +133,8 @@ pub fn main() !void {
     try stdout.print("<p>\n", .{});
 
     try stdout.print("Index read took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_index_read) / 1e9});
-    try stdout.print("Init took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_init) / 1e9});
     try stdout.print("Query parsing took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_query_parse) / 1e9});
-    try stdout.print("Query expansion took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_query_expansion) / 1e9});
-    try stdout.print("Search took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_search) / 1e9});
-    try stdout.print("Counting results took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_count_results) / 1e9});
+    try stdout.print("Searching took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_search) / 1e9});
     try stdout.print("Writing results took {d:.3} seconds<br>\n", .{@intToFloat(f64, time_write_out) / 1e9});
 
     try stdout.print("</p>\n", .{});

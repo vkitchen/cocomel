@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const hash = @import("dictionary.zig").hash;
-const Ranker = @import("ranking_fn.zig").Ranker;
+const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 
 pub const Result = struct {
     doc_id: u32,

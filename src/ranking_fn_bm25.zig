@@ -1,11 +1,12 @@
-//	RANKING_FN.ZIG
-//	--------------
+//	RANKING_FN_BM25.ZIG
+//	-------------------
 //	Copyright (c) Vaughan Kitchen
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 
-// Values are taken from Atire which was tuned on classic TREC collections
+// Values are taken from ATIRE which was tuned on classic TREC collections
+// Reference: https://github.com/andrewtrotman/ATIRE/blob/master/source/ranking_function_bm25.h
 // Reference: https://www.elastic.co/blog/practical-bm25-part-3-considerations-for-picking-b-and-k1-in-elasticsearch
 const k1 = 0.9; // Term saturation
 const b = 0.4; // Document length normalisation

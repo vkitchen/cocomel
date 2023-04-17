@@ -64,7 +64,7 @@ pub fn main() !void {
         while (i < std.math.min(30, results.len)) : (i += 1) {
             try stdout.print("<li>\n", .{});
             const name = searcher.name(results[i].doc_id);
-            try stdout.print("{d:.4} <a href='http://{s}'>{s}</a>\n", .{ results[i].score, name[0 .. name.len - 5], name[0 .. name.len - 5] });
+            try stdout.print("{d:.4} <a href='http://{s}'>{s}</a>\n", .{ results[i].score, name, name });
             try stdout.print("<p>{s}</p>\n\n", .{try searcher.snippet(results[i].doc_id)});
             try stdout.print("</li>\n", .{});
         }

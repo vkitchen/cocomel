@@ -24,12 +24,13 @@ pub const Search = struct {
     ranker: Ranker,
     terms: std.ArrayList([]u8),
     results: []Result,
-    results_count: u64 = 0,
+    snippets_file: std.fs.File,
+    snippets_buf: []u8,
     time_index: u64 = 0,
     time_query: u64 = 0,
     time_search: u64 = 0,
 
-    pub fn init(allocator: std.mem.Allocator) !Self {
+    pub fn init(allocator: std.mem.Allocator, snippets_buf: []u8) !Self {
         var timer = try std.time.Timer.start();
 
         const index_file = try file.slurp(allocator, "index.dat");
@@ -42,12 +43,18 @@ pub const Search = struct {
             .ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length),
             .terms = std.ArrayList([]u8).init(allocator),
             .results = try allocator.alloc(Result, index.docs_count),
+            .snippets_file = try std.fs.cwd().openFile("snippets.dat", .{}),
+            .snippets_buf = snippets_buf,
             .time_index = time_index,
         };
     }
 
+    pub fn deinit(s: *Self) void {
+        s.snippets_file.close();
+    }
+
     // TODO ideally this shouldn't allocate
-    pub fn search(s: *Self, allocator: std.mem.Allocator, query: []u8) !void {
+    pub fn search(s: *Self, allocator: std.mem.Allocator, query: []u8) ![]Result {
         var timer = try std.time.Timer.start();
 
         var tok = QueryTokenizer.init(query);
@@ -78,14 +85,24 @@ pub const Search = struct {
 
         std.sort.sort(Result, s.results, {}, cmpResults);
 
-        s.results_count = 0;
+        var results_count: usize = 0;
         for (s.results) |result| {
             if (result.score == 0)
                 break;
 
-            s.results_count += 1;
+            results_count += 1;
         }
 
         s.time_search = timer.lap();
+
+        return s.results[0..results_count];
+    }
+
+    pub fn name(s: *const Self, doc_id: u32) []const u8 {
+        return s.index.name(doc_id);
+    }
+
+    pub fn snippet(s: *const Self, doc_id: u32) ![]const u8 {
+        return s.index.snippet(doc_id, s.snippets_buf, s.snippets_file);
     }
 };

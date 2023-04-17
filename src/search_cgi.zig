@@ -26,16 +26,15 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var snippets_file = try std.fs.cwd().openFile("snippets.dat", .{});
-    defer snippets_file.close();
     var snippets_buf: [500]u8 = undefined;
 
-    var searcher = try Search.init(allocator);
+    var searcher = try Search.init(allocator, &snippets_buf);
+    defer searcher.deinit();
 
     var q = std.os.getenv("QUERY_STRING");
     var query = try slice.dup(allocator, q.?[2..]);
 
-    try searcher.search(allocator, query);
+    const results = try searcher.search(allocator, query);
 
     var timer = try std.time.Timer.start();
 
@@ -57,16 +56,16 @@ pub fn main() !void {
         \\</form>
     , .{});
 
-    try stdout.print("<h4>Top 30 Results ({d} total):</h4>\n", .{searcher.results_count});
+    try stdout.print("<h4>Top 30 Results ({d} total):</h4>\n", .{results.len});
 
     try stdout.print("<ul>\n", .{});
     {
         var i: u32 = 0;
-        while (i < std.math.min(30, searcher.results_count)) : (i += 1) {
+        while (i < std.math.min(30, results.len)) : (i += 1) {
             try stdout.print("<li>\n", .{});
-            const name = searcher.index.name(searcher.results[i].doc_id);
-            try stdout.print("{d:.4} <a href='http://{s}'>{s}</a>\n", .{ searcher.results[i].score, name[0 .. name.len - 5], name[0 .. name.len - 5] });
-            try stdout.print("<p>{s}</p>\n\n", .{try searcher.index.snippet(searcher.results[i].doc_id, &snippets_buf, snippets_file)});
+            const name = searcher.name(results[i].doc_id);
+            try stdout.print("{d:.4} <a href='http://{s}'>{s}</a>\n", .{ results[i].score, name[0 .. name.len - 5], name[0 .. name.len - 5] });
+            try stdout.print("<p>{s}</p>\n\n", .{try searcher.snippet(results[i].doc_id)});
             try stdout.print("</li>\n", .{});
         }
     }

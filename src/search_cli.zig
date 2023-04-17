@@ -21,24 +21,23 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var snippets_file = try std.fs.cwd().openFile("snippets.dat", .{});
-    defer snippets_file.close();
     var snippets_buf: [500]u8 = undefined;
 
-    var searcher = try Search.init(allocator);
+    var searcher = try Search.init(allocator, &snippets_buf);
+    defer searcher.deinit();
 
     std.debug.print("{s}", .{"Query> "});
 
     var buf: [100]u8 = undefined;
     var query = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
-    try searcher.search(allocator, query.?);
+    const results = try searcher.search(allocator, query.?);
 
-    std.debug.print("Top 10 Results ({d} total):\n\n", .{searcher.results_count});
+    std.debug.print("Top 10 Results ({d} total):\n\n", .{results.len});
 
     var i: usize = 0;
-    while (i < std.math.min(10, searcher.results_count)) : (i += 1) {
-        std.debug.print("{d:.4} {s}\n", .{ searcher.results[i].score, searcher.index.name(searcher.results[i].doc_id) });
-        std.debug.print("{s}\n\n", .{try searcher.index.snippet(searcher.results[i].doc_id, &snippets_buf, snippets_file)});
+    while (i < std.math.min(10, results.len)) : (i += 1) {
+        std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id) });
+        std.debug.print("{s}\n\n", .{try searcher.snippet(results[i].doc_id)});
     }
 }

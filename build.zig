@@ -7,7 +7,7 @@ pub fn build(b: *Builder) !void {
     indexer.setBuildMode(Mode.ReleaseFast);
     indexer.install();
 
-    const search = b.addExecutable("search", "src/search.zig");
+    const search = b.addExecutable("search", "src/search_cli.zig");
     search.setBuildMode(Mode.ReleaseFast);
     search.install();
 

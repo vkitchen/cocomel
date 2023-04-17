@@ -94,8 +94,8 @@ pub const HashTable = struct {
                 const posting = p.?;
 
                 const term_offset = bytes_written.*;
-                try out.writeIntNative(u32, @truncate(u32, posting.term.len));
-                bytes_written.* += @sizeOf(u32);
+                try out.writeIntNative(u16, @truncate(u16, posting.term.len));
+                bytes_written.* += @sizeOf(u16);
                 try out.writeAll(posting.term);
                 bytes_written.* += @truncate(u32, posting.term.len);
 

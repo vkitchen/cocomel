@@ -12,6 +12,10 @@ pub const Result = struct {
     score: f64,
 };
 
+fn read16(str: []const u8, offset: usize) u16 {
+    return std.mem.bytesToValue(u16, str[offset .. offset + @sizeOf(u16)][0..2]);
+}
+
 fn read32(str: []const u8, offset: usize) u32 {
     return std.mem.bytesToValue(u32, str[offset .. offset + @sizeOf(u32)][0..4]);
 }
@@ -57,8 +61,8 @@ pub const Index = struct {
 
         const stride = doc_id * @sizeOf(u32);
         const name_offset = read32(this.index, docs_start + stride) + @sizeOf(u32);
-        const name_length = read32(this.index, name_offset);
-        const name_start = name_offset + @sizeOf(u32);
+        const name_length = read16(this.index, name_offset);
+        const name_start = name_offset + @sizeOf(u16);
         return this.index[name_start .. name_start + name_length];
     }
 
@@ -114,8 +118,8 @@ pub const Index = struct {
             if (posting == 0)
                 return;
             const term_store = read32(this.index, posting);
-            const term_length = read32(this.index, term_store);
-            const term_start = term_store + @sizeOf(u32);
+            const term_length = read16(this.index, term_store);
+            const term_start = term_store + @sizeOf(u16);
             const term = this.index[term_start .. term_start + term_length];
             if (std.mem.eql(u8, term, key))
                 return this.postings(posting + @sizeOf(u32), ranker, results);

@@ -145,10 +145,10 @@ pub fn main() !void {
     // Document ID strings
     for (docs.items) |d, i| {
         try out.writeIntNative(u32, d.len);
-        try out.writeIntNative(u32, @truncate(u32, d.name.len));
+        try out.writeIntNative(u16, @truncate(u16, d.name.len));
         try out.writeAll(d.name);
         docs.items[i].name.ptr = @intToPtr([*]u8, bytes_written);
-        bytes_written += 2 * @sizeOf(u32);
+        bytes_written += @sizeOf(u32) + @sizeOf(u16);
         bytes_written += @truncate(u32, d.name.len);
     }
 

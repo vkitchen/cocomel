@@ -5,8 +5,8 @@
 
 const std = @import("std");
 const file = @import("file.zig");
-const Tokenizer = @import("tokenizer.zig").Tokenizer;
-const TarTokenizer = @import("tokenizer.zig").TarTokenizer;
+const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
+const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
 const HashTable = @import("dictionary.zig").HashTable;
 const stem = @import("stem_s.zig").stem;
@@ -65,7 +65,7 @@ pub fn main() !void {
     for (args[1..]) |filename| {
         if (std.mem.endsWith(u8, filename, ".xml")) {
             const doc = try file.slurp(allocator, filename);
-            var tok = Tokenizer.init(doc);
+            var tok = WsjTokenizer.init(doc);
             while (true) {
                 const t = tok.next(&buffer);
                 if (t.type == Token.Type.eof) break;

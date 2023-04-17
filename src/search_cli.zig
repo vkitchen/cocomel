@@ -12,76 +12,33 @@ const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
 const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const stem = @import("stem_s.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
-
-fn cmpResults(context: void, a: Result, b: Result) bool {
-    return std.sort.desc(f64)(context, a.score, b.score);
-}
+const Search = @import("search.zig").Search;
 
 pub fn main() !void {
+    const stdin = std.io.getStdIn().reader();
+
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-
     const allocator = arena.allocator();
-
-    std.debug.print("{s}\n", .{"Reading index..."});
-    const index_file = try file.slurp(allocator, "index.dat");
-    std.debug.print("Index size {d}\n", .{index_file.len});
-
-    const index = Index.init(index_file);
-    std.debug.print("No. docs {d}\n", .{index.docs_count});
 
     var snippets_file = try std.fs.cwd().openFile("snippets.dat", .{});
     defer snippets_file.close();
     var snippets_buf: [500]u8 = undefined;
 
-    var ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length);
-
-    var results = try allocator.alloc(Result, index.docs_count);
-    var i: u32 = 0;
-    while (i < index.docs_count) : (i += 1) {
-        results[i].doc_id = i;
-        results[i].score = 0;
-    }
+    var searcher = try Search.init(allocator);
 
     std.debug.print("{s}", .{"Query> "});
-    const stdin = std.io.getStdIn().reader();
 
     var buf: [100]u8 = undefined;
-    var input = try stdin.readUntilDelimiterOrEof(&buf, '\n');
+    var query = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
-    var tok = QueryTokenizer.init(input.?);
+    try searcher.search(allocator, query.?);
 
-    var query = std.ArrayList([]u8).init(allocator);
+    std.debug.print("Top 10 Results ({d} total):\n\n", .{searcher.results_count});
 
-    while (true) {
-        const t = tok.next();
-        if (t.type == Token.Type.eof) break;
-        var term = stem(t.token);
-        try query.append(term);
-    }
-
-    try expandQuery(allocator, &query);
-
-    for (query.items) |term| {
-        std.debug.print("Searching: {s}\n", .{term});
-        index.find(term, &ranker, results);
-    }
-
-    std.sort.sort(Result, results, {}, cmpResults);
-
-    var results_count: u32 = 0;
-    for (results) |result| {
-        if (result.score == 0)
-            break;
-
-        results_count += 1;
-    }
-
-    std.debug.print("Top 10 Results ({d} total):\n\n", .{results_count});
-
-    i = 0;
-    while (i < std.math.min(10, results_count)) : (i += 1) {
-        std.debug.print("{d:.4} {s}\n", .{ results[i].score, index.name(results[i].doc_id) });
-        std.debug.print("{s}\n\n", .{try index.snippet(results[i].doc_id, &snippets_buf, snippets_file)});
+    var i: usize = 0;
+    while (i < std.math.min(10, searcher.results_count)) : (i += 1) {
+        std.debug.print("{d:.4} {s}\n", .{ searcher.results[i].score, searcher.index.name(searcher.results[i].doc_id) });
+        std.debug.print("{s}\n\n", .{try searcher.index.snippet(searcher.results[i].doc_id, &snippets_buf, snippets_file)});
     }
 }

@@ -9,7 +9,6 @@ const Index = @import("index.zig").Index;
 const Result = @import("index.zig").Result;
 const Token = @import("tokenizer.zig").Token;
 const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
-const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const stem = @import("stem_s.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const Search = @import("search.zig").Search;

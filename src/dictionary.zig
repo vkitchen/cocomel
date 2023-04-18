@@ -63,26 +63,29 @@ pub const Dictionary = struct {
 
         var i = hash(key, self.cap);
         while (self.store[i] != null) {
-            if (std.mem.eql(u8, self.store[i].?.term, key)) {
-                if (self.store[i].?.ids.items[self.store[i].?.ids.items.len - 1] == doc_id) {
-                    self.store[i].?.freqs.items[self.store[i].?.freqs.items.len - 1] +|= 1;
+            var postings = self.store[i].?;
+            if (std.mem.eql(u8, postings.term, key)) {
+                if (postings.ids.items[postings.ids.items.len - 1] == doc_id) {
+                    postings.freqs.items[postings.freqs.items.len - 1] +|= 1;
                     return;
                 }
-                try self.store[i].?.ids.append(doc_id);
-                try self.store[i].?.freqs.append(1);
+                try postings.ids.append(doc_id);
+                try postings.freqs.append(1);
                 return;
             }
             i = i + 1 & (self.cap - 1);
         }
 
-        self.store[i] = try self.allocator.create(Posting);
-        self.store[i].?.term = try str.dup(self.allocator, key);
+        var postings = try self.allocator.create(Posting);
+        postings.term = try str.dup(self.allocator, key);
 
-        self.store[i].?.ids = std.ArrayList(u32).init(self.allocator);
-        try self.store[i].?.ids.append(doc_id);
+        postings.ids = std.ArrayList(u32).init(self.allocator);
+        try postings.ids.append(doc_id);
 
-        self.store[i].?.freqs = std.ArrayList(u8).init(self.allocator);
-        try self.store[i].?.freqs.append(1);
+        postings.freqs = std.ArrayList(u8).init(self.allocator);
+        try postings.freqs.append(1);
+
+        self.store[i] = postings;
 
         self.len += 1;
     }

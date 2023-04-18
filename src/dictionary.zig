@@ -16,57 +16,6 @@ pub fn hash(key: []const u8, cap: u32) u32 {
     return result & cap - 1;
 }
 
-// TODO this probably doesn't belong here
-pub const Doc = struct {
-    name: []u8,
-    len: u32 = 0,
-};
-
-// TODO this almost certainly doesn't belong here
-pub const Manager = struct {
-    const Self = @This();
-
-    doc_ids: *std.ArrayList(Doc),
-    dict: *Dictionary,
-    snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer,
-    snippets_indices: std.ArrayList(u32),
-    snippets_written: u32 = 0,
-
-    pub fn init(allocator: std.mem.Allocator, doc_ids: *std.ArrayList(Doc), dict: *Dictionary, snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) Self {
-        return .{
-            .doc_ids = doc_ids,
-            .dict = dict,
-            .snippets_writer = snippets_writer,
-            .snippets_indices = std.ArrayList(u32).init(allocator),
-        };
-    }
-
-    pub fn addTerm(m: *Self, term: []u8) !void {
-        try m.snippets_writer.writeAll(term);
-        try m.snippets_writer.writeByte(' ');
-        m.snippets_written += @truncate(u32, term.len + 1);
-
-        _ = std.ascii.lowerString(term, term);
-        var term_ = str.stripPunct(term, term);
-        term_ = stem(term_);
-
-        try m.dict.insert(term_, @truncate(u32, m.doc_ids.items.len - 1));
-        m.doc_ids.items[m.doc_ids.items.len - 1].len += 1;
-    }
-
-    pub fn addDocId(m: *Self, doc_id: []u8) !void {
-        try m.snippets_indices.append(m.snippets_written);
-
-        try m.doc_ids.append(.{ .name = doc_id });
-        if (m.doc_ids.items.len % 10000 == 0)
-            std.debug.print("{d} Documents\n", .{m.doc_ids.items.len});
-    }
-
-    pub fn flush(m: *Self) !void {
-        try m.snippets_indices.append(m.snippets_written);
-    }
-};
-
 pub const Posting = struct {
     term: []u8,
     id: u32 = 0,
@@ -83,11 +32,9 @@ pub const Dictionary = struct {
     store: []?*Posting,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        var h: Self = undefined;
-        h.allocator = allocator;
-        h.store = try allocator.alloc(?*Posting, h.cap);
-        std.mem.set(?*Posting, h.store, null);
-        return h;
+        var store = try allocator.alloc(?*Posting, 1 << 19);
+        std.mem.set(?*Posting, store, null);
+        return .{ .allocator = allocator, .store = store };
     }
 
     fn expand(h: *Self) !void {

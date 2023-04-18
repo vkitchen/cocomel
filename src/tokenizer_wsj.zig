@@ -4,17 +4,17 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const dictionary = @import("dictionary.zig");
+const Indexer = @import("indexer.zig").Indexer;
 const file = @import("file.zig");
 
 pub const WsjTokenizer = struct {
     const Self = @This();
 
-    indexer: *dictionary.Manager,
+    indexer: *Indexer,
     doc: []u8,
     index: usize = 0,
 
-    pub fn init(allocator: std.mem.Allocator, indexer: *dictionary.Manager, filename: []u8) !Self {
+    pub fn init(allocator: std.mem.Allocator, indexer: *Indexer, filename: []u8) !Self {
         var doc = try file.slurp(allocator, filename);
         return .{
             .indexer = indexer,

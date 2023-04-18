@@ -9,8 +9,7 @@ const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
 const Dictionary = @import("dictionary.zig").Dictionary;
-const Doc = @import("dictionary.zig").Doc;
-const Manager = @import("dictionary.zig").Manager;
+const Indexer = @import("indexer.zig").Indexer;
 const stem = @import("stem.zig").stem;
 const serialise = @import("serialise_ccml.zig");
 const config = @import("config.zig");
@@ -36,18 +35,14 @@ pub fn main() !void {
         return;
     }
 
-    var docs = std.ArrayList(Doc).init(allocator);
-    var dictionary = try Dictionary.init(allocator);
-
     var buffer: [100]u8 = undefined;
 
     const snippets_file = try std.fs.cwd().createFile(config.files.snippets, .{});
     defer snippets_file.close();
 
     var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
-    var snippets_writer = snippets_buf.writer();
 
-    var indexer = Manager.init(allocator, &docs, &dictionary, snippets_writer);
+    var indexer = try Indexer.init(allocator, snippets_buf.writer());
 
     for (args[1..]) |filename| {
         if (std.mem.endsWith(u8, filename, ".xml")) {
@@ -79,20 +74,13 @@ pub fn main() !void {
         }
     }
 
-    try snippets_buf.flush();
-    try indexer.flush();
-
-    // Write index
-    std.debug.print("{s}\n", .{"Writing index..."});
-
     const index_file = try std.fs.cwd().createFile(config.files.index, .{});
     defer index_file.close();
 
-    var buf = std.io.bufferedWriter(index_file.writer());
+    var index_buf = std.io.bufferedWriter(index_file.writer());
 
-    const bytes_written = try serialise.write(buf.writer(), &docs, &dictionary, &indexer.snippets_indices);
+    try indexer.write(index_buf.writer());
 
-    try buf.flush();
-
-    std.debug.print("Wrote index of size {d}\n", .{bytes_written});
+    try snippets_buf.flush();
+    try index_buf.flush();
 }

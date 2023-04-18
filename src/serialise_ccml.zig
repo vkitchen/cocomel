@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const Dictionary = @import("dictionary.zig").Dictionary;
-const Doc = @import("dictionary.zig").Doc;
+const Doc = @import("Doc.zig");
 const Posting = @import("dictionary.zig").Posting;
 
 const file_format = "cocomel v1\n";

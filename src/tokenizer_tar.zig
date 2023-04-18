@@ -46,47 +46,47 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
             return .{ .indexer = indexer, .doc = doc };
         }
 
-        fn read(t: *Self) !void {
-            t.len = try t.doc.read(&t.buf);
-            t.index = 0;
+        fn read(self: *Self) !void {
+            self.len = try self.doc.read(&self.buf);
+            self.index = 0;
         }
 
-        fn getChar(t: *Self) !u8 {
-            if (t.index == t.len)
-                try t.read();
-            const char = t.buf[t.index];
-            t.index += 1;
-            t.bytes_consumed += 1;
+        fn getChar(self: *Self) !u8 {
+            if (self.index == self.len)
+                try self.read();
+            const char = self.buf[self.index];
+            self.index += 1;
+            self.bytes_consumed += 1;
             return char;
         }
 
-        fn peek(t: *Self) !u8 {
-            if (t.index == t.len)
-                try t.read();
-            return t.buf[t.index];
+        fn peek(self: *Self) !u8 {
+            if (self.index == self.len)
+                try self.read();
+            return self.buf[self.index];
         }
 
-        fn eof(t: *Self) !bool {
-            if (t.index == t.len)
-                try t.read();
-            return t.len == 0;
+        fn eof(self: *Self) !bool {
+            if (self.index == self.len)
+                try self.read();
+            return self.len == 0;
         }
 
-        fn isHeader(t: *Self) !bool {
-            if (t.index == t.len)
-                try t.read();
-            return t.len != 0 and t.next_header == t.bytes_consumed;
+        fn isHeader(self: *Self) !bool {
+            if (self.index == self.len)
+                try self.read();
+            return self.len != 0 and self.next_header == self.bytes_consumed;
         }
 
-        fn getDocId(t: *Self) !?[]u8 {
+        fn getDocId(self: *Self) !?[]u8 {
             // Header is 512 byte aligned. Can just read
-            const header: *TarHeader = @ptrCast(*TarHeader, t.buf[t.index..]);
-            t.index += @sizeOf(TarHeader);
-            t.bytes_consumed += @sizeOf(TarHeader);
-            t.next_header += @sizeOf(TarHeader);
+            const header: *TarHeader = @ptrCast(*TarHeader, self.buf[self.index..]);
+            self.index += @sizeOf(TarHeader);
+            self.bytes_consumed += @sizeOf(TarHeader);
+            self.next_header += @sizeOf(TarHeader);
 
             if (header.typeflag == 0) {
-                t.should_exit = true;
+                self.should_exit = true;
                 return null;
             }
 
@@ -101,42 +101,42 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
 
             // Find next header
             const file_size = try std.fmt.parseUnsigned(u64, &header.size, 8);
-            t.next_header += file_size;
+            self.next_header += file_size;
             if (file_size % 512 != 0)
-                t.next_header += 512 - (file_size % 512);
+                self.next_header += 512 - (file_size % 512);
 
             // Extract full name
             var name = @ptrCast([]u8, std.mem.span(@ptrCast([*:0]u8, &header.name)));
             if (header.prefix[0] != 0) {
                 var prefix = std.mem.span(@ptrCast([*:0]u8, &header.prefix));
-                std.mem.copy(u8, &t.name_buf, prefix);
-                t.name_buf[prefix.len] = '/';
-                std.mem.copy(u8, t.name_buf[prefix.len + 1 ..], name);
-                name = t.name_buf[0 .. prefix.len + 1 + name.len];
+                std.mem.copy(u8, &self.name_buf, prefix);
+                self.name_buf[prefix.len] = '/';
+                std.mem.copy(u8, self.name_buf[prefix.len + 1 ..], name);
+                name = self.name_buf[0 .. prefix.len + 1 + name.len];
             }
 
             return name;
         }
 
-        pub fn tokenize(t: *Self, buffer: []u8) !void {
+        pub fn tokenize(self: *Self, buffer: []u8) !void {
             while (true) {
                 // Doc ID
-                if (try t.isHeader()) {
-                    const name = try t.getDocId();
+                if (try self.isHeader()) {
+                    const name = try self.getDocId();
                     // Empty file type
                     if (name == null) {
-                        if (t.should_exit)
+                        if (self.should_exit)
                             return;
                         continue;
                     }
-                    try t.indexer.addDocId(name.?);
+                    try self.indexer.addDocId(name.?);
                     continue;
                 }
 
-                const char = try t.getChar();
+                const char = try self.getChar();
                 // EOF
                 if (char == 0) {
-                    if (try t.eof())
+                    if (try self.eof())
                         return;
                     continue;
                 }
@@ -146,19 +146,19 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                 }
                 // Ignored tags
                 else if (char == '<') {
-                    if (!try t.eof() and try t.getChar() == 's') {
-                        const nextChar = try t.getChar();
-                        if (nextChar == 'c' and try t.getChar() == 'r' and try t.getChar() == 'i' and try t.getChar() == 'p' and try t.getChar() == 't') {
-                            while (!try t.eof() and try t.peek() != '<')
-                                _ = try t.getChar();
+                    if (!try self.eof() and try self.getChar() == 's') {
+                        const nextChar = try self.getChar();
+                        if (nextChar == 'c' and try self.getChar() == 'r' and try self.getChar() == 'i' and try self.getChar() == 'p' and try self.getChar() == 't') {
+                            while (!try self.eof() and try self.peek() != '<')
+                                _ = try self.getChar();
                         }
-                        if (nextChar == 't' and try t.getChar() == 'y' and try t.getChar() == 'l' and try t.getChar() == 'e') {
-                            while (!try t.eof() and try t.peek() != '<')
-                                _ = try t.getChar();
+                        if (nextChar == 't' and try self.getChar() == 'y' and try self.getChar() == 'l' and try self.getChar() == 'e') {
+                            while (!try self.eof() and try self.peek() != '<')
+                                _ = try self.getChar();
                         }
                     }
-                    while (!try t.eof() and try t.peek() != '>')
-                        _ = try t.getChar();
+                    while (!try self.eof() and try self.peek() != '>')
+                        _ = try self.getChar();
                     continue;
                 }
                 // Number
@@ -166,10 +166,10 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                     buffer[0] = char;
 
                     var i: usize = 1;
-                    while (i < buffer.len and !try t.eof() and std.ascii.isDigit(try t.peek())) : (i += 1)
-                        buffer[i] = try t.getChar();
+                    while (i < buffer.len and !try self.eof() and std.ascii.isDigit(try self.peek())) : (i += 1)
+                        buffer[i] = try self.getChar();
 
-                    try t.indexer.addTerm(buffer[0..i]);
+                    try self.indexer.addTerm(buffer[0..i]);
                     continue;
                 }
                 // Word
@@ -177,14 +177,14 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                     buffer[0] = char;
 
                     var i: usize = 1;
-                    while (i < buffer.len and !try t.eof() and (std.ascii.isAlpha(try t.peek()) or try t.peek() == '\'')) : (i += 1)
-                        buffer[i] = try t.getChar();
-                    if (try t.peek() == ',' or try t.peek() == '.') {
-                        buffer[i] = try t.getChar();
+                    while (i < buffer.len and !try self.eof() and (std.ascii.isAlpha(try self.peek()) or try self.peek() == '\'')) : (i += 1)
+                        buffer[i] = try self.getChar();
+                    if (try self.peek() == ',' or try self.peek() == '.') {
+                        buffer[i] = try self.getChar();
                         i += 1;
                     }
 
-                    try t.indexer.addTerm(buffer[0..i]);
+                    try self.indexer.addTerm(buffer[0..i]);
                     continue;
                 }
             }

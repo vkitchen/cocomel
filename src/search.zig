@@ -50,60 +50,60 @@ pub const Search = struct {
         };
     }
 
-    pub fn deinit(s: *Self) void {
-        s.snippets_file.close();
+    pub fn deinit(self: *Self) void {
+        self.snippets_file.close();
     }
 
     // TODO ideally this shouldn't allocate
-    pub fn search(s: *Self, allocator: std.mem.Allocator, query: []u8) ![]Result {
+    pub fn search(self: *Self, allocator: std.mem.Allocator, query: []u8) ![]Result {
         var timer = try std.time.Timer.start();
 
         var tok = QueryTokenizer.init(query);
 
-        s.terms.clearRetainingCapacity();
+        self.terms.clearRetainingCapacity();
 
         while (true) {
             const t = tok.next();
             if (t.type == Token.Type.eof) break;
             var term = stem(t.token);
-            try s.terms.append(term);
+            try self.terms.append(term);
         }
 
         // TODO this shouldn't allocate
-        try expandQuery(allocator, &s.terms);
+        try expandQuery(allocator, &self.terms);
 
-        s.time_query = timer.lap();
+        self.time_query = timer.lap();
 
         var i: u32 = 0;
-        while (i < s.results.len) : (i += 1) {
-            s.results[i].doc_id = i;
-            s.results[i].score = 0;
+        while (i < self.results.len) : (i += 1) {
+            self.results[i].doc_id = i;
+            self.results[i].score = 0;
         }
 
-        for (s.terms.items) |term| {
-            s.index.find(term, &s.ranker, s.results);
+        for (self.terms.items) |term| {
+            self.index.find(term, &self.ranker, self.results);
         }
 
-        std.sort.sort(Result, s.results, {}, cmpResults);
+        std.sort.sort(Result, self.results, {}, cmpResults);
 
         var results_count: usize = 0;
-        for (s.results) |result| {
+        for (self.results) |result| {
             if (result.score == 0)
                 break;
 
             results_count += 1;
         }
 
-        s.time_search = timer.lap();
+        self.time_search = timer.lap();
 
-        return s.results[0..results_count];
+        return self.results[0..results_count];
     }
 
-    pub fn name(s: *const Self, doc_id: u32) []const u8 {
-        return s.index.name(doc_id);
+    pub fn name(self: *const Self, doc_id: u32) []const u8 {
+        return self.index.name(doc_id);
     }
 
-    pub fn snippet(s: *const Self, doc_id: u32) ![]const u8 {
-        return s.index.snippet(doc_id, s.snippets_buf, s.snippets_file);
+    pub fn snippet(self: *const Self, doc_id: u32) ![]const u8 {
+        return self.index.snippet(doc_id, self.snippets_buf, self.snippets_file);
     }
 };

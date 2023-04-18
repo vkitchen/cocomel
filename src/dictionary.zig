@@ -37,12 +37,12 @@ pub const Dictionary = struct {
         return .{ .allocator = allocator, .store = store };
     }
 
-    fn expand(h: *Self) !void {
-        var new_cap = h.cap << 1;
-        var new_store = try h.allocator.alloc(?*Posting, new_cap);
+    fn expand(self: *Self) !void {
+        var new_cap = self.cap << 1;
+        var new_store = try self.allocator.alloc(?*Posting, new_cap);
         std.mem.set(?*Posting, new_store, null);
 
-        for (h.store) |p| {
+        for (self.store) |p| {
             if (p != null) {
                 var i = hash(p.?.term, new_cap);
                 while (new_store[i] != null)
@@ -52,38 +52,38 @@ pub const Dictionary = struct {
             }
         }
 
-        h.allocator.free(h.store);
-        h.cap = new_cap;
-        h.store = new_store;
+        self.allocator.free(self.store);
+        self.cap = new_cap;
+        self.store = new_store;
     }
 
-    pub fn insert(h: *Self, key: []const u8, doc_id: u32) !void {
-        if (h.len > h.cap / 2)
-            try h.expand();
+    pub fn insert(self: *Self, key: []const u8, doc_id: u32) !void {
+        if (self.len > self.cap / 2)
+            try self.expand();
 
-        var i = hash(key, h.cap);
-        while (h.store[i] != null) {
-            if (std.mem.eql(u8, h.store[i].?.term, key)) {
-                if (h.store[i].?.ids.items[h.store[i].?.ids.items.len - 1] == doc_id) {
-                    h.store[i].?.freqs.items[h.store[i].?.freqs.items.len - 1] +|= 1;
+        var i = hash(key, self.cap);
+        while (self.store[i] != null) {
+            if (std.mem.eql(u8, self.store[i].?.term, key)) {
+                if (self.store[i].?.ids.items[self.store[i].?.ids.items.len - 1] == doc_id) {
+                    self.store[i].?.freqs.items[self.store[i].?.freqs.items.len - 1] +|= 1;
                     return;
                 }
-                try h.store[i].?.ids.append(doc_id);
-                try h.store[i].?.freqs.append(1);
+                try self.store[i].?.ids.append(doc_id);
+                try self.store[i].?.freqs.append(1);
                 return;
             }
-            i = i + 1 & (h.cap - 1);
+            i = i + 1 & (self.cap - 1);
         }
 
-        h.store[i] = try h.allocator.create(Posting);
-        h.store[i].?.term = try str.dup(h.allocator, key);
+        self.store[i] = try self.allocator.create(Posting);
+        self.store[i].?.term = try str.dup(self.allocator, key);
 
-        h.store[i].?.ids = std.ArrayList(u32).init(h.allocator);
-        try h.store[i].?.ids.append(doc_id);
+        self.store[i].?.ids = std.ArrayList(u32).init(self.allocator);
+        try self.store[i].?.ids.append(doc_id);
 
-        h.store[i].?.freqs = std.ArrayList(u8).init(h.allocator);
-        try h.store[i].?.freqs.append(1);
+        self.store[i].?.freqs = std.ArrayList(u8).init(self.allocator);
+        try self.store[i].?.freqs.append(1);
 
-        h.len += 1;
+        self.len += 1;
     }
 };

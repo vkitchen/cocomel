@@ -22,70 +22,70 @@ pub const WsjTokenizer = struct {
         };
     }
 
-    pub fn tokenize(t: *Self) !void {
+    pub fn tokenize(self: *Self) !void {
         while (true) {
             // Whitespace
-            while (t.index < t.doc.len and std.ascii.isWhitespace(t.doc[t.index])) {
-                t.index += 1;
+            while (self.index < self.doc.len and std.ascii.isWhitespace(self.doc[self.index])) {
+                self.index += 1;
             }
             // EOF
-            if (t.index == t.doc.len) {
+            if (self.index == self.doc.len) {
                 return;
             }
             // Doc ID
-            else if (std.mem.startsWith(u8, t.doc[t.index..], "<DOCNO>")) {
-                t.index += std.mem.len("<DOCNO>");
+            else if (std.mem.startsWith(u8, self.doc[self.index..], "<DOCNO>")) {
+                self.index += std.mem.len("<DOCNO>");
 
-                while (t.index < t.doc.len and std.ascii.isWhitespace(t.doc[t.index]))
-                    t.index += 1;
+                while (self.index < self.doc.len and std.ascii.isWhitespace(self.doc[self.index]))
+                    self.index += 1;
 
                 var i: usize = 0;
-                while (i + t.index < t.doc.len and t.doc[t.index + i] != '<' and !std.ascii.isWhitespace(t.doc[t.index + i]))
+                while (i + self.index < self.doc.len and self.doc[self.index + i] != '<' and !std.ascii.isWhitespace(self.doc[self.index + i]))
                     i += 1;
 
-                try t.indexer.addDocId(t.doc[t.index .. t.index + i]);
+                try self.indexer.addDocId(self.doc[self.index .. self.index + i]);
 
-                t.index += i;
+                self.index += i;
 
                 continue;
             }
             // Ignored tags
-            else if (t.doc[t.index] == '<') {
-                t.index += 1;
-                while (t.index < t.doc.len and t.doc[t.index] != '>')
-                    t.index += 1;
-                t.index += 1;
+            else if (self.doc[self.index] == '<') {
+                self.index += 1;
+                while (self.index < self.doc.len and self.doc[self.index] != '>')
+                    self.index += 1;
+                self.index += 1;
                 continue;
             }
             // Number
-            else if (std.ascii.isDigit(t.doc[t.index])) {
+            else if (std.ascii.isDigit(self.doc[self.index])) {
                 var i: usize = 0;
-                while (t.index + i < t.doc.len and std.ascii.isDigit(t.doc[t.index + i]))
+                while (self.index + i < self.doc.len and std.ascii.isDigit(self.doc[self.index + i]))
                     i += 1;
 
-                try t.indexer.addTerm(t.doc[t.index .. t.index + i]);
+                try self.indexer.addTerm(self.doc[self.index .. self.index + i]);
 
-                t.index += i;
+                self.index += i;
 
                 continue;
             }
             // Word
-            else if (std.ascii.isAlpha(t.doc[t.index])) {
+            else if (std.ascii.isAlpha(self.doc[self.index])) {
                 var i: usize = 0;
-                while (t.index + i < t.doc.len and std.ascii.isAlpha(t.doc[t.index + i])) {
-                    t.doc[t.index + i] = std.ascii.toLower(t.doc[t.index + i]);
+                while (self.index + i < self.doc.len and std.ascii.isAlpha(self.doc[self.index + i])) {
+                    self.doc[self.index + i] = std.ascii.toLower(self.doc[self.index + i]);
                     i += 1;
                 }
 
-                try t.indexer.addTerm(t.doc[t.index .. t.index + i]);
+                try self.indexer.addTerm(self.doc[self.index .. self.index + i]);
 
-                t.index += i;
+                self.index += i;
 
                 continue;
             }
             // Something else we don't want
             else {
-                t.index += 1;
+                self.index += 1;
             }
         }
     }

@@ -30,37 +30,37 @@ pub const Indexer = struct {
         };
     }
 
-    pub fn addTerm(m: *Self, term: []u8) !void {
-        try m.snippets_writer.writeAll(term);
-        try m.snippets_writer.writeByte(' ');
-        m.snippets_written += @truncate(u32, term.len + 1);
+    pub fn addTerm(self: *Self, term: []u8) !void {
+        try self.snippets_writer.writeAll(term);
+        try self.snippets_writer.writeByte(' ');
+        self.snippets_written += @truncate(u32, term.len + 1);
 
         _ = std.ascii.lowerString(term, term);
         var term_ = str.stripPunct(term, term);
         term_ = stem(term_);
 
-        try m.dict.insert(term_, @truncate(u32, m.doc_ids.items.len - 1));
-        m.doc_ids.items[m.doc_ids.items.len - 1].len += 1;
+        try self.dict.insert(term_, @truncate(u32, self.doc_ids.items.len - 1));
+        self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
     }
 
-    pub fn addDocId(m: *Self, doc_id: []u8) !void {
-        try m.snippets_indices.append(m.snippets_written);
+    pub fn addDocId(self: *Self, doc_id: []u8) !void {
+        try self.snippets_indices.append(self.snippets_written);
 
-        try m.doc_ids.append(.{ .name = try str.dup(m.allocator, doc_id) });
-        if (m.doc_ids.items.len % 10000 == 0)
-            std.debug.print("{d} Documents\n", .{m.doc_ids.items.len});
+        try self.doc_ids.append(.{ .name = try str.dup(self.allocator, doc_id) });
+        if (self.doc_ids.items.len % 10000 == 0)
+            std.debug.print("{d} Documents\n", .{self.doc_ids.items.len});
     }
 
-    fn flush(m: *Self) !void {
-        try m.snippets_indices.append(m.snippets_written);
+    fn flush(self: *Self) !void {
+        try self.snippets_indices.append(self.snippets_written);
     }
 
-    pub fn write(m: *Self, buf: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) !void {
-        try m.flush();
+    pub fn write(self: *Self, buf: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) !void {
+        try self.flush();
 
         std.debug.print("{s}\n", .{"Writing index..."});
 
-        const bytes_written = try serialise.write(buf, &m.doc_ids, &m.dict, &m.snippets_indices);
+        const bytes_written = try serialise.write(buf, &self.doc_ids, &self.dict, &self.snippets_indices);
 
         std.debug.print("Index is {d}B\n", .{bytes_written});
     }

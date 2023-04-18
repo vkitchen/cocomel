@@ -1,15 +1,9 @@
-//	SEARCH.ZIG
-//	----------
+//	SEARCH_CLI.ZIG
+//	--------------
 //	Copyright (c) Vaughan Kitchen
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const file = @import("file.zig");
-const Index = @import("index.zig").Index;
-const Result = @import("index.zig").Result;
-const Token = @import("tokenizer.zig").Token;
-const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
-const expandQuery = @import("query_expansion.zig").expandQuery;
 const Search = @import("search.zig").Search;
 
 pub fn main() !void {

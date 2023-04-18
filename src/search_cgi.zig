@@ -4,18 +4,8 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const file = @import("file.zig");
-const Index = @import("index.zig").Index;
-const Result = @import("index.zig").Result;
-const Token = @import("tokenizer.zig").Token;
-const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
-const expandQuery = @import("query_expansion.zig").expandQuery;
 const Search = @import("search.zig").Search;
 const slice = @import("slice.zig");
-
-fn cmpResults(context: void, a: Result, b: Result) bool {
-    return std.sort.desc(f64)(context, a.score, b.score);
-}
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();

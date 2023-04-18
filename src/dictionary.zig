@@ -28,12 +28,12 @@ pub const Manager = struct {
 
     allocator: std.mem.Allocator,
     doc_ids: *std.ArrayList(Doc),
-    dict: *HashTable,
+    dict: *Dictionary,
     snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer,
     snippets_indices: std.ArrayList(u32),
     snippets_written: u32 = 0,
 
-    pub fn init(allocator: std.mem.Allocator, doc_ids: *std.ArrayList(Doc), dict: *HashTable, snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) Self {
+    pub fn init(allocator: std.mem.Allocator, doc_ids: *std.ArrayList(Doc), dict: *Dictionary, snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) Self {
         return .{
             .allocator = allocator,
             .doc_ids = doc_ids,
@@ -76,7 +76,7 @@ pub const Posting = struct {
     freqs: std.ArrayList(u8),
 };
 
-pub const HashTable = struct {
+pub const Dictionary = struct {
     const Self = @This();
 
     cap: u32,

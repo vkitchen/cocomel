@@ -8,7 +8,7 @@ const file = @import("file.zig");
 const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
-const HashTable = @import("dictionary.zig").HashTable;
+const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("dictionary.zig").Doc;
 const Manager = @import("dictionary.zig").Manager;
 const stem = @import("stem.zig").stem;
@@ -37,7 +37,7 @@ pub fn main() !void {
     }
 
     var docs = std.ArrayList(Doc).init(allocator);
-    var dictionary = try HashTable.init(allocator);
+    var dictionary = try Dictionary.init(allocator);
 
     var buffer: [100]u8 = undefined;
 

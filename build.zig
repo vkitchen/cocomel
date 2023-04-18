@@ -3,7 +3,7 @@ const Mode = @import("std").builtin.Mode;
 const CrossTarget = @import("std").zig.CrossTarget;
 
 pub fn build(b: *Builder) !void {
-    const indexer = b.addExecutable("index", "src/indexer.zig");
+    const indexer = b.addExecutable("index", "src/index_cli.zig");
     indexer.setBuildMode(Mode.ReleaseFast);
     indexer.install();
 

@@ -4,6 +4,7 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("Doc.zig");
 const serialise = @import("serialise_ccml.zig");
@@ -13,26 +14,32 @@ const str = @import("str.zig");
 pub const Indexer = struct {
     const Self = @This();
 
+    buffer: [100]u8 = undefined,
     allocator: std.mem.Allocator,
     doc_ids: std.ArrayList(Doc),
     dict: Dictionary,
     snippets_indices: std.ArrayList(u32),
-    snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer,
+    snippets_file: std.fs.File,
+    snippets_buf: std.io.BufferedWriter(4096, std.fs.File.Writer),
     snippets_written: u32 = 0,
 
-    pub fn init(allocator: std.mem.Allocator, snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) !Self {
+    pub fn init(allocator: std.mem.Allocator) !Self {
+        const snippets_file = try std.fs.cwd().createFile(config.files.snippets, .{});
+        var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
+
         return .{
             .allocator = allocator,
             .doc_ids = std.ArrayList(Doc).init(allocator),
             .dict = try Dictionary.init(allocator),
             .snippets_indices = std.ArrayList(u32).init(allocator),
-            .snippets_writer = snippets_writer,
+            .snippets_file = snippets_file,
+            .snippets_buf = snippets_buf,
         };
     }
 
     pub fn addTerm(self: *Self, term: []u8) !void {
-        try self.snippets_writer.writeAll(term);
-        try self.snippets_writer.writeByte(' ');
+        try self.snippets_buf.writer().writeAll(term);
+        try self.snippets_buf.writer().writeByte(' ');
         self.snippets_written += @truncate(u32, term.len + 1);
 
         _ = std.ascii.lowerString(term, term);
@@ -55,13 +62,21 @@ pub const Indexer = struct {
         try self.snippets_indices.append(self.snippets_written);
     }
 
-    pub fn write(self: *Self, buf: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) !void {
+    pub fn write(self: *Self) !void {
         try self.flush();
 
         std.debug.print("{s}\n", .{"Writing index..."});
 
-        const bytes_written = try serialise.write(buf, &self.doc_ids, &self.dict, &self.snippets_indices);
+        const index_file = try std.fs.cwd().createFile(config.files.index, .{});
+        var index_buf = std.io.bufferedWriter(index_file.writer());
+
+        const bytes_written = try serialise.write(index_buf.writer(), &self.doc_ids, &self.dict, &self.snippets_indices);
 
         std.debug.print("Index is {d}B\n", .{bytes_written});
+        try self.snippets_buf.flush();
+        try index_buf.flush();
+
+        self.snippets_file.close();
+        index_file.close();
     }
 };

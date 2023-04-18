@@ -118,7 +118,7 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
             return name;
         }
 
-        pub fn tokenize(self: *Self, buffer: []u8) !void {
+        pub fn tokenize(self: *Self) !void {
             while (true) {
                 // Doc ID
                 if (try self.isHeader()) {
@@ -163,28 +163,28 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                 }
                 // Number
                 else if (std.ascii.isDigit(char)) {
-                    buffer[0] = char;
+                    self.indexer.buffer[0] = char;
 
                     var i: usize = 1;
-                    while (i < buffer.len and !try self.eof() and std.ascii.isDigit(try self.peek())) : (i += 1)
-                        buffer[i] = try self.getChar();
+                    while (i < self.indexer.buffer.len and !try self.eof() and std.ascii.isDigit(try self.peek())) : (i += 1)
+                        self.indexer.buffer[i] = try self.getChar();
 
-                    try self.indexer.addTerm(buffer[0..i]);
+                    try self.indexer.addTerm(self.indexer.buffer[0..i]);
                     continue;
                 }
                 // Word
                 else if (std.ascii.isAlpha(char)) {
-                    buffer[0] = char;
+                    self.indexer.buffer[0] = char;
 
                     var i: usize = 1;
-                    while (i < buffer.len and !try self.eof() and (std.ascii.isAlpha(try self.peek()) or try self.peek() == '\'')) : (i += 1)
-                        buffer[i] = try self.getChar();
+                    while (i < self.indexer.buffer.len and !try self.eof() and (std.ascii.isAlpha(try self.peek()) or try self.peek() == '\'')) : (i += 1)
+                        self.indexer.buffer[i] = try self.getChar();
                     if (try self.peek() == ',' or try self.peek() == '.') {
-                        buffer[i] = try self.getChar();
+                        self.indexer.buffer[i] = try self.getChar();
                         i += 1;
                     }
 
-                    try self.indexer.addTerm(buffer[0..i]);
+                    try self.indexer.addTerm(self.indexer.buffer[0..i]);
                     continue;
                 }
             }

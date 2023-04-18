@@ -10,7 +10,7 @@ const Posting = @import("dictionary.zig").Posting;
 
 const file_format = "cocomel v1\n";
 
-fn writeDictionary(out: anytype, h: *Dictionary, bytes_written: *u32) !u32 {
+fn writeDictionary(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, h: *Dictionary, bytes_written: *u32) !u32 {
     // Write contents
     for (h.store) |p, i| {
         if (p != null) {
@@ -61,7 +61,7 @@ fn writeDictionary(out: anytype, h: *Dictionary, bytes_written: *u32) !u32 {
     return table_offset;
 }
 
-pub fn write(out: anytype, docs: *std.ArrayList(Doc), dictionary: *Dictionary, snippets_indices: *std.ArrayList(u32)) !u32 {
+pub fn write(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, docs: *std.ArrayList(Doc), dictionary: *Dictionary, snippets_indices: *std.ArrayList(u32)) !u32 {
     // Header
     try out.writeAll(file_format);
     var bytes_written: u32 = file_format.len;

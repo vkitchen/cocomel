@@ -35,14 +35,7 @@ pub fn main() !void {
         return;
     }
 
-    var buffer: [100]u8 = undefined;
-
-    const snippets_file = try std.fs.cwd().createFile(config.files.snippets, .{});
-    defer snippets_file.close();
-
-    var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
-
-    var indexer = try Indexer.init(allocator, snippets_buf.writer());
+    var indexer = try Indexer.init(allocator);
 
     for (args[1..]) |filename| {
         if (std.mem.endsWith(u8, filename, ".xml")) {
@@ -58,20 +51,12 @@ pub fn main() !void {
 
             const tokType = TarTokenizer(@TypeOf(gzip_stream));
             var toker = tokType.init(&indexer, gzip_stream);
-            try toker.tokenize(&buffer);
+            try toker.tokenize();
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});
             std.process.exit(1);
         }
     }
 
-    const index_file = try std.fs.cwd().createFile(config.files.index, .{});
-    defer index_file.close();
-
-    var index_buf = std.io.bufferedWriter(index_file.writer());
-
-    try indexer.write(index_buf.writer());
-
-    try snippets_buf.flush();
-    try index_buf.flush();
+    try indexer.write();
 }

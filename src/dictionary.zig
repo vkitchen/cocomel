@@ -4,6 +4,7 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const str = @import("str.zig");
 
 pub fn hash(key: []const u8, cap: u32) u32 {
     var result: u32 = 0;
@@ -82,8 +83,7 @@ pub const HashTable = struct {
         }
 
         h.store[i] = try allocator.create(Posting);
-        h.store[i].?.term = try allocator.alloc(u8, key.len);
-        std.mem.copy(u8, h.store[i].?.term, key);
+        h.store[i].?.term = try str.dup(allocator, key);
 
         h.store[i].?.ids = std.ArrayList(u32).init(allocator);
         try h.store[i].?.ids.append(doc_id);

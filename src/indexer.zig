@@ -13,23 +13,13 @@ const Doc = @import("dictionary.zig").Doc;
 const stem = @import("stem.zig").stem;
 const serialise = @import("serialise_ccml.zig");
 const config = @import("config.zig");
+const str = @import("str.zig");
 
 const usage =
     \\
     \\Usage: index [file ...]
     \\
 ;
-
-fn stripPunct(out: []u8, in: []u8) []u8 {
-    var i: usize = 0;
-    for (in) |c| {
-        if (std.ascii.isAlpha(c)) {
-            out[i] = c;
-            i += 1;
-        }
-    }
-    return out[0..i];
-}
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -96,8 +86,7 @@ pub fn main() !void {
                 if (t.type == Token.Type.docno) {
                     if (docs.items.len > 0 and docs.items.len % 1000 == 0)
                         std.debug.print("{d} Documents\n", .{docs.items.len});
-                    var docno = try allocator.alloc(u8, t.token.len);
-                    std.mem.copy(u8, docno, t.token);
+                    var docno = try str.dup(allocator, t.token);
                     try docs.append(.{ .name = docno });
                     try snippets_indices.append(snippets_written);
                     continue;
@@ -111,7 +100,7 @@ pub fn main() !void {
 
                 // Add to index
                 _ = std.ascii.lowerString(t.token, t.token);
-                var term = stripPunct(t.token, t.token);
+                var term = str.stripPunct(t.token, t.token);
                 term = stem(term);
                 try dictionary.insert(allocator, term, @truncate(u32, docs.items.len - 1));
                 docs.items[docs.items.len - 1].len += 1;

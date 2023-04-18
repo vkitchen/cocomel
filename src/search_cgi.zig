@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const Search = @import("search.zig").Search;
-const slice = @import("slice.zig");
+const str = @import("str.zig");
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
@@ -20,7 +20,7 @@ pub fn main() !void {
     defer searcher.deinit();
 
     var q = std.os.getenv("QUERY_STRING");
-    var query = try slice.dup(allocator, q.?[2..]);
+    var query = try str.dup(allocator, q.?[2..]);
 
     const results = try searcher.search(allocator, query);
 

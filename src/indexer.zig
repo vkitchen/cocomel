@@ -13,6 +13,7 @@ const str = @import("str.zig");
 pub const Indexer = struct {
     const Self = @This();
 
+    allocator: std.mem.Allocator,
     doc_ids: std.ArrayList(Doc),
     dict: Dictionary,
     snippets_indices: std.ArrayList(u32),
@@ -21,6 +22,7 @@ pub const Indexer = struct {
 
     pub fn init(allocator: std.mem.Allocator, snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) !Self {
         return .{
+            .allocator = allocator,
             .doc_ids = std.ArrayList(Doc).init(allocator),
             .dict = try Dictionary.init(allocator),
             .snippets_indices = std.ArrayList(u32).init(allocator),
@@ -44,7 +46,7 @@ pub const Indexer = struct {
     pub fn addDocId(m: *Self, doc_id: []u8) !void {
         try m.snippets_indices.append(m.snippets_written);
 
-        try m.doc_ids.append(.{ .name = doc_id });
+        try m.doc_ids.append(.{ .name = try str.dup(m.allocator, doc_id) });
         if (m.doc_ids.items.len % 10000 == 0)
             std.debug.print("{d} Documents\n", .{m.doc_ids.items.len});
     }

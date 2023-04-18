@@ -4,6 +4,7 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const Indexer = @import("indexer.zig").Indexer;
 const Token = @import("tokenizer.zig").Token;
 
 const TarHeader = extern struct {
@@ -31,6 +32,7 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
     return struct {
         const Self = @This();
 
+        indexer: *Indexer,
         bytes_consumed: usize = 0,
         next_header: usize = 0,
         index: usize = 0,
@@ -38,9 +40,10 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
         buf: [4096]u8 = undefined,
         name_buf: [255]u8 = undefined,
         doc: ReaderType,
+        should_exit: bool = false,
 
-        pub fn init(doc: ReaderType) Self {
-            return .{ .doc = doc };
+        pub fn init(indexer: *Indexer, doc: ReaderType) Self {
+            return .{ .indexer = indexer, .doc = doc };
         }
 
         fn read(t: *Self) !void {
@@ -75,18 +78,20 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
             return t.len != 0 and t.next_header == t.bytes_consumed;
         }
 
-        fn getDocId(t: *Self) !Token {
+        fn getDocId(t: *Self) !?[]u8 {
             // Header is 512 byte aligned. Can just read
             const header: *TarHeader = @ptrCast(*TarHeader, t.buf[t.index..]);
             t.index += @sizeOf(TarHeader);
             t.bytes_consumed += @sizeOf(TarHeader);
             t.next_header += @sizeOf(TarHeader);
 
-            if (header.typeflag == 0)
-                return Token{ .type = Token.Type.eof, .token = undefined };
+            if (header.typeflag == 0) {
+                t.should_exit = true;
+                return null;
+            }
 
             if (header.typeflag == '5')
-                return Token{ .type = Token.Type.none, .token = undefined };
+                return null;
 
             // TODO return this as an error
             if (header.typeflag != '0') {
@@ -110,25 +115,29 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                 name = t.name_buf[0 .. prefix.len + 1 + name.len];
             }
 
-            return Token{ .type = Token.Type.docno, .token = name };
+            return name;
         }
 
-        pub fn next(t: *Self, buffer: []u8) !Token {
+        pub fn tokenize(t: *Self, buffer: []u8) !void {
             while (true) {
                 // Doc ID
                 if (try t.isHeader()) {
-                    const out = try t.getDocId();
+                    const name = try t.getDocId();
                     // Empty file type
-                    if (out.type == Token.Type.none)
+                    if (name == null) {
+                        if (t.should_exit)
+                            return;
                         continue;
-                    return out;
+                    }
+                    try t.indexer.addDocId(name.?);
+                    continue;
                 }
 
                 const char = try t.getChar();
                 // EOF
                 if (char == 0) {
                     if (try t.eof())
-                        break;
+                        return;
                     continue;
                 }
                 // Whitespace
@@ -160,10 +169,8 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                     while (i < buffer.len and !try t.eof() and std.ascii.isDigit(try t.peek())) : (i += 1)
                         buffer[i] = try t.getChar();
 
-                    return Token{
-                        .token = buffer[0..i],
-                        .type = Token.Type.word,
-                    };
+                    try t.indexer.addTerm(buffer[0..i]);
+                    continue;
                 }
                 // Word
                 else if (std.ascii.isAlpha(char)) {
@@ -177,17 +184,10 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                         i += 1;
                     }
 
-                    return Token{
-                        .token = buffer[0..i],
-                        .type = Token.Type.word,
-                    };
+                    try t.indexer.addTerm(buffer[0..i]);
+                    continue;
                 }
             }
-            std.debug.print("Fell off the world at {d} {d}\n", .{ t.bytes_consumed, t.index });
-            return Token{
-                .token = undefined,
-                .type = Token.Type.eof,
-            };
         }
     };
 }

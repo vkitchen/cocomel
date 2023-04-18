@@ -57,17 +57,8 @@ pub fn main() !void {
             defer gzip_stream.deinit();
 
             const tokType = TarTokenizer(@TypeOf(gzip_stream));
-            var tok = tokType.init(gzip_stream);
-            while (true) {
-                const t = try tok.next(&buffer);
-                if (t.type == Token.Type.eof) break;
-                if (t.type == Token.Type.docno) {
-                    var docno = try str.dup(allocator, t.token);
-                    try indexer.addDocId(docno);
-                    continue;
-                }
-                try indexer.addTerm(t.token);
-            }
+            var toker = tokType.init(&indexer, gzip_stream);
+            try toker.tokenize(&buffer);
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});
             std.process.exit(1);

@@ -17,7 +17,7 @@ pub fn stem(term: []u8) []u8 {
     return term;
 }
 
-test "s stripping stemmer" {
+test "stem_s" {
     var buffer: [100]u8 = undefined;
 
     const cookies = "cookies";

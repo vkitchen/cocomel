@@ -9,20 +9,15 @@ const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
 const HashTable = @import("dictionary.zig").HashTable;
+const Doc = @import("dictionary.zig").Doc;
 const stem = @import("stem_s.zig").stem;
+const serialise = @import("serialise_ccml.zig");
 
 const usage =
     \\
     \\Usage: index [file ...]
     \\
 ;
-
-const file_format = "cocomel v1\n";
-
-const Doc = struct {
-    name: []u8,
-    len: u32 = 0,
-};
 
 fn stripPunct(out: []u8, in: []u8) []u8 {
     var i: usize = 0;
@@ -136,47 +131,8 @@ pub fn main() !void {
     defer index_file.close();
 
     var buf = std.io.bufferedWriter(index_file.writer());
-    var out = buf.writer();
 
-    // Header
-    try out.writeAll(file_format);
-    var bytes_written: u32 = file_format.len;
-
-    // Document ID strings
-    for (docs.items) |d, i| {
-        try out.writeIntNative(u32, d.len);
-        try out.writeIntNative(u16, @truncate(u16, d.name.len));
-        try out.writeAll(d.name);
-        docs.items[i].name.ptr = @intToPtr([*]u8, bytes_written);
-        bytes_written += @sizeOf(u32) + @sizeOf(u16);
-        bytes_written += @truncate(u32, d.name.len);
-    }
-
-    // Document IDs array
-    const docs_offset = bytes_written;
-    try out.writeIntNative(u32, @truncate(u32, docs.items.len));
-    bytes_written += @sizeOf(u32);
-    for (docs.items) |d| {
-        try out.writeIntNative(u32, @truncate(u32, @ptrToInt(d.name.ptr)));
-        bytes_written += @sizeOf(u32);
-    }
-
-    // Dictionary
-    const dictionary_offset = try dictionary.write(out, &bytes_written);
-
-    // Snippets
-    const snippets_offset = bytes_written;
-    try out.writeIntNative(u32, @truncate(u32, snippets_indices.items.len));
-    for (snippets_indices.items) |s| {
-        try out.writeIntNative(u32, s);
-        bytes_written += @sizeOf(u32);
-    }
-
-    // Metadata
-    try out.writeIntNative(u32, snippets_offset);
-    try out.writeIntNative(u32, docs_offset);
-    try out.writeIntNative(u32, dictionary_offset);
-    bytes_written += 3 * @sizeOf(u32);
+    const bytes_written = try serialise.write(buf.writer(), &docs, &dictionary, &snippets_indices);
 
     try buf.flush();
 

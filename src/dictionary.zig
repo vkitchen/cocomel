@@ -5,12 +5,6 @@
 
 const std = @import("std");
 
-const Posting = struct {
-    term: []u8,
-    ids: std.ArrayList(u32),
-    freqs: std.ArrayList(u8),
-};
-
 pub fn hash(key: []const u8, cap: u32) u32 {
     var result: u32 = 0;
 
@@ -19,6 +13,19 @@ pub fn hash(key: []const u8, cap: u32) u32 {
 
     return result & cap - 1;
 }
+
+// TODO this probably doesn't belong here
+pub const Doc = struct {
+    name: []u8,
+    len: u32 = 0,
+};
+
+pub const Posting = struct {
+    term: []u8,
+    id: u32 = 0,
+    ids: std.ArrayList(u32),
+    freqs: std.ArrayList(u8),
+};
 
 pub const HashTable = struct {
     const Self = @This();
@@ -85,56 +92,5 @@ pub const HashTable = struct {
         try h.store[i].?.freqs.append(1);
 
         h.len += 1;
-    }
-
-    pub fn write(h: *Self, out: anytype, bytes_written: *u32) !u32 {
-        // Write contents
-        for (h.store) |p, i| {
-            if (p != null) {
-                const posting = p.?;
-
-                const term_offset = bytes_written.*;
-                try out.writeIntNative(u16, @truncate(u16, posting.term.len));
-                bytes_written.* += @sizeOf(u16);
-                try out.writeAll(posting.term);
-                bytes_written.* += @truncate(u32, posting.term.len);
-
-                const ids_offset = bytes_written.*;
-                try out.writeIntNative(u32, @truncate(u32, posting.ids.items.len));
-                bytes_written.* += @sizeOf(u32);
-                for (posting.ids.items) |id| {
-                    try out.writeIntNative(u32, id);
-                    bytes_written.* += @sizeOf(u32);
-                }
-
-                const freqs_offset = bytes_written.*;
-                try out.writeIntNative(u32, @truncate(u32, posting.freqs.items.len));
-                bytes_written.* += @sizeOf(u32);
-                for (posting.freqs.items) |freq| {
-                    try out.writeIntNative(u8, freq);
-                    bytes_written.* += @sizeOf(u8);
-                }
-
-                try out.writeIntNative(u32, term_offset);
-                try out.writeIntNative(u32, ids_offset);
-                try out.writeIntNative(u32, freqs_offset);
-                h.store[i] = @intToPtr(*Posting, bytes_written.*);
-                bytes_written.* += @sizeOf(u32) * 3;
-            }
-        }
-
-        // Write table
-        const table_offset = bytes_written.*;
-        try out.writeIntNative(u32, h.cap);
-        bytes_written.* += @sizeOf(u32);
-
-        for (h.store) |p| {
-            try out.writeIntNative(u32, @truncate(u32, @ptrToInt(p.?)));
-            bytes_written.* += @sizeOf(u32);
-        }
-
-        std.debug.print("Terms count {d}\n", .{h.len});
-
-        return table_offset;
     }
 };

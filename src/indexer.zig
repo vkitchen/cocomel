@@ -11,7 +11,7 @@ const serialise = @import("serialise_ccml.zig");
 const stem = @import("stem.zig").stem;
 const str = @import("str.zig");
 
-const Snippets = struct {
+const YesSnippets = struct {
     const Self = @This();
 
     indices: std.ArrayList(u32),
@@ -47,6 +47,21 @@ const Snippets = struct {
         self.file.close();
     }
 };
+
+const NoSnippets = struct {
+    const Self = @This();
+
+    indices: std.ArrayList(u32),
+
+    fn init(allocator: std.mem.Allocator) !Self {
+        return .{ .indices = std.ArrayList(u32).init(allocator) };
+    }
+    fn addTerm(_: *Self, _: []u8) !void {}
+    fn newDocId(_: *Self) !void {}
+    fn flush_and_close(_: *Self) !void {}
+};
+
+const Snippets = if (config.snippets) YesSnippets else NoSnippets;
 
 pub const Indexer = struct {
     const Self = @This();

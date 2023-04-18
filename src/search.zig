@@ -25,7 +25,7 @@ pub const Search = struct {
     ranker: Ranker,
     terms: std.ArrayList([]u8),
     results: []Result,
-    snippets_file: std.fs.File,
+    snippets_file: std.fs.File = undefined,
     snippets_buf: []u8,
     time_index: u64 = 0,
     time_query: u64 = 0,
@@ -39,19 +39,25 @@ pub const Search = struct {
 
         var time_index = timer.read();
 
+        // TODO this should be dependent on whether the index references snippets. Not compile time flags
+        var snippets_file: std.fs.File = undefined;
+        if (config.snippets)
+            snippets_file = try std.fs.cwd().openFile(config.files.snippets, .{});
+
         return .{
             .index = index,
             .ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length),
             .terms = std.ArrayList([]u8).init(allocator),
             .results = try allocator.alloc(Result, index.docs_count),
-            .snippets_file = try std.fs.cwd().openFile(config.files.snippets, .{}),
+            .snippets_file = snippets_file,
             .snippets_buf = snippets_buf,
             .time_index = time_index,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.snippets_file.close();
+        if (config.snippets)
+            self.snippets_file.close();
     }
 
     // TODO ideally this shouldn't allocate
@@ -104,6 +110,8 @@ pub const Search = struct {
     }
 
     pub fn snippet(self: *const Self, doc_id: u32) ![]const u8 {
-        return self.index.snippet(doc_id, self.snippets_buf, self.snippets_file);
+        if (config.snippets)
+            return self.index.snippet(doc_id, self.snippets_buf, self.snippets_file);
+        return "";
     }
 };

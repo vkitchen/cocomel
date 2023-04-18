@@ -8,6 +8,9 @@ pub const files = .{
     .snippets = "snippets.ccml",
 };
 
+// true, false
+pub const snippets = true;
+
 // tf-idf, bm25
 pub const ranking_fn = "bm25";
 

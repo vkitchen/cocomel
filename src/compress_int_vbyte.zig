@@ -9,23 +9,14 @@
 
 pub fn read(p: []u8, out: *u32) usize {
     out.* = p[0] & 0x7F;
-    if (p[0] & 1 << 7 != 0)
-        return 1;
-    out.* <<= 7;
-    out.* |= p[1] & 0x7F;
-    if (p[1] & 1 << 7 != 0)
-        return 2;
-    out.* <<= 7;
-    out.* |= p[2] & 0x7F;
-    if (p[2] & 1 << 7 != 0)
-        return 3;
-    out.* <<= 7;
-    out.* |= p[3] & 0x7F;
-    if (p[3] & 1 << 7 != 0)
-        return 4;
-    out.* <<= 7;
-    out.* |= p[4] & 0x7F;
-    return 5;
+
+    var i: usize = 0;
+    while (i < 4 and p[i] & 1 << 7 == 0) : (i += 1) {
+        out.* <<= 7;
+        out.* |= p[i + 1] & 0x7F;
+    }
+
+    return i + 1;
 }
 
 pub fn store(p: []u8, val: u32) usize {
@@ -65,33 +56,40 @@ test "vbyte" {
 
     var buffer: [5]u8 = undefined;
     var result: u32 = 0;
+    var bytes_used: usize = 0;
 
     // One Byte
-    _ = store(&buffer, 8);
-    _ = read(&buffer, &result);
+    bytes_used = store(&buffer, 8);
+    try std.testing.expect(bytes_used == 1);
+    bytes_used = read(&buffer, &result);
+    try std.testing.expect(bytes_used == 1);
     try std.testing.expect(result == 8);
 
     // Two Byte
-    _ = store(&buffer, 1 << 8);
-    _ = read(&buffer, &result);
-    std.debug.print("SENT {d} GOT BACK {d}\n", .{ 1 << 8, result });
+    bytes_used = store(&buffer, 1 << 8);
+    try std.testing.expect(bytes_used == 2);
+    bytes_used = read(&buffer, &result);
+    try std.testing.expect(bytes_used == 2);
     try std.testing.expect(result == 1 << 8);
 
     // Three Byte
-    _ = store(&buffer, 1 << 15);
-    _ = read(&buffer, &result);
-    std.debug.print("SENT {d} GOT BACK {d}\n", .{ 1 << 15, result });
+    bytes_used = store(&buffer, 1 << 15);
+    try std.testing.expect(bytes_used == 3);
+    bytes_used = read(&buffer, &result);
+    try std.testing.expect(bytes_used == 3);
     try std.testing.expect(result == 1 << 15);
 
     // Four Byte
-    _ = store(&buffer, 1 << 22);
-    _ = read(&buffer, &result);
-    std.debug.print("SENT {d} GOT BACK {d}\n", .{ 1 << 22, result });
+    bytes_used = store(&buffer, 1 << 22);
+    try std.testing.expect(bytes_used == 4);
+    bytes_used = read(&buffer, &result);
+    try std.testing.expect(bytes_used == 4);
     try std.testing.expect(result == 1 << 22);
 
     // Five Byte
-    _ = store(&buffer, 1 << 29);
-    _ = read(&buffer, &result);
-    std.debug.print("SENT {d} GOT BACK {d}\n", .{ 1 << 29, result });
+    bytes_used = store(&buffer, 1 << 29);
+    try std.testing.expect(bytes_used == 5);
+    bytes_used = read(&buffer, &result);
+    try std.testing.expect(bytes_used == 5);
     try std.testing.expect(result == 1 << 29);
 }

@@ -10,6 +10,7 @@ const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
 const HashTable = @import("dictionary.zig").HashTable;
 const Doc = @import("dictionary.zig").Doc;
+const Manager = @import("dictionary.zig").Manager;
 const stem = @import("stem.zig").stem;
 const serialise = @import("serialise_ccml.zig");
 const config = @import("config.zig");
@@ -45,31 +46,13 @@ pub fn main() !void {
 
     var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
     var snippets_writer = snippets_buf.writer();
-    var snippets_written: u32 = 0;
-    var snippets_indices = std.ArrayList(u32).init(allocator);
+
+    var indexer = Manager.init(allocator, &docs, &dictionary, snippets_writer);
 
     for (args[1..]) |filename| {
         if (std.mem.endsWith(u8, filename, ".xml")) {
-            const doc = try file.slurp(allocator, filename);
-            var tok = WsjTokenizer.init(doc);
-            while (true) {
-                const t = tok.next(&buffer);
-                if (t.type == Token.Type.eof) break;
-                if (t.type == Token.Type.docno) {
-                    if (docs.items.len > 0 and docs.items.len % 10000 == 0)
-                        std.debug.print("{d} Documents\n", .{docs.items.len});
-                    try docs.append(.{ .name = t.token });
-                    try snippets_indices.append(snippets_written);
-                    continue;
-                }
-                if (docs.items.len == 0)
-                    continue;
-                try dictionary.insert(allocator, t.token, @truncate(u32, docs.items.len - 1));
-                docs.items[docs.items.len - 1].len += 1;
-                try snippets_writer.writeAll(t.token);
-                try snippets_writer.writeByte(' ');
-                snippets_written += @truncate(u32, t.token.len + 1);
-            }
+            var toker = try WsjTokenizer.init(allocator, &indexer, filename);
+            try toker.tokenize();
         } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
             var doc = try std.fs.cwd().openFile(filename, .{});
             defer doc.close();
@@ -84,26 +67,11 @@ pub fn main() !void {
                 const t = try tok.next(&buffer);
                 if (t.type == Token.Type.eof) break;
                 if (t.type == Token.Type.docno) {
-                    if (docs.items.len > 0 and docs.items.len % 1000 == 0)
-                        std.debug.print("{d} Documents\n", .{docs.items.len});
                     var docno = try str.dup(allocator, t.token);
-                    try docs.append(.{ .name = docno });
-                    try snippets_indices.append(snippets_written);
+                    try indexer.addDocId(docno);
                     continue;
                 }
-                if (docs.items.len == 0)
-                    continue;
-                // Add to snippets
-                try snippets_writer.writeAll(t.token);
-                try snippets_writer.writeByte(' ');
-                snippets_written += @truncate(u32, t.token.len + 1);
-
-                // Add to index
-                _ = std.ascii.lowerString(t.token, t.token);
-                var term = str.stripPunct(t.token, t.token);
-                term = stem(term);
-                try dictionary.insert(allocator, term, @truncate(u32, docs.items.len - 1));
-                docs.items[docs.items.len - 1].len += 1;
+                try indexer.addTerm(t.token);
             }
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});
@@ -111,8 +79,8 @@ pub fn main() !void {
         }
     }
 
-    try snippets_indices.append(snippets_written);
     try snippets_buf.flush();
+    try indexer.flush();
 
     // Write index
     std.debug.print("{s}\n", .{"Writing index..."});
@@ -122,7 +90,7 @@ pub fn main() !void {
 
     var buf = std.io.bufferedWriter(index_file.writer());
 
-    const bytes_written = try serialise.write(buf.writer(), &docs, &dictionary, &snippets_indices);
+    const bytes_written = try serialise.write(buf.writer(), &docs, &dictionary, &indexer.snippets_indices);
 
     try buf.flush();
 

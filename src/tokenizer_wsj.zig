@@ -4,24 +4,25 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const Token = @import("tokenizer.zig").Token;
+const dictionary = @import("dictionary.zig");
+const file = @import("file.zig");
 
 pub const WsjTokenizer = struct {
     const Self = @This();
 
-    index: usize,
+    indexer: *dictionary.Manager,
     doc: []u8,
+    index: usize = 0,
 
-    pub fn init(doc: []u8) Self {
-        return .{ .index = 0, .doc = doc };
+    pub fn init(allocator: std.mem.Allocator, indexer: *dictionary.Manager, filename: []u8) !Self {
+        var doc = try file.slurp(allocator, filename);
+        return .{
+            .indexer = indexer,
+            .doc = doc,
+        };
     }
 
-    pub fn reinit(t: *Self, doc: []const u8) void {
-        t.index = 0;
-        t.doc = doc;
-    }
-
-    pub fn next(t: *Self, buffer: []u8) Token {
+    pub fn tokenize(t: *Self) !void {
         while (true) {
             // Whitespace
             while (t.index < t.doc.len and std.ascii.isWhitespace(t.doc[t.index])) {
@@ -29,7 +30,7 @@ pub const WsjTokenizer = struct {
             }
             // EOF
             if (t.index == t.doc.len) {
-                break;
+                return;
             }
             // Doc ID
             else if (std.mem.startsWith(u8, t.doc[t.index..], "<DOCNO>")) {
@@ -39,18 +40,14 @@ pub const WsjTokenizer = struct {
                     t.index += 1;
 
                 var i: usize = 0;
-                while (i + t.index < t.doc.len and t.doc[t.index + i] != '<' and !std.ascii.isWhitespace(t.doc[t.index + i])) {
+                while (i + t.index < t.doc.len and t.doc[t.index + i] != '<' and !std.ascii.isWhitespace(t.doc[t.index + i]))
                     i += 1;
-                }
 
-                const out = Token{
-                    .token = t.doc[t.index .. t.index + i],
-                    .type = Token.Type.docno,
-                };
+                try t.indexer.addDocId(t.doc[t.index .. t.index + i]);
 
                 t.index += i;
 
-                return out;
+                continue;
             }
             // Ignored tags
             else if (t.doc[t.index] == '<') {
@@ -63,46 +60,33 @@ pub const WsjTokenizer = struct {
             // Number
             else if (std.ascii.isDigit(t.doc[t.index])) {
                 var i: usize = 0;
-                while (i < buffer.len and i + t.index < t.doc.len and std.ascii.isDigit(t.doc[t.index + i])) {
-                    buffer[i] = t.doc[t.index + i];
+                while (t.index + i < t.doc.len and std.ascii.isDigit(t.doc[t.index + i]))
                     i += 1;
-                }
 
-                const out = Token{
-                    .token = buffer[0..i],
-                    .type = Token.Type.word,
-                };
+                try t.indexer.addTerm(t.doc[t.index .. t.index + i]);
 
                 t.index += i;
 
-                return out;
+                continue;
             }
             // Word
             else if (std.ascii.isAlpha(t.doc[t.index])) {
                 var i: usize = 0;
-                while (i < buffer.len and i + t.index < t.doc.len and std.ascii.isAlpha(t.doc[t.index + i])) {
-                    buffer[i] = std.ascii.toLower(t.doc[t.index + i]);
+                while (t.index + i < t.doc.len and std.ascii.isAlpha(t.doc[t.index + i])) {
+                    t.doc[t.index + i] = std.ascii.toLower(t.doc[t.index + i]);
                     i += 1;
                 }
 
-                const out = Token{
-                    .token = buffer[0..i],
-                    .type = Token.Type.word,
-                };
+                try t.indexer.addTerm(t.doc[t.index .. t.index + i]);
 
                 t.index += i;
 
-                return out;
+                continue;
             }
             // Something else we don't want
             else {
                 t.index += 1;
             }
         }
-        const out = Token{
-            .token = t.doc[0..0],
-            .type = Token.Type.eof,
-        };
-        return out;
     }
 };

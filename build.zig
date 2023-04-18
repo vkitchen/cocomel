@@ -17,6 +17,6 @@ pub fn build(b: *Builder) !void {
     cgi.install();
 
     const test_step = b.step("test", "Run tests");
-    const unit_tests = b.addTest("src/stem_s.zig");
+    const unit_tests = b.addTest("src/test.zig");
     test_step.dependOn(&unit_tests.step);
 }

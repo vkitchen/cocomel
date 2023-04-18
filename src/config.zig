@@ -10,3 +10,6 @@ pub const files = .{
 
 // tf-idf, bm25
 pub const ranking_fn = "bm25";
+
+// s, none
+pub const stemmer = "s";

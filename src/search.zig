@@ -10,7 +10,7 @@ const Result = @import("index.zig").Result;
 const Token = @import("tokenizer.zig").Token;
 const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
 const Ranker = @import("ranking_fn.zig").Ranker;
-const stem = @import("stem_s.zig").stem;
+const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
 

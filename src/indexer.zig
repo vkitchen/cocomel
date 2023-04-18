@@ -10,7 +10,7 @@ const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Token = @import("tokenizer.zig").Token;
 const HashTable = @import("dictionary.zig").HashTable;
 const Doc = @import("dictionary.zig").Doc;
-const stem = @import("stem_s.zig").stem;
+const stem = @import("stem.zig").stem;
 const serialise = @import("serialise_ccml.zig");
 const config = @import("config.zig");
 

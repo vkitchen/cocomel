@@ -12,6 +12,7 @@ const HashTable = @import("dictionary.zig").HashTable;
 const Doc = @import("dictionary.zig").Doc;
 const stem = @import("stem_s.zig").stem;
 const serialise = @import("serialise_ccml.zig");
+const config = @import("config.zig");
 
 const usage =
     \\
@@ -49,7 +50,7 @@ pub fn main() !void {
 
     var buffer: [100]u8 = undefined;
 
-    const snippets_file = try std.fs.cwd().createFile("snippets.dat", .{});
+    const snippets_file = try std.fs.cwd().createFile(config.files.snippets, .{});
     defer snippets_file.close();
 
     var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
@@ -127,7 +128,7 @@ pub fn main() !void {
     // Write index
     std.debug.print("{s}\n", .{"Writing index..."});
 
-    const index_file = try std.fs.cwd().createFile("index.dat", .{});
+    const index_file = try std.fs.cwd().createFile(config.files.index, .{});
     defer index_file.close();
 
     var buf = std.io.bufferedWriter(index_file.writer());

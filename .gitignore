@@ -1,7 +1,7 @@
 *.txt
 *.xml
 *.tar.gz
-*.dat
+*.ccml
 *.o
 zig-cache/
 zig-out/

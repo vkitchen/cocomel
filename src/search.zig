@@ -12,6 +12,7 @@ const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
 const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const stem = @import("stem_s.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
+const config = @import("config.zig");
 
 fn cmpResults(context: void, a: Result, b: Result) bool {
     return std.sort.desc(f64)(context, a.score, b.score);
@@ -33,7 +34,7 @@ pub const Search = struct {
     pub fn init(allocator: std.mem.Allocator, snippets_buf: []u8) !Self {
         var timer = try std.time.Timer.start();
 
-        const index_file = try file.slurp(allocator, "index.dat");
+        const index_file = try file.slurp(allocator, config.files.index);
         const index = Index.init(index_file);
 
         var time_index = timer.read();
@@ -43,7 +44,7 @@ pub const Search = struct {
             .ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length),
             .terms = std.ArrayList([]u8).init(allocator),
             .results = try allocator.alloc(Result, index.docs_count),
-            .snippets_file = try std.fs.cwd().openFile("snippets.dat", .{}),
+            .snippets_file = try std.fs.cwd().openFile(config.files.snippets, .{}),
             .snippets_buf = snippets_buf,
             .time_index = time_index,
         };

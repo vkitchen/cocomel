@@ -81,11 +81,20 @@ pub const Indexer = struct {
         };
     }
 
-    pub fn addTerm(self: *Self, term: []u8) !void {
+    pub fn addCleanTerm(self: *Self, term: []u8) !void {
         try self.snippets.addTerm(term);
 
-        _ = std.ascii.lowerString(term, term);
-        var term_ = str.stripPunct(term, term);
+        var term_ = stem(term);
+
+        try self.dict.insert(term_, @truncate(u32, self.doc_ids.items.len - 1));
+        self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
+    }
+
+    pub fn addDirtyTerm(self: *Self, term: []u8) !void {
+        try self.snippets.addTerm(term);
+
+        var term_ = std.ascii.lowerString(term, term);
+        term_ = str.stripPunct(term_, term_);
         term_ = stem(term_);
 
         try self.dict.insert(term_, @truncate(u32, self.doc_ids.items.len - 1));

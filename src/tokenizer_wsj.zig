@@ -63,7 +63,7 @@ pub const WsjTokenizer = struct {
                 while (self.index + i < self.doc.len and std.ascii.isDigit(self.doc[self.index + i]))
                     i += 1;
 
-                try self.indexer.addTerm(self.doc[self.index .. self.index + i]);
+                try self.indexer.addCleanTerm(self.doc[self.index .. self.index + i]);
 
                 self.index += i;
 
@@ -77,7 +77,7 @@ pub const WsjTokenizer = struct {
                     i += 1;
                 }
 
-                try self.indexer.addTerm(self.doc[self.index .. self.index + i]);
+                try self.indexer.addCleanTerm(self.doc[self.index .. self.index + i]);
 
                 self.index += i;
 

@@ -11,6 +11,43 @@ const serialise = @import("serialise_ccml.zig");
 const stem = @import("stem.zig").stem;
 const str = @import("str.zig");
 
+const Snippets = struct {
+    const Self = @This();
+
+    indices: std.ArrayList(u32),
+    file: std.fs.File,
+    buf: std.io.BufferedWriter(4096, std.fs.File.Writer),
+    bytes_written: u32 = 0,
+
+    fn init(allocator: std.mem.Allocator) !Self {
+        const file = try std.fs.cwd().createFile(config.files.snippets, .{});
+        var buf = std.io.bufferedWriter(file.writer());
+
+        return .{
+            .indices = std.ArrayList(u32).init(allocator),
+            .file = file,
+            .buf = buf,
+        };
+    }
+
+    fn addTerm(self: *Self, term: []u8) !void {
+        try self.buf.writer().writeAll(term);
+        try self.buf.writer().writeByte(' ');
+        self.bytes_written += @truncate(u32, term.len + 1);
+    }
+
+    fn newDocId(self: *Self) !void {
+        try self.indices.append(self.bytes_written);
+    }
+
+    fn flush_and_close(self: *Self) !void {
+        try self.indices.append(self.bytes_written);
+        try self.buf.flush();
+
+        self.file.close();
+    }
+};
+
 pub const Indexer = struct {
     const Self = @This();
 
@@ -18,29 +55,19 @@ pub const Indexer = struct {
     allocator: std.mem.Allocator,
     doc_ids: std.ArrayList(Doc),
     dict: Dictionary,
-    snippets_indices: std.ArrayList(u32),
-    snippets_file: std.fs.File,
-    snippets_buf: std.io.BufferedWriter(4096, std.fs.File.Writer),
-    snippets_written: u32 = 0,
+    snippets: Snippets,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        const snippets_file = try std.fs.cwd().createFile(config.files.snippets, .{});
-        var snippets_buf = std.io.bufferedWriter(snippets_file.writer());
-
         return .{
             .allocator = allocator,
             .doc_ids = std.ArrayList(Doc).init(allocator),
             .dict = try Dictionary.init(allocator),
-            .snippets_indices = std.ArrayList(u32).init(allocator),
-            .snippets_file = snippets_file,
-            .snippets_buf = snippets_buf,
+            .snippets = try Snippets.init(allocator),
         };
     }
 
     pub fn addTerm(self: *Self, term: []u8) !void {
-        try self.snippets_buf.writer().writeAll(term);
-        try self.snippets_buf.writer().writeByte(' ');
-        self.snippets_written += @truncate(u32, term.len + 1);
+        try self.snippets.addTerm(term);
 
         _ = std.ascii.lowerString(term, term);
         var term_ = str.stripPunct(term, term);
@@ -51,32 +78,25 @@ pub const Indexer = struct {
     }
 
     pub fn addDocId(self: *Self, doc_id: []u8) !void {
-        try self.snippets_indices.append(self.snippets_written);
+        try self.snippets.newDocId();
 
         try self.doc_ids.append(.{ .name = try str.dup(self.allocator, doc_id) });
         if (self.doc_ids.items.len % 10000 == 0)
             std.debug.print("{d} Documents\n", .{self.doc_ids.items.len});
     }
 
-    fn flush(self: *Self) !void {
-        try self.snippets_indices.append(self.snippets_written);
-    }
-
     pub fn write(self: *Self) !void {
-        try self.flush();
+        try self.snippets.flush_and_close();
 
         std.debug.print("{s}\n", .{"Writing index..."});
 
         const index_file = try std.fs.cwd().createFile(config.files.index, .{});
+        defer index_file.close();
         var index_buf = std.io.bufferedWriter(index_file.writer());
 
-        const bytes_written = try serialise.write(index_buf.writer(), &self.doc_ids, &self.dict, &self.snippets_indices);
-
-        std.debug.print("Index is {d}B\n", .{bytes_written});
-        try self.snippets_buf.flush();
+        const bytes_written = try serialise.write(index_buf.writer(), &self.doc_ids, &self.dict, &self.snippets.indices);
         try index_buf.flush();
 
-        self.snippets_file.close();
-        index_file.close();
+        std.debug.print("Index is {d}B\n", .{bytes_written});
     }
 };

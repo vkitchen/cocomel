@@ -26,7 +26,6 @@ pub const Doc = struct {
 pub const Manager = struct {
     const Self = @This();
 
-    allocator: std.mem.Allocator,
     doc_ids: *std.ArrayList(Doc),
     dict: *Dictionary,
     snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer,
@@ -35,7 +34,6 @@ pub const Manager = struct {
 
     pub fn init(allocator: std.mem.Allocator, doc_ids: *std.ArrayList(Doc), dict: *Dictionary, snippets_writer: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer) Self {
         return .{
-            .allocator = allocator,
             .doc_ids = doc_ids,
             .dict = dict,
             .snippets_writer = snippets_writer,
@@ -52,7 +50,7 @@ pub const Manager = struct {
         var term_ = str.stripPunct(term, term);
         term_ = stem(term_);
 
-        try m.dict.insert(m.allocator, term_, @truncate(u32, m.doc_ids.items.len - 1));
+        try m.dict.insert(term_, @truncate(u32, m.doc_ids.items.len - 1));
         m.doc_ids.items[m.doc_ids.items.len - 1].len += 1;
     }
 
@@ -79,22 +77,22 @@ pub const Posting = struct {
 pub const Dictionary = struct {
     const Self = @This();
 
-    cap: u32,
-    len: u32,
+    allocator: std.mem.Allocator,
+    cap: u32 = 1 << 19,
+    len: u32 = 0,
     store: []?*Posting,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         var h: Self = undefined;
-        h.cap = 1 << 19;
-        h.len = 0;
+        h.allocator = allocator;
         h.store = try allocator.alloc(?*Posting, h.cap);
         std.mem.set(?*Posting, h.store, null);
         return h;
     }
 
-    fn expand(h: *Self, allocator: std.mem.Allocator) !void {
+    fn expand(h: *Self) !void {
         var new_cap = h.cap << 1;
-        var new_store = try allocator.alloc(?*Posting, new_cap);
+        var new_store = try h.allocator.alloc(?*Posting, new_cap);
         std.mem.set(?*Posting, new_store, null);
 
         for (h.store) |p| {
@@ -107,14 +105,14 @@ pub const Dictionary = struct {
             }
         }
 
-        allocator.free(h.store);
+        h.allocator.free(h.store);
         h.cap = new_cap;
         h.store = new_store;
     }
 
-    pub fn insert(h: *Self, allocator: std.mem.Allocator, key: []const u8, doc_id: u32) !void {
+    pub fn insert(h: *Self, key: []const u8, doc_id: u32) !void {
         if (h.len > h.cap / 2)
-            try h.expand(allocator);
+            try h.expand();
 
         var i = hash(key, h.cap);
         while (h.store[i] != null) {
@@ -130,13 +128,13 @@ pub const Dictionary = struct {
             i = i + 1 & (h.cap - 1);
         }
 
-        h.store[i] = try allocator.create(Posting);
-        h.store[i].?.term = try str.dup(allocator, key);
+        h.store[i] = try h.allocator.create(Posting);
+        h.store[i].?.term = try str.dup(h.allocator, key);
 
-        h.store[i].?.ids = std.ArrayList(u32).init(allocator);
+        h.store[i].?.ids = std.ArrayList(u32).init(h.allocator);
         try h.store[i].?.ids.append(doc_id);
 
-        h.store[i].?.freqs = std.ArrayList(u8).init(allocator);
+        h.store[i].?.freqs = std.ArrayList(u8).init(h.allocator);
         try h.store[i].?.freqs.append(1);
 
         h.len += 1;

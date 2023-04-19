@@ -6,6 +6,7 @@
 const std = @import("std");
 const hash = @import("dictionary.zig").hash;
 const Ranker = @import("ranking_fn.zig").Ranker;
+const vbyte = @import("compress_int_vbyte.zig");
 
 pub const Result = struct {
     doc_id: u32,
@@ -90,6 +91,7 @@ pub const Index = struct {
     fn postings(self: *const Self, offset: u32, ranker: *Ranker, results: []Result) void {
         const ids_offset = read32(self.index, offset);
         const ids_len = read32(self.index, ids_offset);
+        const ids = ids_offset + @sizeOf(u32);
 
         const scores_offset = read32(self.index, offset + @sizeOf(u32));
         const scores_len = read32(self.index, scores_offset);
@@ -98,11 +100,15 @@ pub const Index = struct {
         ranker.compIdf(@intToFloat(f64, scores_len));
 
         var i: u32 = 0;
-        while (i < ids_len) : (i += 1) {
-            const stride = @sizeOf(u32) + i * @sizeOf(u32);
-            const doc_id = read32(self.index, ids_offset + stride);
+        var id_i: u32 = 0;
+        var last_id: u32 = 0;
+        while (i < scores_len and id_i < ids_len) : (i += 1) {
+            var doc_id: u32 = 0;
+            id_i += vbyte.read(self.index[ids + id_i ..], &doc_id);
+            doc_id += last_id;
             const doc_len = self.doc_length(self.docs_offset, doc_id);
             results[doc_id].score += ranker.compScore(@intToFloat(f64, self.index[scores + i]), @intToFloat(f64, doc_len));
+            last_id = doc_id;
         }
     }
 

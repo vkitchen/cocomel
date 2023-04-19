@@ -18,25 +18,18 @@ fn writeDictionary(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, 
 
             const term_offset = bytes_written.*;
             try out.writeIntNative(u16, @truncate(u16, posting.term.len));
-            bytes_written.* += @sizeOf(u16);
             try out.writeAll(posting.term);
-            bytes_written.* += @truncate(u32, posting.term.len);
+            bytes_written.* += @sizeOf(u16) + @truncate(u32, posting.term.len);
 
             const ids_offset = bytes_written.*;
             try out.writeIntNative(u32, @truncate(u32, posting.ids.items.len));
-            bytes_written.* += @sizeOf(u32);
-            for (posting.ids.items) |id| {
-                try out.writeIntNative(u32, id);
-                bytes_written.* += @sizeOf(u32);
-            }
+            try out.writeAll(posting.ids.items);
+            bytes_written.* += @sizeOf(u32) + @truncate(u32, posting.ids.items.len);
 
             const freqs_offset = bytes_written.*;
             try out.writeIntNative(u32, @truncate(u32, posting.freqs.items.len));
-            bytes_written.* += @sizeOf(u32);
-            for (posting.freqs.items) |freq| {
-                try out.writeIntNative(u8, freq);
-                bytes_written.* += @sizeOf(u8);
-            }
+            try out.writeAll(posting.freqs.items);
+            bytes_written.* += @sizeOf(u32) + @truncate(u32, posting.freqs.items.len);
 
             try out.writeIntNative(u32, term_offset);
             try out.writeIntNative(u32, ids_offset);

@@ -7,10 +7,10 @@
 // i.e. big endian with a stop bit
 // Reference: https://github.com/andrewtrotman/ATIRE/blob/master/source/compress_variable_byte.h
 
-pub fn read(p: []u8, out: *u32) usize {
+pub fn read(p: []const u8, out: *u32) u32 {
     out.* = p[0] & 0x7F;
 
-    var i: usize = 0;
+    var i: u32 = 0;
     while (i < 4 and p[i] & 1 << 7 == 0) : (i += 1) {
         out.* <<= 7;
         out.* |= p[i + 1] & 0x7F;
@@ -19,7 +19,7 @@ pub fn read(p: []u8, out: *u32) usize {
     return i + 1;
 }
 
-pub fn store(p: []u8, val: u32) usize {
+pub fn store(p: []u8, val: u32) u32 {
     if (val < 1 << 7) {
         p[0] = @truncate(u8, val & 0x7F | 1 << 7);
         return 1;

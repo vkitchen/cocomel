@@ -19,10 +19,10 @@ There are two programs. Index and search. Index builds an index over the documen
 * BM25 ranking
 * Multi term search
 * Snippeting
+* Impact ordering
 
 ## Todo
 
-* Impact ordering
 * Phrase search
 * Daemon mode
-* Speed improvements
+* Score-at-a-time retrieval

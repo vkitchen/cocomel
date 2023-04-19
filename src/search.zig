@@ -35,7 +35,7 @@ pub const Search = struct {
         var timer = try std.time.Timer.start();
 
         const index_file = try file.slurp(allocator, config.files.index);
-        const index = Index.init(index_file);
+        const index = try Index.init(allocator, index_file);
 
         var time_index = timer.read();
 

@@ -9,5 +9,11 @@ pub fn slurp(allocator: std.mem.Allocator, filename: []const u8) ![]u8 {
     var file = try std.fs.cwd().openFile(filename, .{});
     defer file.close();
 
-    return file.readToEndAlloc(allocator, std.math.maxInt(usize));
+    const stat = try file.stat();
+
+    const buffer = try allocator.alloc(u8, stat.size);
+    if (try file.readAll(buffer) != stat.size)
+        return error.ReadError;
+
+    return buffer;
 }

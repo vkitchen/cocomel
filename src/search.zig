@@ -109,9 +109,9 @@ pub const Search = struct {
         return self.index.name(doc_id);
     }
 
-    pub fn snippet(self: *const Self, doc_id: u32) ![]const u8 {
+    pub fn snippet(self: *const Self, allocator: std.mem.Allocator, doc_id: u32) ![]const u8 {
         if (config.snippets)
-            return self.index.snippet(doc_id, self.snippets_buf, self.snippets_file);
+            return self.index.snippet(allocator, self.terms, doc_id, self.snippets_buf, self.snippets_file);
         return "";
     }
 };

@@ -6,6 +6,7 @@
 const std = @import("std");
 const hash = @import("dictionary.zig").hash;
 const Ranker = @import("ranking_fn.zig").Ranker;
+const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 
 pub const Result = struct {
@@ -70,15 +71,16 @@ pub const Index = struct {
         return self.index[name_start .. name_start + name_length];
     }
 
-    pub fn snippet(self: *const Self, doc_id: u32, buf: []u8, snippets_file: std.fs.File) ![]const u8 {
+    pub fn snippet(self: *const Self, allocator: std.mem.Allocator, terms: std.ArrayList([]u8), doc_id: u32, _: []u8, snippets_file: std.fs.File) ![]const u8 {
         const stride = doc_id * @sizeOf(u32);
         const start = read32(self.index, self.snippets_offset + stride);
         const end = read32(self.index, self.snippets_offset + stride + @sizeOf(u32));
-        const read_size = std.math.min(buf.len, end - start);
-        try snippets_file.seekTo(start);
-        const bytes_read = try snippets_file.readAll(buf[0..read_size]);
+        return snippets.snippet(allocator, terms, snippets_file, start, end);
+        // const read_size = std.math.min(buf.len, end - start);
+        // try snippets_file.seekTo(start);
+        // const bytes_read = try snippets_file.readAll(buf[0..read_size]);
 
-        return buf[0..bytes_read];
+        // return buf[0..bytes_read];
     }
 
     fn postings_chunk(self: *const Self, offset: u32, ranker: *Ranker, results: []Result) void {

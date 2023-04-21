@@ -33,18 +33,19 @@ pub fn main() !void {
         \\<html>
         \\<head>
         \\<meta charset='utf-8'>
+        \\<link rel='stylesheet' type='text/css' href='/static/main.css'>
         \\<title>search results - Potato Castles</title>
         \\</head>
         \\<body>
-        \\<h1 class='site-logo'><a href='/'>Potato Castles</a></h1>
-        \\<h4>Search powered by <a href='http://github.com/vkitchen/cocomel'>cocomel</a></h4>
+        \\<div class='header'>
+        \\<h1 class='logo'><a href='/'>Potato Castles</a></h1>
         \\<form class='site-search' action='/cgi-bin/search-recipes' method='get'>
-        \\<input type='text' name='q' placeholder='Search recipes...'>
-        \\<input type='submit' value='Search'>
+        \\<input class='search-input' type='text' name='q' placeholder='Search recipes...'><!--
+        \\--><input class='search-submit' type='submit' value='Search'>
         \\</form>
-    , .{});
-
-    try stdout.print("<h4>Top 30 Results ({d} total):</h4>\n", .{results.len});
+        \\<h4>Top 30 Results ({d} total):</h4>
+        \\</div>
+    , .{results.len});
 
     try stdout.print("<ul>\n", .{});
     {
@@ -52,7 +53,7 @@ pub fn main() !void {
         while (i < std.math.min(30, results.len)) : (i += 1) {
             try stdout.print("<li>\n", .{});
             const name = searcher.name(results[i].doc_id);
-            try stdout.print("{d:.4} <a href='http://{s}'>{s}</a>\n", .{ results[i].score, name, name });
+            try stdout.print("<a href='http://{s}'>{s}</a>\n", .{ name, name });
             try stdout.print("<p>{s}</p>\n\n", .{try searcher.snippet(allocator, results[i].doc_id)});
             try stdout.print("</li>\n", .{});
         }

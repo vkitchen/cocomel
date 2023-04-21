@@ -65,7 +65,7 @@ pub fn main() !void {
     try stdout.print("<p>\n", .{});
 
     try stdout.print("Index size: {d:.3}MiB<br>\n", .{@intToFloat(f64, searcher.index.index.len) / 1024 / 1024});
-    try stdout.print("No. docs: {d}<br>\n", .{searcher.index.docs_count});
+    try stdout.print("Collection size: {d}docs<br>\n", .{searcher.index.docs_count});
 
     for (searcher.terms.items) |term, i| {
         try stdout.print("Term {d}: {s}<br>\n", .{ i, term });

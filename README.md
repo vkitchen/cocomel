@@ -1,6 +1,6 @@
 # Cocomel - A search engine
 
-This is the search engine which powers [potatocastles.com](http://potatocastles.com). If you're looking for the crawler it is here [vkitchen/crawler](https://github.com/vkitchen/crawler)
+This is the search engine which powers [potatocastles.com](http://potatocastles.com). If you're looking for the website it is here [vkitchen/potatoes](https://github.com/vkitchen/potatoes) and the crawler it is here [vkitchen/crawler](https://github.com/vkitchen/crawler)
 
 ## Why another search engine?
 
@@ -12,10 +12,11 @@ What I want:
 1. Designed for a single node (optimises raw performance rather than scaling out)
 2. Fast queries and fast indexing (I only have the one machine to run it all on)
 3. Low memory usage (there is a physical limit of RAM in the computer. I would like to index as much as possible in it)
-4. Simple (I don't want lots of complex features I won't use making the code hard to understand)
-5. Advanced features (simple doesn't mean it can't do select things other search engines do poorly)
-6. Specialised (this is a recipe search engine and should take advantage of that vertical)
-7. Adaptable (it should be possible to repurpose it to other verticals without significant changes)
+4. No allocation after startup (the server shouldn't have to allocate to handle a request except for caching)
+5. Simple (I don't want lots of complex features I won't use making the code hard to understand)
+6. Advanced features (simple doesn't mean it can't do select things other search engines do poorly)
+7. Specialised (this is a recipe search engine and should take advantage of that vertical)
+8. Adaptable (it should be possible to repurpose it to other verticals without significant changes)
 
 This project is still in its early stages but its making progress
 

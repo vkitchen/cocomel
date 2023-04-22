@@ -24,6 +24,11 @@ pub fn build(b: *Builder) !void {
     cgi.setBuildMode(Mode.ReleaseFast);
     cgi.install();
 
+    const client_cgi = b.addExecutable("search-recipes", "src/client_cgi.zig");
+    client_cgi.setTarget(try CrossTarget.parse(.{ .arch_os_abi = "x86_64-linux-musl" }));
+    client_cgi.setBuildMode(Mode.ReleaseFast);
+    client_cgi.install();
+
     const test_step = b.step("test", "Run tests");
     const unit_tests = b.addTest("src/test.zig");
     test_step.dependOn(&unit_tests.step);

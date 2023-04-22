@@ -51,7 +51,8 @@ pub fn main() !void {
 
     const search_time = timer.read();
 
-    const no_results = read16(&results_buffer, 0);
+    const total_results = read16(&results_buffer, 0);
+    const no_results = read16(&results_buffer, 2);
 
     try stdout.print("Content-type: text/html; charset=utf-8\n\n", .{});
 
@@ -72,10 +73,10 @@ pub fn main() !void {
         \\</form>
         \\<h4>Approx {d} results in {d:.3} seconds</h4>
         \\</div>
-    , .{ no_results, @intToFloat(f64, search_time) / 1e9 });
+    , .{ total_results, @intToFloat(f64, search_time) / 1e9 });
 
     try stdout.print("<ul>\n", .{});
-    var offset: usize = 2;
+    var offset: usize = 4;
 
     var i: usize = 0;
     while (i < no_results) : (i += 1) {

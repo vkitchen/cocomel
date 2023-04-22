@@ -57,6 +57,7 @@ pub fn main() !void {
 
         var out = conn.stream.writer();
 
+        try out.writeIntNative(u16, @truncate(u16, results.len));
         try out.writeIntNative(u16, @truncate(u16, no_results));
 
         var i: usize = 0;

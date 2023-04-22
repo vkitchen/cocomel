@@ -7,6 +7,14 @@ pub fn build(b: *Builder) !void {
     indexer.setBuildMode(Mode.ReleaseFast);
     indexer.install();
 
+    const daemon = b.addExecutable("daemon", "src/daemon.zig");
+    daemon.setBuildMode(Mode.ReleaseSafe);
+    daemon.install();
+
+    const client = b.addExecutable("client", "src/client.zig");
+    client.setBuildMode(Mode.ReleaseSafe);
+    client.install();
+
     const search = b.addExecutable("search", "src/search_cli.zig");
     search.setBuildMode(Mode.ReleaseSafe);
     search.install();

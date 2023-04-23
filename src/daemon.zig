@@ -21,7 +21,7 @@ pub fn main() !void {
 
     var query_buf: [1024]u8 = undefined;
 
-    try std.os.unlink(socket_name);
+    std.os.unlink(socket_name) catch {};
 
     var addr = try std.net.Address.initUnix(socket_name);
     var listener = std.net.StreamServer.init(.{});

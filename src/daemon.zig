@@ -54,7 +54,8 @@ pub fn main() !void {
 
         const no_results = std.math.min(10, results.len);
 
-        var out = conn.stream.writer();
+        var out_buf = std.io.bufferedWriter(conn.stream.writer());
+        var out = out_buf.writer();
 
         try out.writeIntNative(u16, @truncate(u16, results.len));
         try out.writeIntNative(u16, @truncate(u16, no_results));
@@ -84,6 +85,8 @@ pub fn main() !void {
                     try out.writeAll("</b>");
             }
         }
+
+        try out_buf.flush();
 
         conn.stream.close();
     } else |err| {

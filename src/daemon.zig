@@ -24,6 +24,8 @@ pub fn main() !void {
 
     var query_buf: [1024]u8 = undefined;
 
+    try std.os.unlink(socket_name);
+
     var addr = try std.net.Address.initUnix(socket_name);
     var listener = std.net.StreamServer.init(.{});
     try listener.listen(addr);
@@ -65,9 +67,25 @@ pub fn main() !void {
             const name = searcher.name(results[i].doc_id);
             try out.writeIntNative(u16, @truncate(u16, name.len));
             try out.writeAll(name);
+            var snippet_length: usize = 0;
             const snippet = try searcher.snippet(allocator, results[i].doc_id);
-            try out.writeIntNative(u16, @truncate(u16, snippet.len));
-            try out.writeAll(snippet);
+            for (snippet) |s, j| {
+                if (j > 0)
+                    snippet_length += 1;
+                if (s.hit)
+                    snippet_length += 7;
+                snippet_length += s.original.len;
+            }
+            try out.writeIntNative(u16, @truncate(u16, snippet_length));
+            for (snippet) |s, j| {
+                if (j > 0)
+                    try out.writeAll(" ");
+                if (s.hit)
+                    try out.writeAll("<b>");
+                try out.writeAll(s.original);
+                if (s.hit)
+                    try out.writeAll("</b>");
+            }
         }
 
         conn.stream.close();

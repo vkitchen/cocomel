@@ -32,15 +32,13 @@ fn copy_to_buf(buffer: []u8, terms: *std.ArrayList(Term), offset: usize) []u8 {
     return buffer[0..bytes_written];
 }
 
-pub fn snippet(allocator: std.mem.Allocator, query: std.ArrayList([]u8), file: std.fs.File, start: usize, end: usize) ![]u8 {
+pub fn snippet(allocator: std.mem.Allocator, query: std.ArrayList([]u8), terms: *std.ArrayList(Term), file: std.fs.File, start: usize, end: usize) ![]Term {
     var tok = Tokenizer.init(file);
-    var tokens = std.ArrayList(Term).init(allocator);
-    try tok.tokenize(allocator, &tokens, start, end);
+    try tok.tokenize(allocator, terms, start, end);
 
-    var buffer = try allocator.alloc(u8, 4096);
-    const window = std.math.min(100, tokens.items.len);
+    const window = std.math.min(100, terms.items.len);
     if (window < 100)
-        return copy_to_buf(buffer, &tokens, 0);
+        return terms.items;
 
     var hits: usize = 0;
     var max_hits: usize = 0;
@@ -48,8 +46,8 @@ pub fn snippet(allocator: std.mem.Allocator, query: std.ArrayList([]u8), file: s
     var i: usize = 0;
     while (i < window) : (i += 1) {
         for (query.items) |q| {
-            if (std.mem.eql(u8, q, tokens.items[i].stemmed)) {
-                tokens.items[i].hit = true;
+            if (std.mem.eql(u8, q, terms.items[i].stemmed)) {
+                terms.items[i].hit = true;
                 hits += 1;
                 break;
             }
@@ -57,12 +55,12 @@ pub fn snippet(allocator: std.mem.Allocator, query: std.ArrayList([]u8), file: s
     }
     max_hits = hits;
 
-    while (i < tokens.items.len) : (i += 1) {
-        if (tokens.items[i - 100].hit)
+    while (i < terms.items.len) : (i += 1) {
+        if (terms.items[i - 100].hit)
             hits -= 1;
         for (query.items) |q| {
-            if (std.mem.eql(u8, q, tokens.items[i].stemmed)) {
-                tokens.items[i].hit = true;
+            if (std.mem.eql(u8, q, terms.items[i].stemmed)) {
+                terms.items[i].hit = true;
                 hits += 1;
                 break;
             }
@@ -73,5 +71,7 @@ pub fn snippet(allocator: std.mem.Allocator, query: std.ArrayList([]u8), file: s
         }
     }
 
-    return copy_to_buf(buffer, &tokens, max_hits_i);
+    const end_hit = std.math.min(max_hits_i + 100, terms.items.len);
+
+    return terms.items[max_hits_i..end_hit];
 }

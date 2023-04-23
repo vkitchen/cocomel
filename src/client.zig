@@ -49,11 +49,12 @@ pub fn main() !void {
         total_read += bytes_read;
     }
 
-    const no_results = read16(&results_buffer, 0);
+    const total_results = read16(&results_buffer, 0);
+    const no_results = read16(&results_buffer, 2);
 
-    std.debug.print("Top 10 Results ({d} total):\n\n", .{no_results});
+    std.debug.print("Top {d} results of ({d} total):\n\n", .{ no_results, total_results });
 
-    var offset: usize = 2;
+    var offset: usize = 4;
 
     var i: usize = 0;
     while (i < no_results) : (i += 1) {

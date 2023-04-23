@@ -30,6 +30,16 @@ pub fn main() !void {
     var i: usize = 0;
     while (i < std.math.min(10, results.len)) : (i += 1) {
         std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id) });
-        std.debug.print("{s}\n\n", .{try searcher.snippet(allocator, results[i].doc_id)});
+        const snippet = try searcher.snippet(allocator, results[i].doc_id);
+        for (snippet) |s, j| {
+            if (j > 0)
+                std.debug.print(" ", .{});
+            if (s.hit) {
+                std.debug.print("\x1B[1m{s}\x1B[0m", .{s.original});
+            } else {
+                std.debug.print("{s}", .{s.original});
+            }
+        }
+        std.debug.print("\n\n", .{});
     }
 }

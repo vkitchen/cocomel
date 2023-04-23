@@ -7,9 +7,11 @@ const std = @import("std");
 const file = @import("file.zig");
 const Index = @import("index.zig").Index;
 const Result = @import("index.zig").Result;
+const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
 const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
 const Ranker = @import("ranking_fn.zig").Ranker;
+const snippets = @import("snippets.zig");
 const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
@@ -27,6 +29,7 @@ pub const Search = struct {
     results: []Result,
     snippets_file: std.fs.File = undefined,
     snippets_buf: []u8,
+    snippets_terms: std.ArrayList(Term),
     time_index: u64 = 0,
     time_query: u64 = 0,
     time_search: u64 = 0,
@@ -51,6 +54,7 @@ pub const Search = struct {
             .results = try allocator.alloc(Result, index.docs_count),
             .snippets_file = snippets_file,
             .snippets_buf = snippets_buf,
+            .snippets_terms = std.ArrayList(Term).init(allocator),
             .time_index = time_index,
         };
     }
@@ -109,9 +113,11 @@ pub const Search = struct {
         return self.index.name(doc_id);
     }
 
-    pub fn snippet(self: *const Self, allocator: std.mem.Allocator, doc_id: u32) ![]const u8 {
-        if (config.snippets)
-            return self.index.snippet(allocator, self.terms, doc_id, self.snippets_buf, self.snippets_file);
-        return "";
+    pub fn snippet(self: *Self, allocator: std.mem.Allocator, doc_id: u32) ![]Term {
+        if (!config.snippets)
+            return "";
+        self.snippets_terms.clearRetainingCapacity();
+        var range = self.index.snippet(doc_id);
+        return snippets.snippet(allocator, self.terms, &self.snippets_terms, self.snippets_file, range[0], range[1]);
     }
 };

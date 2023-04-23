@@ -1,5 +1,5 @@
-//	CLIENT.ZIG
-//	----------
+//	PROG_CLIENT.ZIG
+//	---------------
 //	Copyright (c) Vaughan Kitchen
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 

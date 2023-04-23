@@ -3,21 +3,21 @@ const Mode = @import("std").builtin.Mode;
 const CrossTarget = @import("std").zig.CrossTarget;
 
 pub fn build(b: *Builder) !void {
-    const indexer = b.addExecutable("index", "src/index_cli.zig");
+    const indexer = b.addExecutable("index", "src/prog_index.zig");
     indexer.setBuildMode(Mode.ReleaseFast);
     indexer.install();
 
-    const daemon = b.addExecutable("daemon", "src/daemon.zig");
+    const daemon = b.addExecutable("cocomel", "src/prog_cocomel.zig");
     daemon.setBuildMode(Mode.ReleaseSafe);
     daemon.install();
 
-    const client = b.addExecutable("client", "src/client.zig");
-    client.setBuildMode(Mode.ReleaseSafe);
-    client.install();
+    const search_client = b.addExecutable("client", "src/prog_client.zig");
+    search_client.setBuildMode(Mode.ReleaseSafe);
+    search_client.install();
 
-    const search = b.addExecutable("search", "src/search_cli.zig");
-    search.setBuildMode(Mode.ReleaseSafe);
-    search.install();
+    const search_cli = b.addExecutable("search", "src/prog_search.zig");
+    search_cli.setBuildMode(Mode.ReleaseSafe);
+    search_cli.install();
 
     const test_step = b.step("test", "Run tests");
     const unit_tests = b.addTest("src/test.zig");

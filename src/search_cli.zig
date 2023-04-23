@@ -20,7 +20,7 @@ pub fn main() !void {
     var buf: [100]u8 = undefined;
     var query = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
-    const results = try searcher.search(allocator, query.?);
+    const results = try searcher.search(query.?);
 
     std.debug.print("Top 10 Results ({d} total):\n\n", .{results.len});
 

@@ -42,9 +42,21 @@ pub const Search = struct {
 
         const index = try Index.init(allocator, index_file);
 
+        var max_snippet: u32 = 0;
+        var doc_id: u32 = 0;
+        while (doc_id < index.docs_count) : (doc_id += 1) {
+            const range = index.snippet(doc_id);
+            const snippet_length = range[1] - range[0];
+            if (snippet_length > max_snippet)
+                max_snippet = snippet_length;
+        }
+
         // TODO make snippets optional
+
+        var snippets_buf = try allocator.alloc(u8, max_snippet);
+        var snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
         var snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
-        const snippeter = try Snippeter.init(allocator, snippets_file, snippets_terms);
+        var snippeter = try Snippeter.init(snippets_allocator, snippets_file, snippets_terms);
 
         return .{
             .index = index,
@@ -57,8 +69,7 @@ pub const Search = struct {
         };
     }
 
-    // TODO ideally this shouldn't allocate
-    pub fn search(self: *Self, allocator: std.mem.Allocator, query: []u8) ![]Result {
+    pub fn search(self: *Self, query: []u8) ![]Result {
         var timer = try std.time.Timer.start();
 
         var tok = QueryTokenizer.init(query);
@@ -72,8 +83,8 @@ pub const Search = struct {
             self.query.appendAssumeCapacity(term);
         }
 
-        // TODO this shouldn't allocate
-        try expandQuery(allocator, &self.query);
+        // TODO reenable once allocation is fixed
+        // try expandQuery(allocator, &self.query);
 
         self.time_query = timer.lap();
 
@@ -109,7 +120,7 @@ pub const Search = struct {
     pub fn snippet(self: *Self, doc_id: u32) ![]Term {
         if (!config.snippets)
             return "";
-        var range = self.index.snippet(doc_id);
+        const range = self.index.snippet(doc_id);
         return self.snippeter.snippet(self.query.items, range[0], range[1]);
     }
 };

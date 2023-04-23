@@ -10,11 +10,11 @@ const Term = @import("tokenizer_snippet.zig").Term;
 pub const Snippeter = struct {
     const Self = @This();
 
-    allocator: std.mem.Allocator,
+    allocator: std.heap.FixedBufferAllocator,
     snippets: []const u8,
     terms: std.ArrayListUnmanaged(Term),
 
-    pub fn init(allocator: std.mem.Allocator, snippets: []const u8, terms: std.ArrayListUnmanaged(Term)) !Self {
+    pub fn init(allocator: std.heap.FixedBufferAllocator, snippets: []const u8, terms: std.ArrayListUnmanaged(Term)) !Self {
         return .{
             .allocator = allocator,
             .snippets = snippets,
@@ -24,9 +24,10 @@ pub const Snippeter = struct {
 
     pub fn snippet(self: *Self, query: [][]u8, start: usize, end: usize) ![]Term {
         self.terms.clearRetainingCapacity();
+        self.allocator.reset();
 
         var toker = Tokenizer.init(self.snippets, start, end);
-        try toker.tokenize(self.allocator, &self.terms);
+        try toker.tokenize(self.allocator.allocator(), &self.terms);
 
         const window = std.math.min(100, self.terms.items.len);
         if (window < 100)

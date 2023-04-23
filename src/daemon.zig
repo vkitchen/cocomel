@@ -50,7 +50,7 @@ pub fn main() !void {
             continue;
         }
 
-        const results = try searcher.search(allocator, query_buf[4 .. 4 + str_len]);
+        const results = try searcher.search(query_buf[4 .. 4 + str_len]);
 
         const no_results = std.math.min(10, results.len);
 

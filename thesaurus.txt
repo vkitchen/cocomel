@@ -5,11 +5,13 @@ aubergine eggplant
 biscuits cookies
 canola rapeseed
 capsicum "bell pepper"
+cardamom cardamon
 chickpeas garbanzo
 chips fries
 coriander cilantro
-"cos lettuce" "romaine lettuce"
+cos romaine
 courgette zucchini
+doughnut donut
 dumpling gyoza
 endive chicory
 icing frosting
@@ -17,6 +19,7 @@ kumara "sweet potato"
 lollies candy
 muesli granola
 okra "ladies fingers"
+omelette omelet
 palak saag
 porridge oatmeal
 pumpkin squash

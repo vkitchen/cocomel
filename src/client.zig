@@ -27,6 +27,8 @@ pub fn main() !void {
 
     var results_buffer: [16384]u8 = undefined;
 
+    var timer = try std.time.Timer.start();
+
     var stream = try std.net.connectUnixSocket(socket_name);
 
     var bytes_written = try stream.write(buf[0 .. 4 + query.?.len]);
@@ -39,6 +41,12 @@ pub fn main() !void {
             break;
         total_read += bytes_read;
     }
+
+    stream.close();
+
+    const search_time = timer.read();
+
+    std.debug.print("Search took {d:.3}\n", .{@intToFloat(f64, search_time) / 1e9});
 
     const total_results = read16(&results_buffer, 0);
     const no_results = read16(&results_buffer, 2);

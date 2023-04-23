@@ -13,10 +13,7 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var snippets_buf: [500]u8 = undefined;
-
-    var searcher = try Search.init(allocator, &snippets_buf);
-    defer searcher.deinit();
+    var searcher = try Search.init(allocator);
 
     std.debug.print("{s}", .{"Query> "});
 
@@ -30,7 +27,7 @@ pub fn main() !void {
     var i: usize = 0;
     while (i < std.math.min(10, results.len)) : (i += 1) {
         std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id) });
-        const snippet = try searcher.snippet(allocator, results[i].doc_id);
+        const snippet = try searcher.snippet(results[i].doc_id);
         for (snippet) |s, j| {
             if (j > 0)
                 std.debug.print(" ", .{});

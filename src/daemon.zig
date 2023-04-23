@@ -17,10 +17,7 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var snippets_buf: [500]u8 = undefined;
-
-    var searcher = try Search.init(allocator, &snippets_buf);
-    defer searcher.deinit();
+    var searcher = try Search.init(allocator);
 
     var query_buf: [1024]u8 = undefined;
 
@@ -68,7 +65,7 @@ pub fn main() !void {
             try out.writeIntNative(u16, @truncate(u16, name.len));
             try out.writeAll(name);
             var snippet_length: usize = 0;
-            const snippet = try searcher.snippet(allocator, results[i].doc_id);
+            const snippet = try searcher.snippet(results[i].doc_id);
             for (snippet) |s, j| {
                 if (j > 0)
                     snippet_length += 1;

@@ -17,7 +17,7 @@ fn in(haystack: []const []const u8, needle: []u8) bool {
     return false;
 }
 
-fn addAll(allocator: std.mem.Allocator, terms: *std.ArrayList([]u8), synonyms: []const []const u8) !void {
+fn addAll(allocator: std.mem.Allocator, terms: *std.ArrayListUnmanaged([]u8), synonyms: []const []const u8) !void {
     for (synonyms) |unique| {
         var should_add = true;
         for (terms.items) |term| {
@@ -29,12 +29,12 @@ fn addAll(allocator: std.mem.Allocator, terms: *std.ArrayList([]u8), synonyms: [
         if (should_add) {
             var newTerm = try allocator.alloc(u8, unique.len);
             std.mem.copy(u8, newTerm, unique);
-            try terms.append(newTerm);
+            try terms.append(allocator, newTerm);
         }
     }
 }
 
-pub fn expandQuery(allocator: std.mem.Allocator, terms: *std.ArrayList([]u8)) !void {
+pub fn expandQuery(allocator: std.mem.Allocator, terms: *std.ArrayListUnmanaged([]u8)) !void {
     const len = terms.items.len;
     var i: usize = 0;
     while (i < len) : (i += 1) {

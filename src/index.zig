@@ -27,11 +27,12 @@ pub const Index = struct {
 
     index: []const u8,
     doc_lengths: []u32,
-    hash_offset: u32,
-    docs_offset: u32,
-    snippets_offset: u32,
-    docs_count: u32,
+    max_length: u32,
     average_length: f64,
+    docs_count: u32,
+    docs_offset: u32,
+    hash_offset: u32,
+    snippets_offset: u32,
 
     pub fn init(allocator: std.mem.Allocator, index: []const u8) !Self {
         const docs_count = read32(index, index.len - 16);
@@ -40,12 +41,15 @@ pub const Index = struct {
         const snippets_offset = read32(index, index.len - 4);
 
         var doc_lengths = try allocator.alloc(u32, docs_count);
-
+        var max_length: u32 = 0;
         var average_length: f64 = 0;
+
         var i: u32 = 0;
         while (i < docs_count) : (i += 1) {
             const offset = read32(index, docs_offset + i * @sizeOf(u32));
             doc_lengths[i] = read32(index, offset);
+            if (doc_lengths[i] > max_length)
+                max_length = doc_lengths[i];
             average_length += @intToFloat(f64, doc_lengths[i]);
         }
         average_length /= @intToFloat(f64, docs_count);
@@ -53,11 +57,12 @@ pub const Index = struct {
         return .{
             .index = index,
             .doc_lengths = doc_lengths,
+            .max_length = max_length,
+            .average_length = average_length,
             .hash_offset = hash_offset,
             .docs_offset = docs_offset,
             .snippets_offset = snippets_offset,
             .docs_count = docs_count,
-            .average_length = average_length,
         };
     }
 

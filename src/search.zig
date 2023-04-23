@@ -11,7 +11,7 @@ const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
 const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
 const Ranker = @import("ranking_fn.zig").Ranker;
-const snippets = @import("snippets.zig");
+const Snippeter = @import("snippets.zig").Snippeter;
 const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
@@ -24,44 +24,37 @@ pub const Search = struct {
     const Self = @This();
 
     index: Index,
+    snippeter: Snippeter,
     ranker: Ranker,
-    terms: std.ArrayList([]u8),
+    query: std.ArrayListUnmanaged([]u8),
     results: []Result,
-    snippets_file: std.fs.File = undefined,
-    snippets_buf: []u8,
-    snippets_terms: std.ArrayList(Term),
-    time_index: u64 = 0,
+    time_index_read: u64 = 0,
+    time_snippets_read: u64 = 0,
     time_query: u64 = 0,
     time_search: u64 = 0,
 
-    pub fn init(allocator: std.mem.Allocator, snippets_buf: []u8) !Self {
+    pub fn init(allocator: std.mem.Allocator) !Self {
         var timer = try std.time.Timer.start();
-
         const index_file = try file.slurp(allocator, config.files.index);
+        const time_index_read = timer.lap();
+        const snippets_file = try file.slurp(allocator, config.files.snippets);
+        const time_snippets_read = timer.read();
+
         const index = try Index.init(allocator, index_file);
 
-        var time_index = timer.read();
-
-        // TODO this should be dependent on whether the index references snippets. Not compile time flags
-        var snippets_file: std.fs.File = undefined;
-        if (config.snippets)
-            snippets_file = try std.fs.cwd().openFile(config.files.snippets, .{});
+        // TODO make snippets optional
+        var snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
+        const snippeter = try Snippeter.init(allocator, snippets_file, snippets_terms);
 
         return .{
             .index = index,
+            .snippeter = snippeter,
             .ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length),
-            .terms = std.ArrayList([]u8).init(allocator),
+            .query = try std.ArrayListUnmanaged([]u8).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.docs_count),
-            .snippets_file = snippets_file,
-            .snippets_buf = snippets_buf,
-            .snippets_terms = std.ArrayList(Term).init(allocator),
-            .time_index = time_index,
+            .time_index_read = time_index_read,
+            .time_snippets_read = time_snippets_read,
         };
-    }
-
-    pub fn deinit(self: *Self) void {
-        if (config.snippets)
-            self.snippets_file.close();
     }
 
     // TODO ideally this shouldn't allocate
@@ -70,17 +63,17 @@ pub const Search = struct {
 
         var tok = QueryTokenizer.init(query);
 
-        self.terms.clearRetainingCapacity();
+        self.query.clearRetainingCapacity();
 
         while (true) {
             const t = tok.next();
             if (t.type == Token.Type.eof) break;
             var term = stem(t.token);
-            try self.terms.append(term);
+            self.query.appendAssumeCapacity(term);
         }
 
         // TODO this shouldn't allocate
-        try expandQuery(allocator, &self.terms);
+        try expandQuery(allocator, &self.query);
 
         self.time_query = timer.lap();
 
@@ -90,7 +83,7 @@ pub const Search = struct {
             self.results[i].score = 0;
         }
 
-        for (self.terms.items) |term| {
+        for (self.query.items) |term| {
             self.index.find(term, &self.ranker, self.results);
         }
 
@@ -113,11 +106,10 @@ pub const Search = struct {
         return self.index.name(doc_id);
     }
 
-    pub fn snippet(self: *Self, allocator: std.mem.Allocator, doc_id: u32) ![]Term {
+    pub fn snippet(self: *Self, doc_id: u32) ![]Term {
         if (!config.snippets)
             return "";
-        self.snippets_terms.clearRetainingCapacity();
         var range = self.index.snippet(doc_id);
-        return snippets.snippet(allocator, self.terms, &self.snippets_terms, self.snippets_file, range[0], range[1]);
+        return self.snippeter.snippet(self.query.items, range[0], range[1]);
     }
 };

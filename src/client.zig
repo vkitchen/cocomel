@@ -15,15 +15,6 @@ fn read16(str: []const u8, offset: usize) u16 {
 pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
-    var snippets_buf: [500]u8 = undefined;
-
-    var searcher = try Search.init(allocator, &snippets_buf);
-    defer searcher.deinit();
-
     std.debug.print("{s}", .{"Query> "});
 
     var buf: [1000]u8 = undefined;

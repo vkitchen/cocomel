@@ -33,11 +33,11 @@ pub const Search = struct {
     time_query: u64 = 0,
     time_search: u64 = 0,
 
-    pub fn init(allocator: std.mem.Allocator) !Self {
+    pub fn init(allocator: std.mem.Allocator, dir: std.fs.Dir, index_filename: []const u8, snippets_filename: []const u8) !Self {
         var timer = try std.time.Timer.start();
-        const index_file = try file.slurp(allocator, config.files.index);
+        const index_file = try file.slurp(allocator, dir, index_filename);
         const time_index_read = timer.lap();
-        const snippets_file = try file.slurp(allocator, config.files.snippets);
+        const snippets_file = try file.slurp(allocator, dir, snippets_filename);
         const time_snippets_read = timer.read();
 
         const index = try Index.init(allocator, index_file);

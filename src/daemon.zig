@@ -4,6 +4,7 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const Search = @import("search.zig").Search;
 
 const socket_name = "/tmp/cocomel.sock";
@@ -17,7 +18,12 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var searcher = try Search.init(allocator);
+    var args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
+
+    var dir = if (args.len == 1) std.fs.cwd() else try std.fs.openDirAbsolute(args[1], .{});
+
+    var searcher = try Search.init(allocator, dir, config.files.index, config.files.snippets);
 
     var query_buf: [1024]u8 = undefined;
 

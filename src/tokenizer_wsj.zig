@@ -15,7 +15,7 @@ pub const WsjTokenizer = struct {
     index: usize = 0,
 
     pub fn init(allocator: std.mem.Allocator, indexer: *Indexer, filename: []u8) !Self {
-        var doc = try file.slurp(allocator, filename);
+        var doc = try file.slurp(allocator, std.fs.cwd(), filename);
         return .{
             .indexer = indexer,
             .doc = doc,

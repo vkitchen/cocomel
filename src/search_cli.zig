@@ -4,6 +4,7 @@
 //	Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const Search = @import("search.zig").Search;
 
 pub fn main() !void {
@@ -13,7 +14,7 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var searcher = try Search.init(allocator);
+    var searcher = try Search.init(allocator, std.fs.cwd(), config.files.index, config.files.snippets);
 
     std.debug.print("{s}", .{"Query> "});
 

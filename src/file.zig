@@ -5,8 +5,8 @@
 
 const std = @import("std");
 
-pub fn slurp(allocator: std.mem.Allocator, filename: []const u8) ![]u8 {
-    var file = try std.fs.cwd().openFile(filename, .{});
+pub fn slurp(allocator: std.mem.Allocator, dir: std.fs.Dir, filename: []const u8) ![]u8 {
+    var file = try dir.openFile(filename, .{});
     defer file.close();
 
     const stat = try file.stat();

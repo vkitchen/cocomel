@@ -67,10 +67,16 @@ pub fn main() !void {
         try out.writeIntNative(u8, 0); // protocol version
         try out.writeIntNative(u8, 1); // protocol method
         try out.writeIntNative(u16, @truncate(u16, results.len));
-        try out.writeIntNative(u16, @truncate(u16, no_results));
+        if (results_offset > results.len) {
+            try out.writeIntNative(u16, 0);
+        } else if (results.len - results_offset < no_results) {
+            try out.writeIntNative(u16, @truncate(u16, results.len - results_offset));
+        } else {
+            try out.writeIntNative(u16, @truncate(u16, no_results));
+        }
 
         var i: usize = results_offset;
-        while (i < no_results and i < results.len) : (i += 1) {
+        while (i < results_offset + no_results and i < results.len) : (i += 1) {
             // url
             const name = searcher.name(results[i].doc_id);
             try out.writeIntNative(u16, @truncate(u16, name.len));

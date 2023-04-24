@@ -44,33 +44,40 @@ pub fn main() !void {
         const protocol_version = query_buf[0];
         const protocol_method = query_buf[1];
         // TODO proper handling
-        if (protocol_version != 0 or protocol_method != 0) {
+        if (protocol_version != 0 or protocol_method != 1) {
             conn.stream.close();
             continue;
         }
 
-        const str_len = read16(&query_buf, 2);
+        const no_results = read16(&query_buf, 2);
+        const results_offset = read16(&query_buf, 4);
+
+        const str_len = read16(&query_buf, 6);
         // TODO proper handling
-        if (bytes_read < 4 + str_len) {
+        if (bytes_read < 8 + str_len) {
             conn.stream.close();
             continue;
         }
 
-        const results = try searcher.search(query_buf[4 .. 4 + str_len]);
-
-        const no_results = std.math.min(10, results.len);
+        const results = try searcher.search(query_buf[8 .. 8 + str_len]);
 
         var out_buf = std.io.bufferedWriter(conn.stream.writer());
         var out = out_buf.writer();
 
+        try out.writeIntNative(u8, 0); // protocol version
+        try out.writeIntNative(u8, 1); // protocol method
         try out.writeIntNative(u16, @truncate(u16, results.len));
         try out.writeIntNative(u16, @truncate(u16, no_results));
 
-        var i: usize = 0;
-        while (i < no_results) : (i += 1) {
+        var i: usize = results_offset;
+        while (i < no_results and i < results.len) : (i += 1) {
+            // url
             const name = searcher.name(results[i].doc_id);
             try out.writeIntNative(u16, @truncate(u16, name.len));
             try out.writeAll(name);
+            // doc name
+            try out.writeIntNative(u16, 0);
+            // snippet
             var snippet_length: usize = 0;
             const snippet = try searcher.snippet(results[i].doc_id);
             for (snippet) |s, j| {

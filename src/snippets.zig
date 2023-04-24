@@ -7,6 +7,8 @@ const std = @import("std");
 const Tokenizer = @import("tokenizer_snippet.zig").Tokenizer;
 const Term = @import("tokenizer_snippet.zig").Term;
 
+const window_size = 100;
+
 pub const Snippeter = struct {
     const Self = @This();
 
@@ -29,42 +31,39 @@ pub const Snippeter = struct {
         var toker = Tokenizer.init(self.snippets, start, end);
         try toker.tokenize(self.allocator.allocator(), &self.terms);
 
-        const window = std.math.min(100, self.terms.items.len);
-        if (window < 100)
-            return self.terms.items;
-
         var hits: usize = 0;
         var max_hits: usize = 0;
         var max_hits_i: usize = 0;
         var i: usize = 0;
-        while (i < window) : (i += 1) {
+        while (i < self.terms.items.len) : (i += 1) {
             for (query) |q| {
                 if (std.mem.eql(u8, q, self.terms.items[i].stemmed)) {
                     self.terms.items[i].hit = true;
-                    hits += 1;
+                    if (i < window_size)
+                        hits += 1;
                     break;
                 }
             }
         }
         max_hits = hits;
 
+        if (self.terms.items.len < window_size)
+            return self.terms.items;
+
+        i = window_size;
         while (i < self.terms.items.len) : (i += 1) {
-            if (self.terms.items[i - 100].hit)
+            if (self.terms.items[i].hit)
+                hits += 1;
+            // TODO check the math
+            if (self.terms.items[i - window_size].hit)
                 hits -= 1;
-            for (query) |q| {
-                if (std.mem.eql(u8, q, self.terms.items[i].stemmed)) {
-                    self.terms.items[i].hit = true;
-                    hits += 1;
-                    break;
-                }
-            }
             if (hits > max_hits) {
                 max_hits = hits;
                 max_hits_i = i;
             }
         }
 
-        const end_hit = std.math.min(max_hits_i + 100, self.terms.items.len);
+        const end_hit = std.math.min(max_hits_i + window_size, self.terms.items.len);
 
         return self.terms.items[max_hits_i..end_hit];
     }

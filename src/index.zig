@@ -66,14 +66,19 @@ pub const Index = struct {
         };
     }
 
-    // [   u32   ][   u16   ][ []u8 ]
-    // [ doclen  ][ strlen  ][ str  ]
-    pub fn name(self: *const Self, doc_id: u32) []const u8 {
+    // [   u32   ][   u16   ][ []u8 ][   u16   ][ []u8 ]
+    // [ doclen  ][ strlen  ][ str  ][ strlen  ][ str  ]
+    pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const stride = doc_id * @sizeOf(u32);
         const name_offset = read32(self.index, self.docs_offset + stride) + @sizeOf(u32);
         const name_length = read16(self.index, name_offset);
         const name_start = name_offset + @sizeOf(u16);
-        return self.index[name_start .. name_start + name_length];
+        const title_offset = name_start + name_length;
+        const title_length = read16(self.index, title_offset);
+        const title_start = title_offset + @sizeOf(u16);
+        if (title_length == 0)
+            return .{ self.index[name_start .. name_start + name_length], &.{} };
+        return .{ self.index[name_start .. name_start + name_length], self.index[title_start .. title_start + title_length] };
     }
 
     pub fn snippet(self: *const Self, doc_id: u32) [2]u32 {

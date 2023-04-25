@@ -113,7 +113,7 @@ pub const Search = struct {
         return self.results[0..results_count];
     }
 
-    pub fn name(self: *const Self, doc_id: u32) []const u8 {
+    pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         return self.index.name(doc_id);
     }
 

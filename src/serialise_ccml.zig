@@ -78,8 +78,16 @@ pub fn write(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, docs: 
         try out.writeIntNative(u32, d.len);
         try out.writeIntNative(u16, @truncate(u16, d.name.len));
         try out.writeAll(d.name);
+        if (d.title) |title| {
+            try out.writeIntNative(u16, @truncate(u16, title.len));
+            try out.writeAll(title);
+        } else {
+            try out.writeIntNative(u16, 0);
+        }
         docs.items[i].name.ptr = @intToPtr([*]u8, bytes_written);
-        bytes_written += @sizeOf(u32) + @sizeOf(u16) + @truncate(u32, d.name.len);
+        bytes_written += @sizeOf(u32) + @sizeOf(u16) + @truncate(u32, d.name.len) + @sizeOf(u16);
+        if (d.title) |title|
+            bytes_written += @truncate(u32, title.len);
     }
 
     // Document IDs array

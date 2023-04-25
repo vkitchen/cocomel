@@ -82,6 +82,19 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
                                 self.consume();
                         }
                     }
+                    if (try self.consumeStr("title>")) {
+                        var i: usize = 0;
+                        while (i < self.indexer.buffer.len and try self.peek() != '<') : (i += 1) {
+                            self.indexer.buffer[i] = try self.peek();
+                            self.consume();
+                        }
+
+                        try self.indexer.addTitle(self.indexer.buffer[0..i]);
+
+                        while (try self.peek() != '>')
+                            self.consume();
+                        continue;
+                    }
                     while (try self.peek() != '>')
                         self.consume();
                     continue;

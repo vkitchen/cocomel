@@ -100,6 +100,12 @@ pub const Indexer = struct {
             std.debug.print("{d} Documents\n", .{self.doc_ids.items.len});
     }
 
+    pub fn addTitle(self: *Self, title: []u8) !void {
+        if (self.doc_ids.items[self.doc_ids.items.len - 1].title != null)
+            return;
+        self.doc_ids.items[self.doc_ids.items.len - 1].title = try str.dup(self.allocator, title);
+    }
+
     pub fn write(self: *Self) !void {
         try self.snippets.flush_and_close();
 

@@ -78,11 +78,13 @@ pub fn main() !void {
         var i: usize = results_offset;
         while (i < results_offset + no_results and i < results.len) : (i += 1) {
             // url
-            const name = searcher.name(results[i].doc_id);
-            try out.writeIntNative(u16, @truncate(u16, name.len));
-            try out.writeAll(name);
+            const names = searcher.name(results[i].doc_id);
+            try out.writeIntNative(u16, @truncate(u16, names[0].len));
+            try out.writeAll(names[0]);
             // doc name
-            try out.writeIntNative(u16, 0);
+            try out.writeIntNative(u16, @truncate(u16, names[1].len));
+            if (names[1].len > 0)
+                try out.writeAll(names[1]);
             // snippet
             var snippet_length: usize = 0;
             const snippet = try searcher.snippet(results[i].doc_id);

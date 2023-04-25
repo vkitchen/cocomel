@@ -41,7 +41,9 @@ pub const Posting = struct {
         }
         var postings = self.ids[index].?;
         try postings.ensureUnusedCapacity(5);
-        postings.items.len += vbyte.store(postings.items[postings.items.len..], self.id - self.last_ids[index]);
+        const last = postings.items.len;
+        postings.items.len += vbyte.spaceRequired(self.id - self.last_ids[index]);
+        _ = vbyte.store(postings.items[last..], self.id - self.last_ids[index]);
         self.last_ids[index] = self.id;
         self.df_t += 1;
         self.freq = 1;

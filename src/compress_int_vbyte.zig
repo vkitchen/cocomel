@@ -19,6 +19,23 @@ pub fn read(p: []const u8, out: *u32) u32 {
     return i + 1;
 }
 
+pub fn spaceRequired(val: u32) u32 {
+    if (val < 1 << 7) {
+        return 1;
+    }
+    if (val < 1 << 14) {
+        return 2;
+    }
+    if (val < 1 << 21) {
+        return 3;
+    }
+    if (val < 1 << 28) {
+        return 4;
+    } else {
+        return 5;
+    }
+}
+
 pub fn store(p: []u8, val: u32) u32 {
     if (val < 1 << 7) {
         p[0] = @truncate(u8, val & 0x7F | 1 << 7);

@@ -39,7 +39,12 @@ pub fn main() !void {
 
     for (args[1..]) |filename| {
         if (std.mem.endsWith(u8, filename, ".xml")) {
-            var toker = try WsjTokenizer.init(allocator, &indexer, filename);
+            var doc = try std.fs.cwd().openFile(filename, .{});
+            defer doc.close();
+
+            const tokerType = WsjTokenizer(@TypeOf(doc));
+
+            var toker = try tokerType.init(&indexer, doc);
             try toker.tokenize();
         } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
             var doc = try std.fs.cwd().openFile(filename, .{});
@@ -49,8 +54,8 @@ pub fn main() !void {
             var gzip_stream = try std.compress.gzip.gzipStream(allocator, buf.reader());
             defer gzip_stream.deinit();
 
-            const tokType = TarTokenizer(@TypeOf(gzip_stream));
-            var toker = tokType.init(&indexer, gzip_stream);
+            const tokerType = TarTokenizer(@TypeOf(gzip_stream));
+            var toker = tokerType.init(&indexer, gzip_stream);
             try toker.tokenize();
         } else {
             std.debug.print("ERROR: Unknown filetype for '{s}'\n", .{filename});

@@ -7,86 +7,117 @@ const std = @import("std");
 const Indexer = @import("indexer.zig").Indexer;
 const file = @import("file.zig");
 
-pub const WsjTokenizer = struct {
-    const Self = @This();
+pub fn WsjTokenizer(comptime ReaderType: type) type {
+    return struct {
+        const Self = @This();
 
-    indexer: *Indexer,
-    doc: []u8,
-    index: usize = 0,
+        indexer: *Indexer,
+        doc: ReaderType,
+        index: usize = 0,
+        len: usize = 0,
+        buf: [4096]u8 = undefined,
 
-    pub fn init(allocator: std.mem.Allocator, indexer: *Indexer, filename: []u8) !Self {
-        var doc = try file.slurp(allocator, std.fs.cwd(), filename);
-        return .{
-            .indexer = indexer,
-            .doc = doc,
-        };
-    }
+        pub fn init(indexer: *Indexer, doc: ReaderType) !Self {
+            return .{ .indexer = indexer, .doc = doc };
+        }
 
-    pub fn tokenize(self: *Self) !void {
-        while (true) {
-            // Whitespace
-            while (self.index < self.doc.len and std.ascii.isWhitespace(self.doc[self.index])) {
-                self.index += 1;
-            }
-            // EOF
-            if (self.index == self.doc.len) {
-                return;
-            }
-            // Doc ID
-            else if (std.mem.startsWith(u8, self.doc[self.index..], "<DOCNO>")) {
-                self.index += std.mem.len("<DOCNO>");
+        fn read(self: *Self) !void {
+            self.len = try self.doc.read(&self.buf);
+            self.index = 0;
+        }
 
-                while (self.index < self.doc.len and std.ascii.isWhitespace(self.doc[self.index]))
-                    self.index += 1;
+        fn eof(self: *Self) !bool {
+            if (self.index >= self.len)
+                try self.read();
+            return self.len == 0;
+        }
 
-                var i: usize = 0;
-                while (i + self.index < self.doc.len and self.doc[self.index + i] != '<' and !std.ascii.isWhitespace(self.doc[self.index + i]))
-                    i += 1;
+        fn peek(self: *Self) !u8 {
+            if (try self.eof())
+                return 0;
+            return self.buf[self.index];
+        }
 
-                try self.indexer.addDocId(self.doc[self.index .. self.index + i]);
+        fn consume(self: *Self) void {
+            self.index += 1;
+        }
 
-                self.index += i;
+        fn consumeWhitespace(self: *Self) !void {
+            while (std.ascii.isWhitespace(try self.peek()))
+                self.consume();
+        }
 
-                continue;
-            }
-            // Ignored tags
-            else if (self.doc[self.index] == '<') {
-                self.index += 1;
-                while (self.index < self.doc.len and self.doc[self.index] != '>')
-                    self.index += 1;
-                self.index += 1;
-                continue;
-            }
-            // Number
-            else if (std.ascii.isDigit(self.doc[self.index])) {
-                var i: usize = 0;
-                while (self.index + i < self.doc.len and std.ascii.isDigit(self.doc[self.index + i]))
-                    i += 1;
-
-                try self.indexer.addCleanTerm(self.doc[self.index .. self.index + i]);
-
-                self.index += i;
-
-                continue;
-            }
-            // Word
-            else if (std.ascii.isAlpha(self.doc[self.index])) {
-                var i: usize = 0;
-                while (self.index + i < self.doc.len and std.ascii.isAlpha(self.doc[self.index + i])) {
-                    self.doc[self.index + i] = std.ascii.toLower(self.doc[self.index + i]);
-                    i += 1;
+        fn consumeStr(self: *Self, str: []const u8) !bool {
+            for (str) |c| {
+                if (try self.peek() == c) {
+                    self.consume();
+                } else {
+                    return false;
                 }
-
-                try self.indexer.addCleanTerm(self.doc[self.index .. self.index + i]);
-
-                self.index += i;
-
-                continue;
             }
-            // Something else we don't want
-            else {
-                self.index += 1;
+            return true;
+        }
+
+        pub fn tokenize(self: *Self) !void {
+            while (true) {
+                const char = try self.peek();
+                // EOF
+                if (char == 0) {
+                    return;
+                }
+                // Tag
+                else if (char == '<') {
+                    self.consume();
+                    try self.consumeWhitespace();
+
+                    // Doc ID
+                    if (try self.consumeStr("DOCNO")) {
+                        try self.consumeWhitespace();
+
+                        if (try self.peek() == '>')
+                            self.consume();
+
+                        try self.consumeWhitespace();
+
+                        var i: usize = 0;
+                        while (i < self.indexer.buffer.len and (std.ascii.isAlphanumeric(try self.peek()) or try self.peek() == '-')) : (i += 1) {
+                            self.indexer.buffer[i] = try self.peek();
+                            self.consume();
+                        }
+
+                        try self.indexer.addDocId(self.indexer.buffer[0..i]);
+
+                        continue;
+                    } else {
+                        while (try self.peek() != '>')
+                            self.consume();
+                        continue;
+                    }
+                }
+                // Number
+                else if (std.ascii.isDigit(char)) {
+                    var i: usize = 0;
+                    while (i < self.indexer.buffer.len and std.ascii.isDigit(try self.peek())) : (i += 1) {
+                        self.indexer.buffer[i] = try self.peek();
+                        self.consume();
+                    }
+
+                    try self.indexer.addDirtyTerm(self.indexer.buffer[0..i]);
+                    continue;
+                }
+                // Word
+                else if (std.ascii.isAlpha(char)) {
+                    var i: usize = 0;
+                    while (i < self.indexer.buffer.len and std.ascii.isAlpha(try self.peek())) : (i += 1) {
+                        self.indexer.buffer[i] = try self.peek();
+                        self.consume();
+                    }
+
+                    try self.indexer.addDirtyTerm(self.indexer.buffer[0..i]);
+                    continue;
+                }
+                self.consume();
             }
         }
-    }
-};
+    };
+}

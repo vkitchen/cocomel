@@ -102,7 +102,7 @@ pub fn WsjTokenizer(comptime ReaderType: type) type {
                         self.consume();
                     }
 
-                    try self.indexer.addDirtyTerm(self.indexer.buffer[0..i]);
+                    try self.indexer.addTerm(self.indexer.buffer[0..i]);
                     continue;
                 }
                 // Word
@@ -113,7 +113,7 @@ pub fn WsjTokenizer(comptime ReaderType: type) type {
                         self.consume();
                     }
 
-                    try self.indexer.addDirtyTerm(self.indexer.buffer[0..i]);
+                    try self.indexer.addTerm(self.indexer.buffer[0..i]);
                     continue;
                 }
                 self.consume();

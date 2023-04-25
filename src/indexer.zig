@@ -81,16 +81,7 @@ pub const Indexer = struct {
         };
     }
 
-    pub fn addCleanTerm(self: *Self, term: []u8) !void {
-        try self.snippets.addTerm(term);
-
-        var term_ = stem(term);
-
-        try self.dict.insert(term_, @truncate(u32, self.doc_ids.items.len - 1));
-        self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
-    }
-
-    pub fn addDirtyTerm(self: *Self, term: []u8) !void {
+    pub fn addTerm(self: *Self, term: []u8) !void {
         try self.snippets.addTerm(term);
 
         var term_ = std.ascii.lowerString(term, term);

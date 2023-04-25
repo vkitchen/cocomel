@@ -169,7 +169,7 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                     while (i < self.indexer.buffer.len and !try self.eof() and std.ascii.isDigit(try self.peek())) : (i += 1)
                         self.indexer.buffer[i] = try self.getChar();
 
-                    try self.indexer.addDirtyTerm(self.indexer.buffer[0..i]);
+                    try self.indexer.addTerm(self.indexer.buffer[0..i]);
                     continue;
                 }
                 // Word
@@ -184,7 +184,7 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                         i += 1;
                     }
 
-                    try self.indexer.addDirtyTerm(self.indexer.buffer[0..i]);
+                    try self.indexer.addTerm(self.indexer.buffer[0..i]);
                     continue;
                 }
             }

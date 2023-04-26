@@ -71,6 +71,7 @@ pub const Indexer = struct {
     doc_ids: std.ArrayList(Doc),
     dict: Dictionary,
     snippets: Snippets,
+    prev_term: ?[]u8 = null,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
         return .{
@@ -89,10 +90,19 @@ pub const Indexer = struct {
         term_ = stem(term_);
 
         try self.dict.insert(term_, @truncate(u32, self.doc_ids.items.len - 1));
+        if (self.prev_term) |prev| {
+            var bigram = try self.allocator.alloc(u8, prev.len + 1 + term_.len);
+            std.mem.copy(u8, bigram, prev);
+            bigram[prev.len] = ' ';
+            std.mem.copy(u8, bigram[prev.len + 1 ..], term_);
+            try self.dict.insert(bigram, @truncate(u32, self.doc_ids.items.len - 1));
+        }
+        self.prev_term = try str.dup(self.allocator, term_);
         self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
     }
 
     pub fn addDocId(self: *Self, doc_id: []u8) !void {
+        self.prev_term = null;
         try self.snippets.newDocId();
 
         try self.doc_ids.append(.{ .name = try str.dup(self.allocator, doc_id) });

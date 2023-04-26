@@ -6,6 +6,7 @@
 const std = @import("std");
 const Tokenizer = @import("tokenizer_snippet.zig").Tokenizer;
 const Term = @import("tokenizer_snippet.zig").Term;
+const query = @import("tokenizer_query.zig");
 
 const window_size = 100;
 
@@ -24,7 +25,7 @@ pub const Snippeter = struct {
         };
     }
 
-    pub fn snippet(self: *Self, query: [][]u8, start: usize, end: usize) ![]Term {
+    pub fn snippet(self: *Self, query_: []query.Term, start: usize, end: usize) ![]Term {
         self.terms.clearRetainingCapacity();
         self.allocator.reset();
 
@@ -36,8 +37,8 @@ pub const Snippeter = struct {
         var max_hits_i: usize = 0;
         var i: usize = 0;
         while (i < self.terms.items.len) : (i += 1) {
-            for (query) |q| {
-                if (std.mem.eql(u8, q, self.terms.items[i].stemmed)) {
+            for (query_) |q| {
+                if (std.mem.eql(u8, q.term, self.terms.items[i].stemmed)) {
                     self.terms.items[i].hit = true;
                     if (i < window_size)
                         hits += 1;

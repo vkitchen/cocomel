@@ -9,7 +9,7 @@ const Index = @import("index.zig").Index;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
-const QueryTokenizer = @import("tokenizer_query.zig").QueryTokenizer;
+const query = @import("tokenizer_query.zig");
 const Ranker = @import("ranking_fn.zig").Ranker;
 const Snippeter = @import("snippets.zig").Snippeter;
 const stem = @import("stem.zig").stem;
@@ -26,7 +26,7 @@ pub const Search = struct {
     index: Index,
     snippeter: Snippeter,
     ranker: Ranker,
-    query: std.ArrayListUnmanaged([]u8),
+    query: std.ArrayListUnmanaged(query.Term),
     results: []Result,
     time_index_read: u64 = 0,
     time_snippets_read: u64 = 0,
@@ -62,26 +62,20 @@ pub const Search = struct {
             .index = index,
             .snippeter = snippeter,
             .ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length),
-            .query = try std.ArrayListUnmanaged([]u8).initCapacity(allocator, config.max_query_terms),
+            .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.docs_count),
             .time_index_read = time_index_read,
             .time_snippets_read = time_snippets_read,
         };
     }
 
-    pub fn search(self: *Self, query: []u8) ![]Result {
+    pub fn search(self: *Self, query_raw: []u8) ![]Result {
         var timer = try std.time.Timer.start();
-
-        var tok = QueryTokenizer.init(query);
 
         self.query.clearRetainingCapacity();
 
-        while (true) {
-            const t = tok.next();
-            if (t.type == Token.Type.eof) break;
-            var term = stem(t.token);
-            self.query.appendAssumeCapacity(term);
-        }
+        var tok = query.Parser.init(&self.query, query_raw);
+        tok.parse();
 
         // TODO reenable once allocation is fixed
         // try expandQuery(allocator, &self.query);
@@ -95,7 +89,12 @@ pub const Search = struct {
         }
 
         for (self.query.items) |term| {
-            self.index.find(term, &self.ranker, self.results);
+            if (!term.neg)
+                self.index.find(term.term, &self.ranker, self.results, term.neg);
+        }
+        for (self.query.items) |term| {
+            if (term.neg)
+                self.index.find(term.term, &self.ranker, self.results, term.neg);
         }
 
         std.sort.sort(Result, self.results, {}, cmpResults);

@@ -88,7 +88,7 @@ pub const Index = struct {
         return [2]u32{ start, end };
     }
 
-    fn postings_chunk(self: *const Self, offset: u32, ranker: *Ranker, results: []Result) void {
+    fn postings_chunk(self: *const Self, offset: u32, ranker: *Ranker, results: []Result, neg: bool) void {
         const ids_len = read32(self.index, offset);
         const score = self.index[offset + @sizeOf(u32)];
         const ids = offset + @sizeOf(u32) + @sizeOf(u8);
@@ -100,12 +100,16 @@ pub const Index = struct {
             i += vbyte.read(self.index[ids + i ..], &doc_id);
             doc_id += last_id;
             const doc_len = self.doc_lengths[doc_id];
-            results[doc_id].score += ranker.compScore(@intToFloat(f64, score), @intToFloat(f64, doc_len));
+            if (!neg) {
+                results[doc_id].score += ranker.compScore(@intToFloat(f64, score), @intToFloat(f64, doc_len));
+            } else {
+                results[doc_id].score = 0;
+            }
             last_id = doc_id;
         }
     }
 
-    fn postings(self: *const Self, offset: u32, ranker: *Ranker, results: []Result) void {
+    fn postings(self: *const Self, offset: u32, ranker: *Ranker, results: []Result, neg: bool) void {
         var df_t = read32(self.index, offset);
         var chunk_offset = offset + @sizeOf(u32);
         var chunk_len = read32(self.index, chunk_offset);
@@ -115,7 +119,7 @@ pub const Index = struct {
 
         while (chunk_len != 0) {
             chunk_score = self.index[chunk_offset + @sizeOf(u32)];
-            self.postings_chunk(chunk_offset, ranker, results);
+            self.postings_chunk(chunk_offset, ranker, results, neg);
             if (chunk_score == 1)
                 break;
             chunk_offset += @sizeOf(u32) + @sizeOf(u8) + chunk_len;
@@ -123,7 +127,7 @@ pub const Index = struct {
         }
     }
 
-    pub fn find(self: *const Self, key: []const u8, ranker: *Ranker, results: []Result) void {
+    pub fn find(self: *const Self, key: []const u8, ranker: *Ranker, results: []Result, neg: bool) void {
         const cap = read32(self.index, self.hash_offset);
         const table = self.hash_offset + @sizeOf(u32);
 
@@ -138,7 +142,7 @@ pub const Index = struct {
             const term_start = term_store + @sizeOf(u16);
             const term = self.index[term_start .. term_start + term_length];
             if (std.mem.eql(u8, term, key))
-                return self.postings(read32(self.index, postings_offset + @sizeOf(u32)), ranker, results);
+                return self.postings(read32(self.index, postings_offset + @sizeOf(u32)), ranker, results, neg);
 
             i = i + 1 & (cap - 1);
         }

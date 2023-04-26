@@ -6,6 +6,14 @@
 const std = @import("std");
 const Indexer = @import("indexer.zig").Indexer;
 
+fn isPunct(c: u8) bool {
+    return c == '!' or c == '"' or c == '\'' or c == '(' or c == ')' or c == ',' or c == '-' or c == '.' or c == ';' or c == '?';
+}
+
+fn isWordChar(c: u8) bool {
+    return std.ascii.isAlpha(c) or isPunct(c) or c == 0xE2;
+}
+
 pub fn HtmlTokenizer(comptime ReaderType: type) type {
     return struct {
         const Self = @This();
@@ -113,7 +121,19 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
                 // Word
                 else if (std.ascii.isAlpha(char)) {
                     var i: usize = 0;
-                    while (i < self.indexer.buffer.len and std.ascii.isAlpha(try self.peek())) : (i += 1) {
+                    while (i < self.indexer.buffer.len and isWordChar(try self.peek())) : (i += 1) {
+                        if (try self.peek() == 0xE2) {
+                            self.consume();
+                            if (try self.peek() != 0x80)
+                                continue;
+                            self.consume();
+                            if (try self.peek() != 0x99)
+                                continue;
+                            self.consume();
+
+                            self.indexer.buffer[i] = '\'';
+                            continue;
+                        }
                         self.indexer.buffer[i] = try self.peek();
                         self.consume();
                     }

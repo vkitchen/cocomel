@@ -2,6 +2,11 @@
 
 This is the search engine which powers [potatocastles.com](http://potatocastles.com). If you're looking for the website it is here [vkitchen/potatoes](https://github.com/vkitchen/potatoes) and the crawler it is here [vkitchen/crawler](https://github.com/vkitchen/crawler)
 
+## Goals
+
+1. Index 10 million pages
+2. Handle 100 requests per second
+
 ## Why another search engine?
 
 Because none of the others were in Zig?

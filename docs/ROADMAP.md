@@ -5,6 +5,8 @@
 * JASSv2 index serialisation
 * ATIRE index serialisation
 * Phrase search (by bigrams)
+* Phrase search (by ngrams)
+* Phrase search (by term locations)
 * Double buffer for fast bigraming
 * Elias compression
 * SIMD hash table

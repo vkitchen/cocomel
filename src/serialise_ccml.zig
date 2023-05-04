@@ -74,7 +74,7 @@ pub fn write(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, docs: 
     var bytes_written: u32 = file_format.len;
 
     // Document ID strings
-    for (docs.items) |d, i| {
+    for (docs.items, 0..) |d, i| {
         try out.writeIntNative(u32, d.len);
         try out.writeIntNative(u16, @truncate(u16, d.name.len));
         try out.writeAll(d.name);

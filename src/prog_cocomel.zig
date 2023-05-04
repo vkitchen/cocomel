@@ -88,7 +88,7 @@ pub fn main() !void {
             // snippet
             var snippet_length: usize = 0;
             const snippet = try searcher.snippet(results[i].doc_id);
-            for (snippet) |s, j| {
+            for (snippet, 0..) |s, j| {
                 if (j > 0)
                     snippet_length += 1;
                 if (s.hit)
@@ -96,7 +96,7 @@ pub fn main() !void {
                 snippet_length += s.original.len;
             }
             try out.writeIntNative(u16, @truncate(u16, snippet_length));
-            for (snippet) |s, j| {
+            for (snippet, 0..) |s, j| {
                 if (j > 0)
                     try out.writeAll(" ");
                 if (s.hit)

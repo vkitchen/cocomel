@@ -29,7 +29,7 @@ pub fn main() !void {
     while (i < std.math.min(10, results.len)) : (i += 1) {
         std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id) });
         const snippet = try searcher.snippet(results[i].doc_id);
-        for (snippet) |s, j| {
+        for (snippet, 0..) |s, j| {
             if (j > 0)
                 std.debug.print(" ", .{});
             if (s.hit) {

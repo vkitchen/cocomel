@@ -72,10 +72,10 @@ const Tokenizer = struct {
                 return .{ .type = .word, .token = self.raw[start..end] };
             }
             // Word
-            else if (std.ascii.isAlpha(char)) {
+            else if (std.ascii.isAlphabetic(char)) {
                 const start = self.index;
                 var end = self.index;
-                while (std.ascii.isAlpha(self.peek())) : (end += 1)
+                while (std.ascii.isAlphabetic(self.peek())) : (end += 1)
                     self.consume();
 
                 return .{ .type = .word, .token = self.raw[start..end] };

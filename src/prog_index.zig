@@ -51,7 +51,7 @@ pub fn main() !void {
             defer doc.close();
 
             var buf = std.io.bufferedReader(doc.reader());
-            var gzip_stream = try std.compress.gzip.gzipStream(allocator, buf.reader());
+            var gzip_stream = try std.compress.gzip.decompress(allocator, buf.reader());
             defer gzip_stream.deinit();
 
             const tokerType = TarTokenizer(@TypeOf(gzip_stream));

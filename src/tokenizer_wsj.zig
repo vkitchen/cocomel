@@ -106,9 +106,9 @@ pub fn WsjTokenizer(comptime ReaderType: type) type {
                     continue;
                 }
                 // Word
-                else if (std.ascii.isAlpha(char)) {
+                else if (std.ascii.isAlphabetic(char)) {
                     var i: usize = 0;
-                    while (i < self.indexer.buffer.len and std.ascii.isAlpha(try self.peek())) : (i += 1) {
+                    while (i < self.indexer.buffer.len and std.ascii.isAlphabetic(try self.peek())) : (i += 1) {
                         self.indexer.buffer[i] = try self.peek();
                         self.consume();
                     }

@@ -11,7 +11,7 @@ fn isPunct(c: u8) bool {
 }
 
 fn isWordChar(c: u8) bool {
-    return std.ascii.isAlpha(c) or isPunct(c) or c == 0xE2;
+    return std.ascii.isAlphabetic(c) or isPunct(c) or c == 0xE2;
 }
 
 pub fn HtmlTokenizer(comptime ReaderType: type) type {
@@ -119,7 +119,7 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
                     continue;
                 }
                 // Word
-                else if (std.ascii.isAlpha(char)) {
+                else if (std.ascii.isAlphabetic(char)) {
                     var i: usize = 0;
                     while (i < self.indexer.buffer.len and isWordChar(try self.peek())) : (i += 1) {
                         if (try self.peek() == 0xE2) {

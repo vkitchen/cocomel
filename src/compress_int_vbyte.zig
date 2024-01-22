@@ -38,32 +38,32 @@ pub fn spaceRequired(val: u32) u32 {
 
 pub fn store(p: []u8, val: u32) u32 {
     if (val < 1 << 7) {
-        p[0] = @truncate(u8, val & 0x7F | 1 << 7);
+        p[0] = @truncate(val & 0x7F | 1 << 7);
         return 1;
     }
     if (val < 1 << 14) {
-        p[0] = @truncate(u8, val >> 7 & 0x7F);
-        p[1] = @truncate(u8, val & 0x7F | 1 << 7);
+        p[0] = @truncate(val >> 7 & 0x7F);
+        p[1] = @truncate(val & 0x7F | 1 << 7);
         return 2;
     }
     if (val < 1 << 21) {
-        p[0] = @truncate(u8, val >> 14 & 0x7F);
-        p[1] = @truncate(u8, val >> 7 & 0x7F);
-        p[2] = @truncate(u8, val & 0x7F | 1 << 7);
+        p[0] = @truncate(val >> 14 & 0x7F);
+        p[1] = @truncate(val >> 7 & 0x7F);
+        p[2] = @truncate(val & 0x7F | 1 << 7);
         return 3;
     }
     if (val < 1 << 28) {
-        p[0] = @truncate(u8, val >> 21 & 0x7F);
-        p[1] = @truncate(u8, val >> 14 & 0x7F);
-        p[2] = @truncate(u8, val >> 7 & 0x7F);
-        p[3] = @truncate(u8, val & 0x7F | 1 << 7);
+        p[0] = @truncate(val >> 21 & 0x7F);
+        p[1] = @truncate(val >> 14 & 0x7F);
+        p[2] = @truncate(val >> 7 & 0x7F);
+        p[3] = @truncate(val & 0x7F | 1 << 7);
         return 4;
     } else {
-        p[0] = @truncate(u8, val >> 28 & 0x7F);
-        p[1] = @truncate(u8, val >> 21 & 0x7F);
-        p[2] = @truncate(u8, val >> 14 & 0x7F);
-        p[3] = @truncate(u8, val >> 7 & 0x7F);
-        p[4] = @truncate(u8, val & 0x7F | 1 << 7);
+        p[0] = @truncate(val >> 28 & 0x7F);
+        p[1] = @truncate(val >> 21 & 0x7F);
+        p[2] = @truncate(val >> 14 & 0x7F);
+        p[3] = @truncate(val >> 7 & 0x7F);
+        p[4] = @truncate(val & 0x7F | 1 << 7);
         return 5;
     }
 }

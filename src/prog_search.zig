@@ -19,14 +19,14 @@ pub fn main() !void {
     std.debug.print("{s}", .{"Query> "});
 
     var buf: [100]u8 = undefined;
-    var query = try stdin.readUntilDelimiterOrEof(&buf, '\n');
+    const query = try stdin.readUntilDelimiterOrEof(&buf, '\n');
 
     const results = try searcher.search(query.?);
 
     std.debug.print("Top 10 Results ({d} total):\n\n", .{results.len});
 
     var i: usize = 0;
-    while (i < std.math.min(10, results.len)) : (i += 1) {
+    while (i < @min(10, results.len)) : (i += 1) {
         std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id) });
         const snippet = try searcher.snippet(results[i].doc_id);
         for (snippet, 0..) |s, j| {

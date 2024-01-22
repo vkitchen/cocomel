@@ -46,9 +46,9 @@ const TarHeader = extern struct {
         if (self.prefix[0] == 0)
             return name;
         const prefix = rtrim(&self.prefix);
-        std.mem.copy(u8, buffer, prefix);
+        @memcpy(buffer, prefix);
         buffer[prefix.len] = '/';
-        std.mem.copy(u8, buffer[prefix.len + 1 ..], name);
+        @memcpy(buffer[prefix.len + 1 ..], name);
         return buffer[0 .. prefix.len + 1 + name.len];
     }
 };
@@ -76,7 +76,7 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                 if (try self.doc.read(&self.buf) != 512)
                     return;
 
-                const header: *TarHeader = @ptrCast(*TarHeader, &self.buf);
+                const header: *TarHeader = @ptrCast(&self.buf);
 
                 _ = switch (header.typeflag) {
                     0 => return,

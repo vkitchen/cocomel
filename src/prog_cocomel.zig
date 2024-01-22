@@ -6,6 +6,7 @@
 const std = @import("std");
 const config = @import("config.zig");
 const Search = @import("search.zig").Search;
+const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const socket_name = "/tmp/cocomel.sock";
 
@@ -18,10 +19,10 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var args = try std.process.argsAlloc(allocator);
+    const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    var dir = if (args.len == 1) std.fs.cwd() else try std.fs.openDirAbsolute(args[1], .{});
+    const dir = if (args.len == 1) std.fs.cwd() else try std.fs.openDirAbsolute(args[1], .{});
 
     var searcher = try Search.init(allocator, dir, config.files.index, config.files.snippets);
 
@@ -29,12 +30,12 @@ pub fn main() !void {
 
     std.os.unlink(socket_name) catch {};
 
-    var addr = try std.net.Address.initUnix(socket_name);
+    const addr = try std.net.Address.initUnix(socket_name);
     var listener = std.net.StreamServer.init(.{});
     try listener.listen(addr);
 
     while (listener.accept()) |conn| {
-        var bytes_read = try conn.stream.read(&query_buf);
+        const bytes_read = try conn.stream.read(&query_buf);
         // TODO proper handling
         if (bytes_read < 4) {
             conn.stream.close();
@@ -64,25 +65,25 @@ pub fn main() !void {
         var out_buf = std.io.bufferedWriter(conn.stream.writer());
         var out = out_buf.writer();
 
-        try out.writeIntNative(u8, 0); // protocol version
-        try out.writeIntNative(u8, 1); // protocol method
-        try out.writeIntNative(u16, @truncate(u16, results.len));
+        try out.writeInt(u8, 0, native_endian); // protocol version
+        try out.writeInt(u8, 1, native_endian); // protocol method
+        try out.writeInt(u16, @truncate(results.len), native_endian);
         if (results_offset > results.len) {
-            try out.writeIntNative(u16, 0);
+            try out.writeInt(u16, 0, native_endian);
         } else if (results.len - results_offset < no_results) {
-            try out.writeIntNative(u16, @truncate(u16, results.len - results_offset));
+            try out.writeInt(u16, @truncate(results.len - results_offset), native_endian);
         } else {
-            try out.writeIntNative(u16, @truncate(u16, no_results));
+            try out.writeInt(u16, @truncate(no_results), native_endian);
         }
 
         var i: usize = results_offset;
         while (i < results_offset + no_results and i < results.len) : (i += 1) {
             // url
             const names = searcher.name(results[i].doc_id);
-            try out.writeIntNative(u16, @truncate(u16, names[0].len));
+            try out.writeInt(u16, @truncate(names[0].len), native_endian);
             try out.writeAll(names[0]);
             // doc name
-            try out.writeIntNative(u16, @truncate(u16, names[1].len));
+            try out.writeInt(u16, @truncate(names[1].len), native_endian);
             if (names[1].len > 0)
                 try out.writeAll(names[1]);
             // snippet
@@ -95,7 +96,7 @@ pub fn main() !void {
                     snippet_length += 7;
                 snippet_length += s.original.len;
             }
-            try out.writeIntNative(u16, @truncate(u16, snippet_length));
+            try out.writeInt(u16, @truncate(snippet_length), native_endian);
             for (snippet, 0..) |s, j| {
                 if (j > 0)
                     try out.writeAll(" ");

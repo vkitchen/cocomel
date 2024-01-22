@@ -27,7 +27,7 @@ fn addAll(allocator: std.mem.Allocator, terms: *std.ArrayListUnmanaged([]u8), sy
             }
         }
         if (should_add) {
-            var newTerm = try allocator.alloc(u8, unique.len);
+            const newTerm = try allocator.alloc(u8, unique.len);
             std.mem.copy(u8, newTerm, unique);
             try terms.append(allocator, newTerm);
         }

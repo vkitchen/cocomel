@@ -50,9 +50,9 @@ pub const Index = struct {
             doc_lengths[i] = read32(index, offset);
             if (doc_lengths[i] > max_length)
                 max_length = doc_lengths[i];
-            average_length += @intToFloat(f64, doc_lengths[i]);
+            average_length += @floatFromInt(doc_lengths[i]);
         }
-        average_length /= @intToFloat(f64, docs_count);
+        average_length /= @floatFromInt(docs_count);
 
         return .{
             .index = index,
@@ -101,7 +101,7 @@ pub const Index = struct {
             doc_id += last_id;
             const doc_len = self.doc_lengths[doc_id];
             if (!neg) {
-                results[doc_id].score += ranker.compScore(@intToFloat(f64, score), @intToFloat(f64, doc_len));
+                results[doc_id].score += ranker.compScore(@floatFromInt(score), @floatFromInt(doc_len));
             } else {
                 results[doc_id].score = 0;
             }
@@ -110,12 +110,12 @@ pub const Index = struct {
     }
 
     fn postings(self: *const Self, offset: u32, ranker: *Ranker, results: []Result, neg: bool) void {
-        var df_t = read32(self.index, offset);
+        const df_t = read32(self.index, offset);
         var chunk_offset = offset + @sizeOf(u32);
         var chunk_len = read32(self.index, chunk_offset);
         var chunk_score: u8 = 255;
 
-        ranker.compIdf(@intToFloat(f64, df_t));
+        ranker.compIdf(@floatFromInt(df_t));
 
         while (chunk_len != 0) {
             chunk_score = self.index[chunk_offset + @sizeOf(u32)];

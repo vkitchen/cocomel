@@ -25,7 +25,7 @@ pub const Ranker = struct {
     }
 
     pub fn compIdf(r: *Self, df: f64) void {
-        r.idf = std.math.ln(r.no_docs / df);
+        r.idf = @log(r.no_docs / df);
     }
 
     pub fn compScore(r: *Self, tf: f64, _: f64) f64 {

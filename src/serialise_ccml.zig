@@ -7,6 +7,7 @@ const std = @import("std");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("Doc.zig");
 const Posting = @import("dictionary.zig").Posting;
+const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const file_format = "cocomel v1\n";
 
@@ -18,47 +19,47 @@ fn writeDictionary(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, 
             try posting.flush();
 
             const term_offset = bytes_written.*;
-            try out.writeIntNative(u16, @truncate(u16, posting.term.len));
+            try out.writeInt(u16, @truncate(posting.term.len), native_endian);
             try out.writeAll(posting.term);
-            bytes_written.* += @sizeOf(u16) + @truncate(u32, posting.term.len);
+            bytes_written.* += @sizeOf(u16) + @as(u32, @truncate(posting.term.len));
 
             // df_t
             const ids_offset = bytes_written.*;
-            try out.writeIntNative(u32, @truncate(u32, posting.df_t));
+            try out.writeInt(u32, @truncate(posting.df_t), native_endian);
             bytes_written.* += @sizeOf(u32);
             // postings chunks
             var i: u8 = 255;
             while (i > 0) : (i -= 1) {
                 if (posting.ids[i - 1] == null)
                     continue;
-                var postings_list = posting.ids[i - 1].?;
-                try out.writeIntNative(u32, @truncate(u32, postings_list.items.len));
-                try out.writeIntNative(u8, i);
+                const postings_list = posting.ids[i - 1].?;
+                try out.writeInt(u32, @truncate(postings_list.items.len), native_endian);
+                try out.writeInt(u8, i, native_endian);
                 try out.writeAll(postings_list.items);
-                bytes_written.* += @sizeOf(u32) + @sizeOf(u8) + @truncate(u32, postings_list.items.len);
+                bytes_written.* += @sizeOf(u32) + @sizeOf(u8) + @as(u32, @truncate(postings_list.items.len));
             }
             // If there is no impact 1 write a dummy postings list
             if (posting.ids[0] == null) {
-                try out.writeIntNative(u32, 0);
+                try out.writeInt(u32, 0, native_endian);
                 bytes_written.* += @sizeOf(u32);
             }
 
-            posting.term.ptr = @intToPtr([*]u8, term_offset);
-            posting.ids[0] = @intToPtr(*std.ArrayList(u8), ids_offset);
+            posting.term.ptr = @ptrFromInt(term_offset);
+            posting.ids[0] = @ptrFromInt(ids_offset);
         }
     }
 
     // Write table
     const table_offset = bytes_written.*;
-    try out.writeIntNative(u32, h.cap);
+    try out.writeInt(u32, h.cap, native_endian);
     bytes_written.* += @sizeOf(u32);
 
     for (h.store) |p| {
         if (p != null) {
-            try out.writeIntNative(u32, @truncate(u32, @ptrToInt(p.?.term.ptr)));
-            try out.writeIntNative(u32, @truncate(u32, @ptrToInt(p.?.ids[0])));
+            try out.writeInt(u32, @truncate(@intFromPtr(p.?.term.ptr)), native_endian);
+            try out.writeInt(u32, @truncate(@intFromPtr(p.?.ids[0])), native_endian);
         } else {
-            try out.writeIntNative(u64, 0);
+            try out.writeInt(u64, 0, native_endian);
         }
         bytes_written.* += 2 * @sizeOf(u32);
     }
@@ -75,25 +76,25 @@ pub fn write(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, docs: 
 
     // Document ID strings
     for (docs.items, 0..) |d, i| {
-        try out.writeIntNative(u32, d.len);
-        try out.writeIntNative(u16, @truncate(u16, d.name.len));
+        try out.writeInt(u32, d.len, native_endian);
+        try out.writeInt(u16, @truncate(d.name.len), native_endian);
         try out.writeAll(d.name);
         if (d.title) |title| {
-            try out.writeIntNative(u16, @truncate(u16, title.len));
+            try out.writeInt(u16, @truncate(title.len), native_endian);
             try out.writeAll(title);
         } else {
-            try out.writeIntNative(u16, 0);
+            try out.writeInt(u16, 0, native_endian);
         }
-        docs.items[i].name.ptr = @intToPtr([*]u8, bytes_written);
-        bytes_written += @sizeOf(u32) + @sizeOf(u16) + @truncate(u32, d.name.len) + @sizeOf(u16);
+        docs.items[i].name.ptr = @ptrFromInt(bytes_written);
+        bytes_written += @sizeOf(u32) + @sizeOf(u16) + @as(u32, @truncate(d.name.len)) + @sizeOf(u16);
         if (d.title) |title|
-            bytes_written += @truncate(u32, title.len);
+            bytes_written += @truncate(title.len);
     }
 
     // Document IDs array
     const docs_offset = bytes_written;
     for (docs.items) |d| {
-        try out.writeIntNative(u32, @truncate(u32, @ptrToInt(d.name.ptr)));
+        try out.writeInt(u32, @truncate(@intFromPtr(d.name.ptr)), native_endian);
         bytes_written += @sizeOf(u32);
     }
 
@@ -103,15 +104,15 @@ pub fn write(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, docs: 
     // Snippets
     const snippets_offset = bytes_written;
     for (snippets_indices.items) |s| {
-        try out.writeIntNative(u32, s);
+        try out.writeInt(u32, s, native_endian);
         bytes_written += @sizeOf(u32);
     }
 
     // Metadata
-    try out.writeIntNative(u32, @truncate(u32, docs.items.len));
-    try out.writeIntNative(u32, docs_offset);
-    try out.writeIntNative(u32, dictionary_offset);
-    try out.writeIntNative(u32, snippets_offset);
+    try out.writeInt(u32, @truncate(docs.items.len), native_endian);
+    try out.writeInt(u32, docs_offset, native_endian);
+    try out.writeInt(u32, dictionary_offset, native_endian);
+    try out.writeInt(u32, snippets_offset, native_endian);
     bytes_written += 4 * @sizeOf(u32);
 
     return bytes_written;

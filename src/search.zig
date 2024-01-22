@@ -53,15 +53,15 @@ pub const Search = struct {
 
         // TODO make snippets optional
 
-        var snippets_buf = try allocator.alloc(u8, max_snippet);
-        var snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
-        var snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
-        var snippeter = try Snippeter.init(snippets_allocator, snippets_file, snippets_terms);
+        const snippets_buf = try allocator.alloc(u8, max_snippet);
+        const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
+        const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
+        const snippeter = try Snippeter.init(snippets_allocator, snippets_file, snippets_terms);
 
         return .{
             .index = index,
             .snippeter = snippeter,
-            .ranker = Ranker.init(@intToFloat(f64, index.docs_count), index.average_length),
+            .ranker = Ranker.init(@floatFromInt(index.docs_count), index.average_length),
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.docs_count),
             .time_index_read = time_index_read,
@@ -97,7 +97,7 @@ pub const Search = struct {
                 self.index.find(term.term, &self.ranker, self.results, term.neg);
         }
 
-        std.sort.sort(Result, self.results, {}, cmpResults);
+        std.sort.pdq(Result, self.results, {}, cmpResults);
 
         var results_count: usize = 0;
         for (self.results) |result| {

@@ -18,7 +18,7 @@ pub fn main() !void {
     std.debug.print("{s}", .{"Query> "});
 
     var buf: [1000]u8 = undefined;
-    var query = try stdin.readUntilDelimiterOrEof(buf[8..], '\n');
+    const query = try stdin.readUntilDelimiterOrEof(buf[8..], '\n');
     buf[0] = 0; // Version
     buf[1] = 1; // Command (Query)
     // No. results
@@ -27,9 +27,9 @@ pub fn main() !void {
     // Offset
     buf[4] = 0;
     buf[5] = 0;
-    const len = @truncate(u16, query.?.len);
+    const len: u16 = @truncate(query.?.len);
     const lenp = std.mem.asBytes(&len);
-    std.mem.copy(u8, buf[6..], lenp);
+    @memcpy(buf[6..8], lenp);
 
     var results_buffer: [16384]u8 = undefined;
 
@@ -37,12 +37,12 @@ pub fn main() !void {
 
     var stream = try std.net.connectUnixSocket(socket_name);
 
-    var bytes_written = try stream.write(buf[0 .. 8 + query.?.len]);
+    const bytes_written = try stream.write(buf[0 .. 8 + query.?.len]);
     std.debug.print("Wrote {d}\n", .{bytes_written});
 
     var total_read: usize = 0;
     while (true) {
-        var bytes_read = try stream.read(results_buffer[total_read..]);
+        const bytes_read = try stream.read(results_buffer[total_read..]);
         if (bytes_read == 0)
             break;
         total_read += bytes_read;
@@ -52,7 +52,7 @@ pub fn main() !void {
 
     const search_time = timer.read();
 
-    std.debug.print("Search took {d:.3}\n", .{@intToFloat(f64, search_time) / 1e9});
+    std.debug.print("Search took {d:.3}\n", .{@as(f64, @floatFromInt(search_time)) / 1e9});
 
     // Skip version and method
     const total_results = read16(&results_buffer, 2);

@@ -59,15 +59,15 @@ pub const Dictionary = struct {
     store: []?*Posting,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        var store = try allocator.alloc(?*Posting, 1 << 19);
-        std.mem.set(?*Posting, store, null);
+        const store = try allocator.alloc(?*Posting, 1 << 19);
+        @memset(store, null);
         return .{ .allocator = allocator, .store = store };
     }
 
     fn expand(self: *Self) !void {
-        var new_cap = self.cap << 1;
+        const new_cap = self.cap << 1;
         var new_store = try self.allocator.alloc(?*Posting, new_cap);
-        std.mem.set(?*Posting, new_store, null);
+        @memset(new_store, null);
 
         for (self.store) |p| {
             if (p != null) {
@@ -103,7 +103,7 @@ pub const Dictionary = struct {
             i = i + 1 & (self.cap - 1);
         }
 
-        var postings = try self.allocator.create(Posting);
+        const postings = try self.allocator.create(Posting);
         postings.* = Posting.init(self.allocator, try str.dup(self.allocator, key), doc_id);
 
         self.store[i] = postings;

@@ -33,7 +33,7 @@ Currently the core of the search is working and most development is geared towar
 
 ## Compiling
 
-You'll need to install Zig `0.11.0-dev.2866+afbcad993` and then run `zig build`. As of the time of writing this is the latest stable release and this project will be updated following new stable releases. Other versions of Zig including nightlies may or may not work but remain untested. Zig is still pre-1.0 so expect breakages when attempting to build with other releases
+You'll need to install Zig `0.12.0-dev.2312+2e7d28dd0` and then run `zig build`. Other versions of Zig including nightlies may or may not work but remain untested. Zig is still pre-1.0 so expect breakages when attempting to build with other releases
 
 ## Usage
 

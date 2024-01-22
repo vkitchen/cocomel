@@ -67,7 +67,7 @@ pub const Snippeter = struct {
         // Wind back to find the nearest sentence boundary
         while (max_hits_i > 1 and self.terms.items[max_hits_i - 1].original[self.terms.items[max_hits_i - 1].original.len - 1] != '.') : (max_hits_i -= 1) {}
 
-        const end_hit = std.math.min(max_hits_i + window_size, self.terms.items.len);
+        const end_hit = @min(max_hits_i + window_size, self.terms.items.len);
 
         return self.terms.items[max_hits_i..end_hit];
     }

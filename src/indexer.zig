@@ -21,7 +21,7 @@ const YesSnippets = struct {
 
     fn init(allocator: std.mem.Allocator) !Self {
         const file = try std.fs.cwd().createFile(config.files.snippets, .{});
-        var buf = std.io.bufferedWriter(file.writer());
+        const buf = std.io.bufferedWriter(file.writer());
 
         return .{
             .indices = std.ArrayList(u32).init(allocator),
@@ -33,7 +33,7 @@ const YesSnippets = struct {
     fn addTerm(self: *Self, term: []u8) !void {
         try self.buf.writer().writeAll(term);
         try self.buf.writer().writeByte(' ');
-        self.bytes_written += @truncate(u32, term.len + 1);
+        self.bytes_written += @truncate(term.len + 1);
     }
 
     fn newDocId(self: *Self) !void {
@@ -89,13 +89,13 @@ pub const Indexer = struct {
         term_ = str.stripPunct(term_, term_);
         term_ = stem(term_);
 
-        try self.dict.insert(term_, @truncate(u32, self.doc_ids.items.len - 1));
+        try self.dict.insert(term_, @truncate(self.doc_ids.items.len - 1));
         if (self.prev_term) |prev| {
             var bigram = try self.allocator.alloc(u8, prev.len + 1 + term_.len);
-            std.mem.copy(u8, bigram, prev);
+            @memcpy(bigram, prev);
             bigram[prev.len] = ' ';
-            std.mem.copy(u8, bigram[prev.len + 1 ..], term_);
-            try self.dict.insert(bigram, @truncate(u32, self.doc_ids.items.len - 1));
+            @memcpy(bigram[prev.len + 1 ..], term_);
+            try self.dict.insert(bigram, @truncate(self.doc_ids.items.len - 1));
         }
         self.prev_term = try str.dup(self.allocator, term_);
         self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;

@@ -92,7 +92,7 @@ pub const Indexer = struct {
         try self.dict.insert(term_, @truncate(self.doc_ids.items.len - 1));
         if (self.prev_term) |prev| {
             var bigram = try self.allocator.alloc(u8, prev.len + 1 + term_.len);
-            @memcpy(bigram, prev);
+            @memcpy(bigram[0..prev.len], prev);
             bigram[prev.len] = ' ';
             @memcpy(bigram[prev.len + 1 ..], term_);
             try self.dict.insert(bigram, @truncate(self.doc_ids.items.len - 1));

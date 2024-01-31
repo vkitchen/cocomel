@@ -1,12 +1,16 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) !void {
+    const zigcli_dep = b.dependency("zig-cli", .{ .target = b.host });
+    const zigcli_mod = zigcli_dep.module("zig-cli");
+
     const indexer = b.addExecutable(.{
         .name = "index",
         .root_source_file = .{ .path = "src/prog_index.zig" },
         .target = b.host,
         .optimize = .ReleaseFast,
     });
+    indexer.root_module.addImport("zig-cli", zigcli_mod);
     b.installArtifact(indexer);
 
     const daemon = b.addExecutable(.{

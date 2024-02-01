@@ -74,32 +74,34 @@ fn index() !void {
                 var toker = tokerType.init(&indexer, gzip_stream);
                 try toker.tokenize();
             } else {
-                // Assume directory
-                var dir = try std.fs.cwd().openDir(filename, .{ .iterate = true });
-                defer dir.close();
+                if (std.fs.cwd().openDir(filename, .{ .iterate = true })) |dir| {
+                    // defer dir.close(); // *shrug*
 
-                var walker = try dir.walk(allocator);
+                    var walker = try dir.walk(allocator);
 
-                var buffer: [1000]u8 = undefined;
-                var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
+                    var buffer: [1000]u8 = undefined;
+                    var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
 
-                while (try walker.next()) |handle| {
-                    if (!std.mem.endsWith(u8, handle.path, ".html"))
-                        continue;
-                    const raw_address = handle.path[0 .. handle.path.len - 5];
-                    const result_len = try decoder.calcSizeForSlice(raw_address);
-                    try decoder.decode(&buffer, raw_address);
-                    const address = buffer[0..result_len];
+                    while (try walker.next()) |handle| {
+                        if (!std.mem.endsWith(u8, handle.path, ".html"))
+                            continue;
+                        const raw_address = handle.path[0 .. handle.path.len - 5];
+                        const result_len = try decoder.calcSizeForSlice(raw_address);
+                        try decoder.decode(&buffer, raw_address);
+                        const address = buffer[0..result_len];
 
-                    try indexer.addDocId(address);
+                        try indexer.addDocId(address);
 
-                    var doc = try handle.dir.openFile(handle.path, .{});
-                    defer doc.close();
+                        var doc = try handle.dir.openFile(handle.path, .{});
+                        defer doc.close();
 
-                    const tokerType = HtmlTokenizer(@TypeOf(doc));
+                        const tokerType = HtmlTokenizer(@TypeOf(doc));
 
-                    var toker = try tokerType.init(&indexer, doc);
-                    try toker.tokenize();
+                        var toker = try tokerType.init(&indexer, doc);
+                        try toker.tokenize();
+                    }
+                } else |_| {
+                    std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
                 }
             }
         }

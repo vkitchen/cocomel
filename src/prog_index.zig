@@ -6,7 +6,7 @@
 const std = @import("std");
 const cli = @import("zig-cli");
 
-const HtmlTokenizer = @import("tokenizer_html_file.zig").HtmlFileTokenizer;
+const HtmlTokenizer = @import("tokenizer_html.zig").HtmlTokenizer;
 const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Indexer = @import("indexer.zig").Indexer;
@@ -95,10 +95,12 @@ fn index() !void {
                         var doc = try handle.dir.openFile(handle.path, .{});
                         defer doc.close();
 
-                        const tokerType = HtmlTokenizer(@TypeOf(doc));
+                        const stat = try doc.stat();
+                        const file_size = stat.size;
 
-                        var toker = try tokerType.init(&indexer, doc);
-                        try toker.tokenize();
+                        var toker = HtmlTokenizer(@TypeOf(doc)).init(&indexer);
+
+                        try toker.tokenize(&doc, file_size);
                     }
                 } else |_| {
                     std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});

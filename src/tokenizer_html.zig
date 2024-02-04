@@ -85,9 +85,25 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
                     self.consume();
                     if (try self.peek() == 's') {
                         self.consume();
-                        if (try self.consumeStr("cript") or try self.consumeStr("tyle")) {
-                            while (try self.peek() != '<')
-                                self.consume();
+                        if (try self.consumeStr("cript")) {
+                            while (true) {
+                                while (try self.peek() != '<')
+                                    self.consume();
+                                if (try self.consumeStr("</script>")) {
+                                    break;
+                                }
+                            }
+                            continue;
+                        }
+                        if (try self.consumeStr("tyle")) {
+                            while (true) {
+                                while (try self.peek() != '<')
+                                    self.consume();
+                                if (try self.consumeStr("</style>")) {
+                                    break;
+                                }
+                            }
+                            continue;
                         }
                     }
                     if (try self.consumeStr("title>")) {

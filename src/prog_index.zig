@@ -62,7 +62,19 @@ fn index() !void {
         }
     } else {
         for (options.files) |filename| {
-            if (std.mem.endsWith(u8, filename, ".tar.gz")) {
+            if (std.mem.endsWith(u8, filename, ".html")) {
+                var doc = try std.fs.cwd().openFile(filename, .{});
+                defer doc.close();
+
+                try indexer.addDocId(filename);
+
+                const stat = try doc.stat();
+                const file_size = stat.size;
+
+                var toker = HtmlTokenizer(@TypeOf(doc)).init(&indexer);
+
+                try toker.tokenize(&doc, file_size);
+            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
                 var doc = try std.fs.cwd().openFile(filename, .{});
                 defer doc.close();
 

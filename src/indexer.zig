@@ -101,7 +101,7 @@ pub const Indexer = struct {
         self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
     }
 
-    pub fn addDocId(self: *Self, doc_id: []u8) !void {
+    pub fn addDocId(self: *Self, doc_id: []const u8) !void {
         self.prev_term = null;
         try self.snippets.newDocId();
 

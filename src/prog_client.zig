@@ -68,7 +68,12 @@ pub fn main() !void {
         offset += 2;
         std.debug.print("{s}\n", .{results_buffer[offset .. offset + name_len]});
         offset += name_len;
-        offset += 2; // Skip docname
+        const title_len = read16(&results_buffer, offset);
+        offset += 2;
+        if (title_len > 0) {
+            std.debug.print("{s}\n", .{results_buffer[offset .. offset + title_len]});
+            offset += title_len;
+        }
         const snippet_len = read16(&results_buffer, offset);
         offset += 2;
         std.debug.print("{s}\n\n", .{results_buffer[offset .. offset + snippet_len]});

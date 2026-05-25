@@ -1,10 +1,9 @@
-//	SEARCH.ZIG
-//	----------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// SEARCH.ZIG
+// ----------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const file = @import("file.zig");
 const Index = @import("index.zig").Index;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
@@ -28,17 +27,10 @@ pub const Search = struct {
     ranker: Ranker,
     query: std.ArrayListUnmanaged(query.Term),
     results: []Result,
-    time_index_read: u64 = 0,
-    time_snippets_read: u64 = 0,
-    time_query: u64 = 0,
-    time_search: u64 = 0,
 
-    pub fn init(allocator: std.mem.Allocator, dir: std.fs.Dir, index_filename: []const u8, snippets_filename: []const u8) !Self {
-        var timer = try std.time.Timer.start();
-        const index_file = try file.slurp(allocator, dir, index_filename);
-        const time_index_read = timer.lap();
-        const snippets_file = try file.slurp(allocator, dir, snippets_filename);
-        const time_snippets_read = timer.read();
+    pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8, snippets_filename: []const u8) !Self {
+        const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
+        const snippets_file = try dir.readFileAlloc(io, snippets_filename, allocator, std.Io.Limit.unlimited);
 
         const index = try Index.init(allocator, index_file);
 
@@ -64,14 +56,10 @@ pub const Search = struct {
             .ranker = Ranker.init(@floatFromInt(index.docs_count), index.average_length),
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.docs_count),
-            .time_index_read = time_index_read,
-            .time_snippets_read = time_snippets_read,
         };
     }
 
     pub fn search(self: *Self, query_raw: []u8) ![]Result {
-        var timer = try std.time.Timer.start();
-
         self.query.clearRetainingCapacity();
 
         var tok = query.Parser.init(&self.query, query_raw);
@@ -79,8 +67,6 @@ pub const Search = struct {
 
         // TODO reenable once allocation is fixed
         // try expandQuery(allocator, &self.query);
-
-        self.time_query = timer.lap();
 
         var i: u32 = 0;
         while (i < self.results.len) : (i += 1) {
@@ -107,8 +93,6 @@ pub const Search = struct {
             results_count += 1;
         }
 
-        self.time_search = timer.lap();
-
         return self.results[0..results_count];
     }
 
@@ -118,7 +102,7 @@ pub const Search = struct {
 
     pub fn snippet(self: *Self, doc_id: u32) ![]Term {
         if (!config.snippets)
-            return "";
+            return &.{};
         const range = self.index.snippet(doc_id);
         return self.snippeter.snippet(self.query.items, range[0], range[1]);
     }

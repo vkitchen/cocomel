@@ -1,7 +1,7 @@
-//	DICTIONARY.ZIG
-//	--------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// DICTIONARY.ZIG
+// --------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const str = @import("str.zig");
@@ -40,7 +40,7 @@ pub const Posting = struct {
             self.ids[index].?.* = try std.ArrayList(u8).initCapacity(self.allocator, 8);
         }
         var postings = self.ids[index].?;
-        try postings.ensureUnusedCapacity(5);
+        try postings.ensureUnusedCapacity(self.allocator, 5);
         const last = postings.items.len;
         postings.items.len += vbyte.spaceRequired(self.id - self.last_ids[index]);
         _ = vbyte.store(postings.items[last..], self.id - self.last_ids[index]);

@@ -1,7 +1,7 @@
-//	INDEX.ZIG
-//	---------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// INDEX.ZIG
+// ---------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const hash = @import("dictionary.zig").hash;

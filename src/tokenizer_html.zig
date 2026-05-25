@@ -1,7 +1,7 @@
-//	TOKENIZER_HTML.ZIG
-//	------------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// TOKENIZER_HTML.ZIG
+// ------------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const Indexer = @import("indexer.zig").Indexer;
@@ -19,7 +19,7 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
         const Self = @This();
 
         indexer: *Indexer,
-        doc: *ReaderType = undefined,
+        doc: ReaderType = undefined,
         buf: [512]u8 = undefined, // Tar block size
         index: usize = 0,
         len: usize = 0,
@@ -30,7 +30,7 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
         }
 
         fn read(self: *Self) !void {
-            self.len = try self.doc.read(&self.buf);
+            self.len = try self.doc.readSliceShort(&self.buf);
             self.index = 0;
         }
 
@@ -69,7 +69,7 @@ pub fn HtmlTokenizer(comptime ReaderType: type) type {
             return true;
         }
 
-        pub fn tokenize(self: *Self, doc: *ReaderType, file_size: u64) !void {
+        pub fn tokenize(self: *Self, doc: ReaderType, file_size: u64) !void {
             self.doc = doc;
             self.file_size = file_size;
             try self.read();

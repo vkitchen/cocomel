@@ -1,7 +1,7 @@
-//	SNIPPETS.ZIG
-//	------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// SNIPPETS.ZIG
+// ------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const Tokenizer = @import("tokenizer_snippet.zig").Tokenizer;

@@ -1,7 +1,7 @@
-//	TOKENIZER_TAR.ZIG
-//	-----------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// TOKENIZER_TAR.ZIG
+// -----------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const Indexer = @import("indexer.zig").Indexer;
@@ -71,9 +71,9 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
             };
         }
 
-        pub fn tokenize(self: *Self) !void {
+        pub fn tokenize(self: *Self, allocator: std.mem.Allocator) !void {
             while (true) {
-                if (try self.doc.read(&self.buf) != 512)
+                if (try self.doc.readSliceShort(&self.buf) != 512)
                     return;
 
                 const header: *TarHeader = @ptrCast(&self.buf);
@@ -85,12 +85,12 @@ pub fn TarTokenizer(comptime ReaderType: type) type {
                     else => std.debug.panic("unimplemented", .{}),
                 };
 
-                try self.indexer.addDocId(header.fullName(&self.name_buf));
+                try self.indexer.addDocId(allocator, header.fullName(&self.name_buf));
 
                 const file_size = try header.fileSize();
                 if (file_size == 0)
                     continue;
-                try self.toker.tokenize(&self.doc, file_size);
+                try self.toker.tokenize(self.doc, file_size);
             }
         }
     };

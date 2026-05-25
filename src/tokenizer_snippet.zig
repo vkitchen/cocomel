@@ -1,7 +1,7 @@
-//	TOKENIZER_SNIPPET.ZIG
-//	---------------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// TOKENIZER_SNIPPET.ZIG
+// ---------------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const stem = @import("stem.zig").stem;

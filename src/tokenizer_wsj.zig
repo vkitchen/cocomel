@@ -1,11 +1,10 @@
-//	TOKENIZER_WSJ.ZIG
-//	-----------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// TOKENIZER_WSJ.ZIG
+// -----------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const Indexer = @import("indexer.zig").Indexer;
-const file = @import("file.zig");
 
 pub fn WsjTokenizer(comptime ReaderType: type) type {
     return struct {
@@ -22,7 +21,7 @@ pub fn WsjTokenizer(comptime ReaderType: type) type {
         }
 
         fn read(self: *Self) !void {
-            self.len = try self.doc.read(&self.buf);
+            self.len = try self.doc.readSliceShort(&self.buf);
             self.index = 0;
         }
 
@@ -58,7 +57,7 @@ pub fn WsjTokenizer(comptime ReaderType: type) type {
             return true;
         }
 
-        pub fn tokenize(self: *Self) !void {
+        pub fn tokenize(self: *Self, allocator: std.mem.Allocator) !void {
             while (true) {
                 const char = try self.peek();
                 // EOF
@@ -85,7 +84,7 @@ pub fn WsjTokenizer(comptime ReaderType: type) type {
                             self.consume();
                         }
 
-                        try self.indexer.addDocId(self.indexer.buffer[0..i]);
+                        try self.indexer.addDocId(allocator, self.indexer.buffer[0..i]);
 
                         continue;
                     } else {

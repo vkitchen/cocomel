@@ -1,7 +1,7 @@
-//	SERIALISE_CCML.ZIG
-//	------------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// SERIALISE_CCML.ZIG
+// ------------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const Dictionary = @import("dictionary.zig").Dictionary;
@@ -11,7 +11,7 @@ const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const file_format = "cocomel v1\n";
 
-fn writeDictionary(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, h: *Dictionary, bytes_written: *u32) !u32 {
+fn writeDictionary(out: *std.Io.Writer, h: *Dictionary, bytes_written: *u32) !u32 {
     // Write contents
     for (h.store) |p| {
         if (p != null) {
@@ -69,7 +69,7 @@ fn writeDictionary(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, 
     return table_offset;
 }
 
-pub fn write(out: std.io.BufferedWriter(4096, std.fs.File.Writer).Writer, docs: *std.ArrayList(Doc), dictionary: *Dictionary, snippets_indices: *std.ArrayList(u32)) !u32 {
+pub fn write(out: *std.Io.Writer, docs: *std.ArrayList(Doc), dictionary: *Dictionary, snippets_indices: *std.ArrayList(u32)) !u32 {
     // Header
     try out.writeAll(file_format);
     var bytes_written: u32 = file_format.len;

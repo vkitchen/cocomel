@@ -1,100 +1,94 @@
-//	PROG_INDEX.ZIG
-//	--------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// PROG_INDEX.ZIG
+// --------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const cli = @import("zig-cli");
+const clap = @import("clap");
 
 const HtmlTokenizer = @import("tokenizer_html.zig").HtmlTokenizer;
 const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Indexer = @import("indexer.zig").Indexer;
 
-var options = struct {
-    trec: bool = false,
-    files: []const []const u8 = undefined,
-}{};
+var reader_buf: [4096]u8 = undefined;
 
-var trec_option = cli.Option{
-    .long_name = "trec",
-    .help = "whether the file to index is in trec format",
-    .value_ref = cli.mkRef(&options.trec),
-};
+pub fn main(init: std.process.Init) !void {
+    const params = comptime clap.parseParamsComptime(
+        \\-h, --help             Display this help and exit.
+        \\--wsj                  Whether the files to index are in trec wsj format.
+        \\<file>...
+        \\
+    );
 
-var files_arg = cli.PositionalArg{
-    .name = "files",
-    .help = "list of files or folders to index",
-    .value_ref = cli.mkRef(&options.files),
-};
+    const cli_parsers = comptime .{
+        .file = clap.parsers.string,
+    };
 
-var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.gpa });
+    defer res.deinit();
 
-const allocator = arena.allocator();
+    var indexer = try Indexer.init(init.io, init.gpa);
 
-var app = &cli.App{ .command = cli.Command{ .name = "index", .description = cli.Description{
-    .one_line = "indexer for the cocomel search engine",
-}, .options = &.{&trec_option}, .target = cli.CommandTarget{ .action = cli.CommandAction{
-    .positional_args = cli.PositionalArgs{ .args = &.{&files_arg} },
-    .exec = index,
-} } } };
-
-pub fn main() !void {
-    return cli.run(app, allocator);
-}
-
-fn index() !void {
-    var indexer = try Indexer.init(allocator);
-
-    if (options.trec) {
-        for (options.files) |filename| {
+    if (res.args.help != 0)
+        return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
+    if (res.args.wsj != 0) {
+        for (res.positionals[0]) |filename| {
             if (std.mem.endsWith(u8, filename, ".xml")) {
-                var doc = try std.fs.cwd().openFile(filename, .{});
-                defer doc.close();
+                var doc = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
+                defer doc.close(init.io);
 
-                const tokerType = WsjTokenizer(@TypeOf(doc));
+                var reader = doc.reader(init.io, &reader_buf);
 
-                var toker = try tokerType.init(&indexer, doc);
-                try toker.tokenize();
+                const tokerType = WsjTokenizer(@TypeOf(&reader.interface));
+
+                var toker = try tokerType.init(&indexer, &reader.interface);
+                try toker.tokenize(init.gpa);
             } else {
                 std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
             }
         }
+
+        try indexer.write(init.io, init.gpa);
+        return;
     } else {
-        for (options.files) |filename| {
+        for (res.positionals[0]) |filename| {
             if (std.mem.endsWith(u8, filename, ".html")) {
-                var doc = try std.fs.cwd().openFile(filename, .{});
-                defer doc.close();
+                var doc = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
+                defer doc.close(init.io);
 
-                try indexer.addDocId(filename);
+                var reader = doc.reader(init.io, &reader_buf);
 
-                const stat = try doc.stat();
+                try indexer.addDocId(init.gpa, filename);
+
+                const stat = try doc.stat(init.io);
                 const file_size = stat.size;
 
-                var toker = HtmlTokenizer(@TypeOf(doc)).init(&indexer);
+                var toker = HtmlTokenizer(@TypeOf(&reader.interface)).init(&indexer);
 
-                try toker.tokenize(&doc, file_size);
+                try toker.tokenize(&reader.interface, file_size);
             } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
-                var doc = try std.fs.cwd().openFile(filename, .{});
-                defer doc.close();
+                var doc = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
+                defer doc.close(init.io);
 
-                var buf = std.io.bufferedReader(doc.reader());
-                var gzip_stream = try std.compress.gzip.decompress(allocator, buf.reader());
-                defer gzip_stream.deinit();
+                var reader = doc.reader(init.io, &reader_buf);
 
-                const tokerType = TarTokenizer(@TypeOf(gzip_stream));
-                var toker = tokerType.init(&indexer, gzip_stream);
-                try toker.tokenize();
+                var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
+                var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
+
+                const tokerType = TarTokenizer(@TypeOf(&gzip_stream.reader));
+                var toker = tokerType.init(&indexer, &gzip_stream.reader);
+                try toker.tokenize(init.gpa);
             } else {
-                if (std.fs.cwd().openDir(filename, .{ .iterate = true })) |dir| {
+                if (std.Io.Dir.cwd().openDir(init.io, filename, .{ .iterate = true })) |dir| {
                     // defer dir.close(); // *shrug*
 
-                    var walker = try dir.walk(allocator);
+                    var walker = try dir.walk(init.gpa);
 
                     var buffer: [1000]u8 = undefined;
                     var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
 
-                    while (try walker.next()) |handle| {
+                    while (try walker.next(init.io)) |handle| {
                         if (!std.mem.endsWith(u8, handle.path, ".html"))
                             continue;
                         const raw_address = handle.path[0 .. handle.path.len - 5];
@@ -102,24 +96,30 @@ fn index() !void {
                         try decoder.decode(&buffer, raw_address);
                         const address = buffer[0..result_len];
 
-                        try indexer.addDocId(address);
+                        try indexer.addDocId(init.gpa, address);
 
-                        var doc = try handle.dir.openFile(handle.path, .{});
-                        defer doc.close();
+                        var doc = try handle.dir.openFile(init.io, handle.path, .{});
+                        defer doc.close(init.io);
 
-                        const stat = try doc.stat();
+                        var reader = doc.reader(init.io, &reader_buf);
+
+                        const stat = try doc.stat(init.io);
                         const file_size = stat.size;
 
-                        var toker = HtmlTokenizer(@TypeOf(doc)).init(&indexer);
+                        var toker = HtmlTokenizer(@TypeOf(&reader.interface)).init(&indexer);
 
-                        try toker.tokenize(&doc, file_size);
+                        try toker.tokenize(&reader.interface, file_size);
                     }
                 } else |_| {
                     std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
                 }
             }
+
+            try indexer.write(init.io, init.gpa);
+            return;
         }
     }
 
-    try indexer.write();
+    // No processing was done print help
+    return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
 }

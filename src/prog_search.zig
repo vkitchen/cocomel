@@ -1,25 +1,25 @@
-//	PROG_SEARCH.ZIG
-//	---------------
-//	Copyright (c) Vaughan Kitchen
-//	Released under the ISC license (https://opensource.org/licenses/ISC)
+// PROG_SEARCH.ZIG
+// ---------------
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
 const config = @import("config.zig");
 const Search = @import("search.zig").Search;
 
-pub fn main() !void {
-    const stdin = std.io.getStdIn().reader();
+pub fn main(init: std.process.Init) !void {
+    var stdin_buffer: [1024]u8 = undefined;
+    var stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var searcher = try Search.init(allocator, std.fs.cwd(), config.files.index, config.files.snippets);
+    var searcher = try Search.init(init.io, allocator, std.Io.Dir.cwd(), config.files.index, config.files.snippets);
 
     std.debug.print("{s}", .{"Query> "});
 
-    var buf: [100]u8 = undefined;
-    const query = try stdin.readUntilDelimiterOrEof(&buf, '\n');
+    const query = try stdin.interface.takeDelimiter('\n');
 
     const results = try searcher.search(query.?);
 
@@ -27,7 +27,7 @@ pub fn main() !void {
 
     var i: usize = 0;
     while (i < @min(10, results.len)) : (i += 1) {
-        std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id) });
+        std.debug.print("{d:.4} {s}\n", .{ results[i].score, searcher.name(results[i].doc_id)[0] });
         const snippet = try searcher.snippet(results[i].doc_id);
         for (snippet, 0..) |s, j| {
             if (j > 0)

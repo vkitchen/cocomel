@@ -1,12 +1,12 @@
 .{
-	.name = "standalone",
-	.version = "0.1.0",
-	.paths = .{"./src"},
-	.dependencies = .{
-		.@"zig-cli" = .{
-			// URL pattern: https://github.com/sam701/zig-cli/archive/<commit hash>.tar.gz
-			.url = "https://github.com/sam701/zig-cli/archive/aa3de8e548a3d68c63e299dae3a97bc0a669dfa3.tar.gz",
-			.hash = "1220b1cc7c256080eb3229d95a8519d6a33035dc83558a8ca1ed6e407008a38fe2c2",
-	    },
-	},
+    .name = .cocomel,
+    .version = "0.1.0",
+    .dependencies = .{
+        .clap = .{
+            .url = "https://github.com/Hejsil/zig-clap/archive/refs/tags/0.12.0.tar.gz",
+            .hash = "clap-0.12.0-oBajB7foAQDqlSwaSG5g0yq7xGbQARUsBk5T64gAOqP5",
+        },
+    },
+    .paths = .{""},
+    .fingerprint = 0x7fc634a3e1c560cc,
 }

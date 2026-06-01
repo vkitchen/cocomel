@@ -11,7 +11,7 @@ const serialise = @import("serialise_ccml.zig");
 const stem = @import("stem.zig").stem;
 const str = @import("str.zig");
 
-const YesSnippets = struct {
+const Snippeter = struct {
     const Self = @This();
 
     indices: std.ArrayList(u32),
@@ -52,21 +52,6 @@ const YesSnippets = struct {
     }
 };
 
-const NoSnippets = struct {
-    const Self = @This();
-
-    indices: std.ArrayList(u32),
-
-    fn init(_: std.Io) !Self {
-        return .{ .indices = .empty };
-    }
-    fn addTerm(_: *Self, _: []u8) !void {}
-    fn newDocId(_: *Self, _: std.mem.Allocator) !void {}
-    fn flush_and_close(_: *Self, _: std.Io, _: std.mem.Allocator) !void {}
-};
-
-const Snippets = if (config.snippets) YesSnippets else NoSnippets;
-
 pub const Indexer = struct {
     const Self = @This();
 
@@ -74,20 +59,25 @@ pub const Indexer = struct {
     allocator: std.mem.Allocator,
     doc_ids: std.ArrayList(Doc),
     dict: Dictionary,
-    snippets: Snippets,
+    snippets: bool,
+    snippeter: Snippeter,
     prev_term: ?[]u8 = null,
 
-    pub fn init(io: std.Io, allocator: std.mem.Allocator) !Self {
+    pub fn init(io: std.Io, allocator: std.mem.Allocator, snippets: bool) !Self {
+        std.Io.Dir.cwd().deleteFile(io, config.files.snippets) catch {};
+
         return .{
             .allocator = allocator,
             .doc_ids = .empty,
             .dict = try Dictionary.init(allocator),
-            .snippets = try Snippets.init(io),
+            .snippets = snippets,
+            .snippeter = if (snippets) try Snippeter.init(io) else undefined,
         };
     }
 
     pub fn addTerm(self: *Self, term: []u8) !void {
-        try self.snippets.addTerm(term);
+        if (self.snippets)
+            try self.snippeter.addTerm(term);
 
         var term_ = std.ascii.lowerString(term, term);
         term_ = str.stripPunct(term_, term_);
@@ -107,7 +97,8 @@ pub const Indexer = struct {
 
     pub fn addDocId(self: *Self, allocator: std.mem.Allocator, doc_id: []const u8) !void {
         self.prev_term = null;
-        try self.snippets.newDocId(allocator);
+        if (self.snippets)
+            try self.snippeter.newDocId(allocator);
 
         try self.doc_ids.append(self.allocator, .{ .name = try str.dup(self.allocator, doc_id) });
         if (self.doc_ids.items.len % 10000 == 0)
@@ -121,7 +112,8 @@ pub const Indexer = struct {
     }
 
     pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator) !void {
-        try self.snippets.flush_and_close(io, allocator);
+        if (self.snippets)
+            try self.snippeter.flush_and_close(io, allocator);
 
         std.debug.print("{s}\n", .{"Writing index..."});
 
@@ -131,7 +123,7 @@ pub const Indexer = struct {
         var writer_buf: [4096]u8 = undefined;
         var writer = index_file.writer(io, &writer_buf);
 
-        const bytes_written = try serialise.write(&writer.interface, &self.doc_ids, &self.dict, &self.snippets.indices);
+        const bytes_written = try serialise.write(&writer.interface, &self.doc_ids, &self.dict, &self.snippeter.indices);
         try writer.flush();
 
         std.debug.print("Index is {d}B\n", .{bytes_written});

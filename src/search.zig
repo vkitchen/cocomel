@@ -23,6 +23,7 @@ pub const Search = struct {
     const Self = @This();
 
     index: Index,
+    snippets: bool,
     snippeter: Snippeter,
     ranker: Ranker,
     query: std.ArrayListUnmanaged(query.Term),
@@ -30,28 +31,37 @@ pub const Search = struct {
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8, snippets_filename: []const u8) !Self {
         const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
-        const snippets_file = try dir.readFileAlloc(io, snippets_filename, allocator, std.Io.Limit.unlimited);
+        const snippets_file = dir.readFileAlloc(io, snippets_filename, allocator, std.Io.Limit.unlimited) catch |err| switch (err) {
+            error.FileNotFound => "",
+            else => return err,
+        };
+        const snippets = snippets_file.len != 0;
 
         const index = try Index.init(allocator, index_file);
 
-        var max_snippet: u32 = 0;
-        var doc_id: u32 = 0;
-        while (doc_id < index.docs_count) : (doc_id += 1) {
-            const range = index.snippet(doc_id);
-            const snippet_length = range[1] - range[0];
-            if (snippet_length > max_snippet)
-                max_snippet = snippet_length;
-        }
+        const snippeter = blk: {
+            if (snippets) {
+                var max_snippet: u32 = 0;
+                var doc_id: u32 = 0;
+                while (doc_id < index.docs_count) : (doc_id += 1) {
+                    const range = index.snippet(doc_id);
+                    const snippet_length = range[1] - range[0];
+                    if (snippet_length > max_snippet)
+                        max_snippet = snippet_length;
+                }
 
-        // TODO make snippets optional
-
-        const snippets_buf = try allocator.alloc(u8, max_snippet);
-        const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
-        const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
-        const snippeter = try Snippeter.init(snippets_allocator, snippets_file, snippets_terms);
+                const snippets_buf = try allocator.alloc(u8, max_snippet);
+                const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
+                const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
+                break :blk try Snippeter.init(snippets_allocator, snippets_file, snippets_terms);
+            } else {
+                break :blk undefined;
+            }
+        };
 
         return .{
             .index = index,
+            .snippets = snippets,
             .snippeter = snippeter,
             .ranker = Ranker.init(@floatFromInt(index.docs_count), index.average_length),
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
@@ -101,7 +111,7 @@ pub const Search = struct {
     }
 
     pub fn snippet(self: *Self, doc_id: u32) ![]Term {
-        if (!config.snippets)
+        if (!self.snippets)
             return &.{};
         const range = self.index.snippet(doc_id);
         return self.snippeter.snippet(self.query.items, range[0], range[1]);

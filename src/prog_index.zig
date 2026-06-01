@@ -16,6 +16,7 @@ var reader_buf: [4096]u8 = undefined;
 pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
+        \\--snippets             Whether to generate a snippet index for the input.
         \\--wsj                  Whether the files to index are in trec wsj format.
         \\<file>...
         \\
@@ -28,7 +29,7 @@ pub fn main(init: std.process.Init) !void {
     var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.gpa });
     defer res.deinit();
 
-    var indexer = try Indexer.init(init.io, init.gpa);
+    var indexer = try Indexer.init(init.io, init.gpa, res.args.snippets != 0);
 
     if (res.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});

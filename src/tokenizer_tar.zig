@@ -53,45 +53,43 @@ const TarHeader = extern struct {
     }
 };
 
-pub fn TarTokenizer(comptime ReaderType: type) type {
-    return struct {
-        const Self = @This();
+pub const TarTokenizer = struct {
+    const Self = @This();
 
-        indexer: *Indexer,
-        buf: [512]u8 = undefined, // Tar block size
-        name_buf: [256]u8 = undefined,
-        doc: ReaderType,
-        toker: HtmlTokenizer(ReaderType) = undefined,
+    indexer: *Indexer,
+    buf: [512]u8 = undefined, // Tar block size
+    name_buf: [256]u8 = undefined,
+    doc: *std.Io.Reader,
+    toker: HtmlTokenizer = undefined,
 
-        pub fn init(indexer: *Indexer, doc: ReaderType) Self {
-            return .{
-                .indexer = indexer,
-                .doc = doc,
-                .toker = HtmlTokenizer(ReaderType).init(indexer),
+    pub fn init(indexer: *Indexer, doc: *std.Io.Reader) Self {
+        return .{
+            .indexer = indexer,
+            .doc = doc,
+            .toker = HtmlTokenizer.init(indexer),
+        };
+    }
+
+    pub fn tokenize(self: *Self, allocator: std.mem.Allocator) !void {
+        while (true) {
+            if (try self.doc.readSliceShort(&self.buf) != 512)
+                return;
+
+            const header: *TarHeader = @ptrCast(&self.buf);
+
+            _ = switch (header.typeflag) {
+                0 => return,
+                '0' => {},
+                '5' => continue,
+                else => std.debug.panic("unimplemented", .{}),
             };
+
+            try self.indexer.addDocId(allocator, header.fullName(&self.name_buf));
+
+            const file_size = try header.fileSize();
+            if (file_size == 0)
+                continue;
+            try self.toker.tokenize(self.doc, file_size);
         }
-
-        pub fn tokenize(self: *Self, allocator: std.mem.Allocator) !void {
-            while (true) {
-                if (try self.doc.readSliceShort(&self.buf) != 512)
-                    return;
-
-                const header: *TarHeader = @ptrCast(&self.buf);
-
-                _ = switch (header.typeflag) {
-                    0 => return,
-                    '0' => {},
-                    '5' => continue,
-                    else => std.debug.panic("unimplemented", .{}),
-                };
-
-                try self.indexer.addDocId(allocator, header.fullName(&self.name_buf));
-
-                const file_size = try header.fileSize();
-                if (file_size == 0)
-                    continue;
-                try self.toker.tokenize(self.doc, file_size);
-            }
-        }
-    };
-}
+    }
+};

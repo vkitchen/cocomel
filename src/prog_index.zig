@@ -40,9 +40,7 @@ pub fn main(init: std.process.Init) !void {
 
                 var reader = doc.reader(init.io, &reader_buf);
 
-                const tokerType = WsjTokenizer(@TypeOf(&reader.interface));
-
-                var toker = try tokerType.init(&indexer, &reader.interface);
+                var toker = try WsjTokenizer.init(&indexer, &reader.interface);
                 try toker.tokenize(init.gpa);
             } else {
                 std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
@@ -64,7 +62,7 @@ pub fn main(init: std.process.Init) !void {
                 const stat = try doc.stat(init.io);
                 const file_size = stat.size;
 
-                var toker = HtmlTokenizer(@TypeOf(&reader.interface)).init(&indexer);
+                var toker = HtmlTokenizer.init(&indexer);
 
                 try toker.tokenize(&reader.interface, file_size);
             } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
@@ -76,8 +74,7 @@ pub fn main(init: std.process.Init) !void {
                 var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
                 var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
 
-                const tokerType = TarTokenizer(@TypeOf(&gzip_stream.reader));
-                var toker = tokerType.init(&indexer, &gzip_stream.reader);
+                var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
                 try toker.tokenize(init.gpa);
             } else {
                 if (std.Io.Dir.cwd().openDir(init.io, filename, .{ .iterate = true })) |dir| {
@@ -106,7 +103,7 @@ pub fn main(init: std.process.Init) !void {
                         const stat = try doc.stat(init.io);
                         const file_size = stat.size;
 
-                        var toker = HtmlTokenizer(@TypeOf(&reader.interface)).init(&indexer);
+                        var toker = HtmlTokenizer.init(&indexer);
 
                         try toker.tokenize(&reader.interface, file_size);
                     }

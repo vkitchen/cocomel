@@ -6,12 +6,13 @@
 const std = @import("std");
 const clap = @import("clap");
 
+const config = @import("config.zig");
 const HtmlTokenizer = @import("tokenizer_html.zig").HtmlTokenizer;
 const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Indexer = @import("indexer.zig").Indexer;
 
-var reader_buf: [4096]u8 = undefined;
+var reader_buf: [config.io_buffer_size]u8 = undefined;
 
 pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(

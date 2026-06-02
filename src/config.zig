@@ -14,6 +14,7 @@ pub const ranking_fn = "bm25";
 // s, none
 pub const stemmer = "s";
 
+pub const io_buffer_size = 4096;
 pub const max_term_length = 100; // longest token from document
 pub const max_query_length = 1000; // chars in query
 pub const max_query_terms = 100; // words in query

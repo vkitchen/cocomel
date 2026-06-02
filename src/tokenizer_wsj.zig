@@ -4,6 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const Indexer = @import("indexer.zig").Indexer;
 
 pub const WsjTokenizer = struct {
@@ -13,7 +14,7 @@ pub const WsjTokenizer = struct {
     doc: *std.Io.Reader,
     index: usize = 0,
     len: usize = 0,
-    buf: [4096]u8 = undefined,
+    buf: [config.io_buffer_size]u8 = undefined,
 
     pub fn init(indexer: *Indexer, doc: *std.Io.Reader) !Self {
         return .{ .indexer = indexer, .doc = doc };

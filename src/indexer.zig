@@ -16,7 +16,7 @@ const Snippeter = struct {
 
     indices: std.ArrayList(u32),
     file: std.Io.File,
-    writer_buf: [4096]u8 = undefined,
+    writer_buf: [config.io_buffer_size]u8 = undefined,
     writer: std.Io.File.Writer,
     bytes_written: u32 = 0,
 
@@ -126,7 +126,7 @@ pub const Indexer = struct {
         const index_file = try std.Io.Dir.cwd().createFile(io, config.files.index, .{});
         defer index_file.close(io);
 
-        var writer_buf: [4096]u8 = undefined;
+        var writer_buf: [config.io_buffer_size]u8 = undefined;
         var writer = index_file.writer(io, &writer_buf);
 
         const bytes_written = try serialise.write(allocator, &writer.interface, &self.doc_ids, &self.dict, if (self.snippets) &self.snippeter.indices else &.empty);

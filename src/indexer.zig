@@ -62,7 +62,9 @@ pub const Indexer = struct {
     snippets: bool,
     snippeter: Snippeter,
     bigrams: bool,
-    prev_term: ?[]u8 = null,
+    prev_buffer: [100 * 2 + 1]u8 = undefined,
+    prev_len: usize = 0,
+    has_prev: bool = false,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, snippets: bool, bigrams: bool) !Self {
         std.Io.Dir.cwd().deleteFile(io, config.files.snippets) catch {};
@@ -87,20 +89,20 @@ pub const Indexer = struct {
 
         try self.dict.insert(term_, @truncate(self.doc_ids.items.len - 1));
         if (self.bigrams) {
-            if (self.prev_term) |prev| {
-                var bigram = try self.allocator.alloc(u8, prev.len + 1 + term_.len);
-                @memcpy(bigram[0..prev.len], prev);
-                bigram[prev.len] = ' ';
-                @memcpy(bigram[prev.len + 1 ..], term_);
-                try self.dict.insert(bigram, @truncate(self.doc_ids.items.len - 1));
+            if (self.has_prev) {
+                self.prev_buffer[self.prev_len] = ' ';
+                @memcpy(self.prev_buffer[self.prev_len + 1 ..], term_);
+                try self.dict.insert(self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
             }
-            self.prev_term = try str.dup(self.allocator, term_);
+            @memcpy(self.prev_buffer[0..], term_);
+            self.prev_len = term_.len;
+            self.has_prev = true;
         }
         self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
     }
 
     pub fn addDocId(self: *Self, allocator: std.mem.Allocator, doc_id: []const u8) !void {
-        self.prev_term = null;
+        self.has_prev = false;
         if (self.snippets)
             try self.snippeter.newDocId(allocator);
 

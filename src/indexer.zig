@@ -55,14 +55,14 @@ const Snippeter = struct {
 pub const Indexer = struct {
     const Self = @This();
 
-    buffer: [100]u8 = undefined,
+    buffer: [config.max_term_length]u8 = undefined,
     allocator: std.mem.Allocator,
     doc_ids: std.ArrayList(Doc),
     dict: Dictionary,
     snippets: bool,
     snippeter: Snippeter,
     bigrams: bool,
-    prev_buffer: [100 * 2 + 1]u8 = undefined,
+    prev_buffer: [config.max_term_length * 2 + 1]u8 = undefined,
     prev_len: usize = 0,
     has_prev: bool = false,
 

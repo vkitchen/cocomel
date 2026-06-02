@@ -123,7 +123,7 @@ pub const Indexer = struct {
         var writer_buf: [4096]u8 = undefined;
         var writer = index_file.writer(io, &writer_buf);
 
-        const bytes_written = try serialise.write(&writer.interface, &self.doc_ids, &self.dict, &self.snippeter.indices);
+        const bytes_written = try serialise.write(allocator, &writer.interface, &self.doc_ids, &self.dict, if (self.snippets) &self.snippeter.indices else &.empty);
         try writer.flush();
 
         std.debug.print("Index is {d}B\n", .{bytes_written});

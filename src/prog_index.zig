@@ -26,10 +26,10 @@ pub fn main(init: std.process.Init) !void {
         .file = clap.parsers.string,
     };
 
-    var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.gpa });
+    var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
     defer res.deinit();
 
-    var indexer = try Indexer.init(init.io, init.gpa, res.args.snippets != 0);
+    var indexer = try Indexer.init(init.io, init.arena.allocator(), res.args.snippets != 0);
 
     if (res.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
@@ -42,13 +42,13 @@ pub fn main(init: std.process.Init) !void {
                 var reader = doc.reader(init.io, &reader_buf);
 
                 var toker = try WsjTokenizer.init(&indexer, &reader.interface);
-                try toker.tokenize(init.gpa);
+                try toker.tokenize(init.arena.allocator());
             } else {
                 std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
             }
         }
 
-        try indexer.write(init.io, init.gpa);
+        try indexer.write(init.io, init.arena.allocator());
         return;
     } else {
         for (res.positionals[0]) |filename| {
@@ -58,7 +58,7 @@ pub fn main(init: std.process.Init) !void {
 
                 var reader = doc.reader(init.io, &reader_buf);
 
-                try indexer.addDocId(init.gpa, filename);
+                try indexer.addDocId(init.arena.allocator(), filename);
 
                 const stat = try doc.stat(init.io);
                 const file_size = stat.size;
@@ -76,12 +76,12 @@ pub fn main(init: std.process.Init) !void {
                 var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
 
                 var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
-                try toker.tokenize(init.gpa);
+                try toker.tokenize(init.arena.allocator());
             } else {
                 if (std.Io.Dir.cwd().openDir(init.io, filename, .{ .iterate = true })) |dir| {
                     // defer dir.close(); // *shrug*
 
-                    var walker = try dir.walk(init.gpa);
+                    var walker = try dir.walk(init.arena.allocator());
 
                     var buffer: [1000]u8 = undefined;
                     var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
@@ -94,7 +94,7 @@ pub fn main(init: std.process.Init) !void {
                         try decoder.decode(&buffer, raw_address);
                         const address = buffer[0..result_len];
 
-                        try indexer.addDocId(init.gpa, address);
+                        try indexer.addDocId(init.arena.allocator(), address);
 
                         var doc = try handle.dir.openFile(init.io, handle.path, .{});
                         defer doc.close(init.io);
@@ -113,7 +113,7 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
 
-            try indexer.write(init.io, init.gpa);
+            try indexer.write(init.io, init.arena.allocator());
             return;
         }
     }

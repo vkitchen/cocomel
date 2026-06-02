@@ -11,9 +11,12 @@ const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const file_format = "cocomel v1\n";
 
-fn writeDictionary(out: *std.Io.Writer, h: *Dictionary, bytes_written: *u32) !u32 {
+fn writeDictionary(allocator: std.mem.Allocator, out: *std.Io.Writer, h: *Dictionary, bytes_written: *u32) !u32 {
+    const offsets = try allocator.alloc([2]u32, h.cap);
+    @memset(offsets, .{ 0, 0 });
+
     // Write contents
-    for (h.store) |p| {
+    for (h.store, 0..) |p, hi| {
         if (p != null) {
             const posting = p.?;
             try posting.flush();
@@ -44,8 +47,8 @@ fn writeDictionary(out: *std.Io.Writer, h: *Dictionary, bytes_written: *u32) !u3
                 bytes_written.* += @sizeOf(u32);
             }
 
-            posting.term.ptr = @ptrFromInt(term_offset);
-            posting.ids[0] = @ptrFromInt(ids_offset);
+            offsets[hi][0] = term_offset;
+            offsets[hi][1] = ids_offset;
         }
     }
 
@@ -54,13 +57,9 @@ fn writeDictionary(out: *std.Io.Writer, h: *Dictionary, bytes_written: *u32) !u3
     try out.writeInt(u32, h.cap, native_endian);
     bytes_written.* += @sizeOf(u32);
 
-    for (h.store) |p| {
-        if (p != null) {
-            try out.writeInt(u32, @truncate(@intFromPtr(p.?.term.ptr)), native_endian);
-            try out.writeInt(u32, @truncate(@intFromPtr(p.?.ids[0])), native_endian);
-        } else {
-            try out.writeInt(u64, 0, native_endian);
-        }
+    for (offsets) |p| {
+        try out.writeInt(u32, p[0], native_endian);
+        try out.writeInt(u32, p[1], native_endian);
         bytes_written.* += 2 * @sizeOf(u32);
     }
 
@@ -69,7 +68,7 @@ fn writeDictionary(out: *std.Io.Writer, h: *Dictionary, bytes_written: *u32) !u3
     return table_offset;
 }
 
-pub fn write(out: *std.Io.Writer, docs: *std.ArrayList(Doc), dictionary: *Dictionary, snippets_indices: *std.ArrayList(u32)) !u32 {
+pub fn write(allocator: std.mem.Allocator, out: *std.Io.Writer, docs: *std.ArrayList(Doc), dictionary: *Dictionary, snippets_indices: *const std.ArrayList(u32)) !u32 {
     // Header
     try out.writeAll(file_format);
     var bytes_written: u32 = file_format.len;
@@ -99,7 +98,7 @@ pub fn write(out: *std.Io.Writer, docs: *std.ArrayList(Doc), dictionary: *Dictio
     }
 
     // Dictionary
-    const dictionary_offset = try writeDictionary(out, dictionary, &bytes_written);
+    const dictionary_offset = try writeDictionary(allocator, out, dictionary, &bytes_written);
 
     // Snippets
     const snippets_offset = bytes_written;

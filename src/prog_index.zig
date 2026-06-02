@@ -17,6 +17,7 @@ pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
         \\--snippets             Whether to generate a snippet index for the input.
+        \\--bigrams              Whether to include bigrams in index.
         \\--wsj                  Whether the files to index are in trec wsj format.
         \\<file>...
         \\
@@ -29,7 +30,7 @@ pub fn main(init: std.process.Init) !void {
     var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
     defer res.deinit();
 
-    var indexer = try Indexer.init(init.io, init.arena.allocator(), res.args.snippets != 0);
+    var indexer = try Indexer.init(init.io, init.arena.allocator(), res.args.snippets != 0, res.args.bigrams != 0);
 
     if (res.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});

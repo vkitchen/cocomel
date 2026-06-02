@@ -61,9 +61,10 @@ pub const Indexer = struct {
     dict: Dictionary,
     snippets: bool,
     snippeter: Snippeter,
+    bigrams: bool,
     prev_term: ?[]u8 = null,
 
-    pub fn init(io: std.Io, allocator: std.mem.Allocator, snippets: bool) !Self {
+    pub fn init(io: std.Io, allocator: std.mem.Allocator, snippets: bool, bigrams: bool) !Self {
         std.Io.Dir.cwd().deleteFile(io, config.files.snippets) catch {};
 
         return .{
@@ -72,6 +73,7 @@ pub const Indexer = struct {
             .dict = try Dictionary.init(allocator),
             .snippets = snippets,
             .snippeter = if (snippets) try Snippeter.init(io) else undefined,
+            .bigrams = bigrams,
         };
     }
 
@@ -84,14 +86,16 @@ pub const Indexer = struct {
         term_ = stem(term_);
 
         try self.dict.insert(term_, @truncate(self.doc_ids.items.len - 1));
-        if (self.prev_term) |prev| {
-            var bigram = try self.allocator.alloc(u8, prev.len + 1 + term_.len);
-            @memcpy(bigram[0..prev.len], prev);
-            bigram[prev.len] = ' ';
-            @memcpy(bigram[prev.len + 1 ..], term_);
-            try self.dict.insert(bigram, @truncate(self.doc_ids.items.len - 1));
+        if (self.bigrams) {
+            if (self.prev_term) |prev| {
+                var bigram = try self.allocator.alloc(u8, prev.len + 1 + term_.len);
+                @memcpy(bigram[0..prev.len], prev);
+                bigram[prev.len] = ' ';
+                @memcpy(bigram[prev.len + 1 ..], term_);
+                try self.dict.insert(bigram, @truncate(self.doc_ids.items.len - 1));
+            }
+            self.prev_term = try str.dup(self.allocator, term_);
         }
-        self.prev_term = try str.dup(self.allocator, term_);
         self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
     }
 

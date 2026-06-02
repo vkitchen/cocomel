@@ -8,8 +8,6 @@ const config = @import("config.zig");
 const Search = @import("search.zig").Search;
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
-const socket_name = "/tmp/cocomel.sock";
-
 const header = packed struct {
     version: u8,
     method: u8,
@@ -30,9 +28,9 @@ pub fn main(init: std.process.Init) !void {
 
     var searcher = try Search.init(init.io, init.gpa, dir, config.files.index, config.files.snippets);
 
-    std.Io.Dir.deleteFileAbsolute(init.io, socket_name) catch {};
+    std.Io.Dir.deleteFileAbsolute(init.io, config.socket_name) catch {};
 
-    const addr = try std.Io.net.UnixAddress.init(socket_name);
+    const addr = try std.Io.net.UnixAddress.init(config.socket_name);
     var listener = try addr.listen(init.io, .{});
 
     while (listener.accept(init.io)) |conn| {

@@ -8,6 +8,8 @@ pub const files = .{
     .snippets = "snippets.ccml",
 };
 
+pub const socket_name = "/tmp/cocomel.sock";
+
 // tf-idf, bm25
 pub const ranking_fn = "bm25";
 

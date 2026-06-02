@@ -4,9 +4,8 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const Search = @import("search.zig").Search;
-
-const socket_name = "/tmp/cocomel.sock";
 
 fn read16(str: []const u8, offset: usize) u16 {
     return std.mem.bytesToValue(u16, str[offset .. offset + @sizeOf(u16)][0..2]);
@@ -37,7 +36,7 @@ pub fn main(init: std.process.Init) !void {
 
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-    const addr = try std.Io.net.UnixAddress.init(socket_name);
+    const addr = try std.Io.net.UnixAddress.init(config.socket_name);
     var stream = try addr.connect(init.io);
 
     var reader_buf: [1024]u8 = undefined;

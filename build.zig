@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_index.zig"),
             .target = target,
-            .optimize = .ReleaseFast,
+            .optimize = .ReleaseSafe,
         }),
     });
     indexer.root_module.addImport("clap", clap.module("clap"));

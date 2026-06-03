@@ -47,10 +47,10 @@ pub const Indexer = struct {
         if (self.bigrams) {
             if (self.has_prev) {
                 self.prev_buffer[self.prev_len] = ' ';
-                @memcpy(self.prev_buffer[self.prev_len + 1 ..], term_);
+                @memcpy(self.prev_buffer[self.prev_len + 1 .. self.prev_len + 1 + term_.len], term_);
                 try self.dict.insert(self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
             }
-            @memcpy(self.prev_buffer[0..], term_);
+            @memcpy(self.prev_buffer[0..term_.len], term_);
             self.prev_len = term_.len;
             self.has_prev = true;
         }

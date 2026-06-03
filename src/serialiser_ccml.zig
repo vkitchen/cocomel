@@ -104,6 +104,11 @@ pub const CcmlSerialiser = struct {
         // Flush snippets
         try self.newDocId(allocator);
 
+        // Snippets
+        const snippets_offset = if (self.snippets) self.writer.logicalPos() else 0;
+        for (self.snippet_indices.items) |s|
+            try self.writer.interface.writeInt(u32, s, native_endian);
+
         // Document ID strings
         for (docs.items, 0..) |d, i| {
             const name_offset = self.writer.logicalPos();
@@ -127,18 +132,12 @@ pub const CcmlSerialiser = struct {
         // Dictionary
         const dictionary_offset = try self.writeDictionary(allocator, dictionary);
 
-        // Snippets
-        const snippets_offset = self.writer.logicalPos();
-        for (self.snippet_indices.items) |s|
-            try self.writer.interface.writeInt(u32, s, native_endian);
-
         // Header
         try self.writer.interface.writeStruct(index.Header{
             .docs_count = @truncate(docs.items.len),
             .docs_offset = @truncate(docs_offset),
             .dictionary_offset = @truncate(dictionary_offset),
             .snippets_offset = @truncate(snippets_offset),
-            .has_snippets = if (self.snippets) 1 else 0,
             .version = config.index_version,
         }, native_endian);
 

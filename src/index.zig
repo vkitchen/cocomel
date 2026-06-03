@@ -28,8 +28,6 @@ pub const Header = packed struct {
     docs_offset: u32,
     dictionary_offset: u32,
     snippets_offset: u32,
-    _: u8 = 0, // padding
-    has_snippets: u8,
     version: u16,
 };
 
@@ -71,6 +69,10 @@ pub const Index = struct {
             .max_length = max_length,
             .average_length = average_length,
         };
+    }
+
+    pub fn hasSnippets(self: *const Self) bool {
+        return self.header.snippets_offset != 0;
     }
 
     // [   u32   ][   u16   ][ []u8 ][   u16   ][ []u8 ]

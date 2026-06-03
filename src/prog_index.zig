@@ -14,10 +14,20 @@ const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
 const Indexer = @import("indexer.zig").Indexer;
 
 var reader_buf: [config.io_buffer_size]u8 = undefined;
+var filename_buf: [1000]u8 = undefined;
+
+var base64_decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
+
+fn decode_filename(filename: []const u8) ![]u8 {
+    const result_len = try base64_decoder.calcSizeForSlice(filename);
+    try base64_decoder.decode(&filename_buf, filename);
+    return filename_buf[0..result_len];
+}
 
 pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
+        \\--base64               Filenames are in base64.
         \\--snippets             Whether to generate a snippet index for the input.
         \\--bigrams              Whether to include bigrams in index.
         \\--wsj                  Whether the files to index are in trec wsj format.
@@ -68,18 +78,14 @@ pub fn main(init: std.process.Init) !void {
 
                 var walker = try dir.walk(init.arena.allocator());
 
-                var buffer: [1000]u8 = undefined;
-                var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
-
                 while (try walker.next(init.io)) |handle| {
                     if (!std.mem.endsWith(u8, handle.path, ".html"))
                         continue;
-                    const raw_address = handle.path[0 .. handle.path.len - 5];
-                    const result_len = try decoder.calcSizeForSlice(raw_address);
-                    try decoder.decode(&buffer, raw_address);
-                    const address = buffer[0..result_len];
 
-                    try indexer.addDocId(init.arena.allocator(), address);
+                    const file_stem = handle.path[0 .. handle.path.len - 5];
+                    const doc_id = if (res.args.base64 != 0) try decode_filename(file_stem) else handle.path;
+
+                    try indexer.addDocId(init.arena.allocator(), doc_id);
 
                     var doc = try handle.dir.openFile(init.io, handle.path, .{});
                     defer doc.close(init.io);
@@ -94,21 +100,24 @@ pub fn main(init: std.process.Init) !void {
                     try toker.tokenize(&reader.interface, file_size);
                 }
             } else if (std.mem.endsWith(u8, filename, ".html")) {
-                var reader = file.reader(init.io, &reader_buf);
+                const file_stem = std.fs.path.stem(filename);
+                const doc_id = if (res.args.base64 != 0) try decode_filename(file_stem) else filename;
 
-                try indexer.addDocId(init.arena.allocator(), filename);
+                try indexer.addDocId(init.arena.allocator(), doc_id);
+
+                var reader = file.reader(init.io, &reader_buf);
 
                 var toker = HtmlTokenizer.init(&indexer);
 
                 try toker.tokenize(&reader.interface, stat.size);
-//            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
-//                var reader = file.reader(init.io, &reader_buf);
-//
-//                var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
-//                var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
-//
-//                var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
-//                try toker.tokenize(init.arena.allocator());
+                //            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
+                //                var reader = file.reader(init.io, &reader_buf);
+                //
+                //                var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
+                //                var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
+                //
+                //                var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
+                //                try toker.tokenize(init.arena.allocator());
             } else {
                 std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
             }

@@ -19,49 +19,21 @@ pub const HtmlTokenizer = struct {
     const Self = @This();
 
     indexer: *Indexer,
-    doc: *std.Io.Reader = undefined,
-    buf: [512]u8 = undefined, // Tar block size
-    index: usize = 0,
-    len: usize = 0,
-    file_size: usize = 0,
+    reader: *std.Io.Reader,
 
-    pub fn init(indexer: *Indexer) Self {
-        return .{ .indexer = indexer };
-    }
-
-    fn read(self: *Self) !void {
-        self.len = try self.doc.readSliceShort(&self.buf);
-        self.index = 0;
-    }
-
-    fn eof(self: *Self) !bool {
-        if (self.file_size == 0)
-            return true;
-        if (self.index >= self.len)
-            try self.read();
-        return self.len == 0;
-    }
-
-    fn peek(self: *Self) !u8 {
-        if (try self.eof())
-            return 0;
-        return self.buf[self.index];
-    }
-
-    fn consume(self: *Self) void {
-        self.index += 1;
-        self.file_size -|= 1;
+    pub fn init(indexer: *Indexer, reader: *std.Io.Reader) Self {
+        return .{ .indexer = indexer, .reader = reader };
     }
 
     fn consumeWhitespace(self: *Self) !void {
-        while (std.ascii.isWhitespace(try self.peek()))
-            self.consume();
+        while (std.ascii.isWhitespace(try self.reader.peekByte()))
+            self.reader.toss(1);
     }
 
     fn consumeStr(self: *Self, str: []const u8) !bool {
         for (str) |c| {
-            if (try self.peek() == c) {
-                self.consume();
+            if (try self.reader.peekByte() == c) {
+                self.reader.toss(1);
             } else {
                 return false;
             }
@@ -69,26 +41,22 @@ pub const HtmlTokenizer = struct {
         return true;
     }
 
-    pub fn tokenize(self: *Self, doc: *std.Io.Reader, file_size: u64) !void {
-        self.doc = doc;
-        self.file_size = file_size;
-        try self.read();
-
+    pub fn tokenize(self: *Self) !void {
         while (true) {
-            const char = try self.peek();
-            // EOF
-            if (char == 0) {
-                return;
-            }
+            const char = self.reader.peekByte() catch |err| {
+                if (err == error.EndOfStream) return;
+                return err;
+            };
+
             // Tag
-            else if (char == '<') {
-                self.consume();
-                if (try self.peek() == 's') {
-                    self.consume();
+            if (char == '<') {
+                self.reader.toss(1);
+                if (try self.reader.peekByte() == 's') {
+                    self.reader.toss(1);
                     if (try self.consumeStr("cript")) {
                         while (true) {
-                            while (try self.peek() != '<')
-                                self.consume();
+                            while (try self.reader.peekByte() != '<')
+                                self.reader.toss(1);
                             if (try self.consumeStr("</script>")) {
                                 break;
                             }
@@ -97,8 +65,8 @@ pub const HtmlTokenizer = struct {
                     }
                     if (try self.consumeStr("tyle")) {
                         while (true) {
-                            while (try self.peek() != '<')
-                                self.consume();
+                            while (try self.reader.peekByte() != '<')
+                                self.reader.toss(1);
                             if (try self.consumeStr("</style>")) {
                                 break;
                             }
@@ -108,18 +76,15 @@ pub const HtmlTokenizer = struct {
                 }
                 if (try self.consumeStr("title>")) {
                     var i: usize = 0;
-                    while (i < self.indexer.buffer.len and try self.peek() != '<') : (i += 1) {
+                    while (i < self.indexer.buffer.len and try self.reader.peekByte() != '<') : (i += 1) {
                         // HTML escape
-                        if (try self.peek() == '&') {
+                        if (try self.reader.peekByte() == '&') {
                             var i_: usize = 0;
-                            while (i + i_ < self.indexer.buffer.len and try self.peek() != ';') : (i_ += 1) {
-                                self.indexer.buffer[i + i_] = try self.peek();
-                                self.consume();
-                            }
+                            while (i + i_ < self.indexer.buffer.len and try self.reader.peekByte() != ';') : (i_ += 1)
+                                self.indexer.buffer[i + i_] = try self.reader.takeByte();
                             // grab the ;
-                            if (i + i_ < self.indexer.buffer.len and try self.peek() == ';') {
-                                self.indexer.buffer[i + i_] = try self.peek();
-                                self.consume();
+                            if (i + i_ < self.indexer.buffer.len and try self.reader.peekByte() == ';') {
+                                self.indexer.buffer[i + i_] = try self.reader.takeByte();
                                 i_ += 1;
                             }
 
@@ -129,31 +94,27 @@ pub const HtmlTokenizer = struct {
                             continue;
                         }
 
-                        self.indexer.buffer[i] = try self.peek();
-                        self.consume();
+                        self.indexer.buffer[i] = try self.reader.takeByte();
                     }
 
                     try self.indexer.addTitle(self.indexer.buffer[0..i]);
 
-                    while (try self.peek() != '>')
-                        self.consume();
+                    while (try self.reader.peekByte() != '>')
+                        self.reader.toss(1);
                     continue;
                 }
-                while (try self.peek() != '>')
-                    self.consume();
+                while (try self.reader.peekByte() != '>')
+                    self.reader.toss(1);
                 continue;
             }
             // HTML escape
             else if (char == '&') {
                 var i: usize = 0;
-                while (i < self.indexer.buffer.len and try self.peek() != ';') : (i += 1) {
-                    self.indexer.buffer[i] = try self.peek();
-                    self.consume();
-                }
+                while (i < self.indexer.buffer.len and try self.reader.peekByte() != ';') : (i += 1)
+                    self.indexer.buffer[i] = try self.reader.takeByte();
                 // grab the ;
-                if (i < self.indexer.buffer.len and try self.peek() == ';') {
-                    self.indexer.buffer[i] = try self.peek();
-                    self.consume();
+                if (i < self.indexer.buffer.len and try self.reader.peekByte() == ';') {
+                    self.indexer.buffer[i] = try self.reader.takeByte();
                     i += 1;
                 }
 
@@ -165,10 +126,8 @@ pub const HtmlTokenizer = struct {
             // Number
             else if (std.ascii.isDigit(char)) {
                 var i: usize = 0;
-                while (i < self.indexer.buffer.len and std.ascii.isDigit(try self.peek())) : (i += 1) {
-                    self.indexer.buffer[i] = try self.peek();
-                    self.consume();
-                }
+                while (i < self.indexer.buffer.len and std.ascii.isDigit(try self.reader.peekByte())) : (i += 1)
+                    self.indexer.buffer[i] = try self.reader.takeByte();
 
                 try self.indexer.addTerm(self.indexer.buffer[0..i]);
                 continue;
@@ -176,27 +135,26 @@ pub const HtmlTokenizer = struct {
             // Word
             else if (std.ascii.isAlphabetic(char)) {
                 var i: usize = 0;
-                while (i < self.indexer.buffer.len and isWordChar(try self.peek())) : (i += 1) {
-                    if (try self.peek() == 0xE2) {
-                        self.consume();
-                        if (try self.peek() != 0x80)
+                while (i < self.indexer.buffer.len and isWordChar(try self.reader.peekByte())) : (i += 1) {
+                    if (try self.reader.peekByte() == 0xE2) {
+                        self.reader.toss(1);
+                        if (try self.reader.peekByte() != 0x80)
                             continue;
-                        self.consume();
-                        if (try self.peek() != 0x99)
+                        self.reader.toss(1);
+                        if (try self.reader.peekByte() != 0x99)
                             continue;
-                        self.consume();
+                        self.reader.toss(1);
 
                         self.indexer.buffer[i] = '\'';
                         continue;
                     }
-                    self.indexer.buffer[i] = try self.peek();
-                    self.consume();
+                    self.indexer.buffer[i] = try self.reader.takeByte();
                 }
 
                 try self.indexer.addTerm(self.indexer.buffer[0..i]);
                 continue;
             }
-            self.consume();
+            self.reader.toss(1);
         }
     }
 };

@@ -92,12 +92,8 @@ pub fn main(init: std.process.Init) !void {
 
                     var reader = doc.reader(init.io, &reader_buf);
 
-                    const doc_stat = try doc.stat(init.io);
-                    const file_size = doc_stat.size;
-
-                    var toker = HtmlTokenizer.init(&indexer);
-
-                    try toker.tokenize(&reader.interface, file_size);
+                    var toker = HtmlTokenizer.init(&indexer, &reader.interface);
+                    try toker.tokenize();
                 }
             } else if (std.mem.endsWith(u8, filename, ".html")) {
                 const file_stem = std.fs.path.stem(filename);
@@ -107,9 +103,8 @@ pub fn main(init: std.process.Init) !void {
 
                 var reader = file.reader(init.io, &reader_buf);
 
-                var toker = HtmlTokenizer.init(&indexer);
-
-                try toker.tokenize(&reader.interface, stat.size);
+                var toker = HtmlTokenizer.init(&indexer, &reader.interface);
+                try toker.tokenize();
                 //            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
                 //                var reader = file.reader(init.io, &reader_buf);
                 //

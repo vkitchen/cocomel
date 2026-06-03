@@ -11,45 +11,21 @@ pub const WsjTokenizer = struct {
     const Self = @This();
 
     indexer: *Indexer,
-    doc: *std.Io.Reader,
-    index: usize = 0,
-    len: usize = 0,
-    buf: [config.io_buffer_size]u8 = undefined,
+    reader: *std.Io.Reader,
 
-    pub fn init(indexer: *Indexer, doc: *std.Io.Reader) !Self {
-        return .{ .indexer = indexer, .doc = doc };
-    }
-
-    fn read(self: *Self) !void {
-        self.len = try self.doc.readSliceShort(&self.buf);
-        self.index = 0;
-    }
-
-    fn eof(self: *Self) !bool {
-        if (self.index >= self.len)
-            try self.read();
-        return self.len == 0;
-    }
-
-    fn peek(self: *Self) !u8 {
-        if (try self.eof())
-            return 0;
-        return self.buf[self.index];
-    }
-
-    fn consume(self: *Self) void {
-        self.index += 1;
+    pub fn init(indexer: *Indexer, reader: *std.Io.Reader) !Self {
+        return .{ .indexer = indexer, .reader = reader };
     }
 
     fn consumeWhitespace(self: *Self) !void {
-        while (std.ascii.isWhitespace(try self.peek()))
-            self.consume();
+        while (std.ascii.isWhitespace(try self.reader.peekByte()))
+            self.reader.toss(1);
     }
 
     fn consumeStr(self: *Self, str: []const u8) !bool {
         for (str) |c| {
-            if (try self.peek() == c) {
-                self.consume();
+            if (try self.reader.peekByte() == c) {
+                self.reader.toss(1);
             } else {
                 return false;
             }
@@ -59,47 +35,43 @@ pub const WsjTokenizer = struct {
 
     pub fn tokenize(self: *Self, allocator: std.mem.Allocator) !void {
         while (true) {
-            const char = try self.peek();
-            // EOF
-            if (char == 0) {
-                return;
-            }
+            const char = self.reader.peekByte() catch |err| {
+                if (err == error.EndOfStream) return;
+                return err;
+            };
+
             // Tag
-            else if (char == '<') {
-                self.consume();
+            if (char == '<') {
+                self.reader.toss(1);
                 try self.consumeWhitespace();
 
                 // Doc ID
                 if (try self.consumeStr("DOCNO")) {
                     try self.consumeWhitespace();
 
-                    if (try self.peek() == '>')
-                        self.consume();
+                    if (try self.reader.peekByte() == '>')
+                        self.reader.toss(1);
 
                     try self.consumeWhitespace();
 
                     var i: usize = 0;
-                    while (i < self.indexer.buffer.len and (std.ascii.isAlphanumeric(try self.peek()) or try self.peek() == '-')) : (i += 1) {
-                        self.indexer.buffer[i] = try self.peek();
-                        self.consume();
-                    }
+                    while (i < self.indexer.buffer.len and (std.ascii.isAlphanumeric(try self.reader.peekByte()) or try self.reader.peekByte() == '-')) : (i += 1)
+                        self.indexer.buffer[i] = try self.reader.takeByte();
 
                     try self.indexer.addDocId(allocator, self.indexer.buffer[0..i]);
 
                     continue;
                 } else {
-                    while (try self.peek() != '>')
-                        self.consume();
+                    while (try self.reader.peekByte() != '>')
+                        self.reader.toss(1);
                     continue;
                 }
             }
             // Number
             else if (std.ascii.isDigit(char)) {
                 var i: usize = 0;
-                while (i < self.indexer.buffer.len and std.ascii.isDigit(try self.peek())) : (i += 1) {
-                    self.indexer.buffer[i] = try self.peek();
-                    self.consume();
-                }
+                while (i < self.indexer.buffer.len and std.ascii.isDigit(try self.reader.peekByte())) : (i += 1)
+                    self.indexer.buffer[i] = try self.reader.takeByte();
 
                 try self.indexer.addTerm(self.indexer.buffer[0..i]);
                 continue;
@@ -107,15 +79,13 @@ pub const WsjTokenizer = struct {
             // Word
             else if (std.ascii.isAlphabetic(char)) {
                 var i: usize = 0;
-                while (i < self.indexer.buffer.len and std.ascii.isAlphabetic(try self.peek())) : (i += 1) {
-                    self.indexer.buffer[i] = try self.peek();
-                    self.consume();
-                }
+                while (i < self.indexer.buffer.len and std.ascii.isAlphabetic(try self.reader.peekByte())) : (i += 1)
+                    self.indexer.buffer[i] = try self.reader.takeByte();
 
                 try self.indexer.addTerm(self.indexer.buffer[0..i]);
                 continue;
             }
-            self.consume();
+            self.reader.toss(1);
         }
     }
 };

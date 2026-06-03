@@ -57,32 +57,28 @@ pub fn main(init: std.process.Init) !void {
         return;
     } else {
         for (res.positionals[0]) |filename| {
-            if (std.mem.endsWith(u8, filename, ".html")) {
-                var doc = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
-                defer doc.close(init.io);
+            var file = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
+            defer file.close(init.io);
 
-                var reader = doc.reader(init.io, &reader_buf);
+            const stat = try file.stat(init.io);
+
+            if (std.mem.endsWith(u8, filename, ".html")) {
+                var reader = file.reader(init.io, &reader_buf);
 
                 try indexer.addDocId(init.arena.allocator(), filename);
 
-                const stat = try doc.stat(init.io);
-                const file_size = stat.size;
-
                 var toker = HtmlTokenizer.init(&indexer);
 
-                try toker.tokenize(&reader.interface, file_size);
+                try toker.tokenize(&reader.interface, stat.size);
             } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
-                var doc = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
-                defer doc.close(init.io);
-
-                var reader = doc.reader(init.io, &reader_buf);
+                var reader = file.reader(init.io, &reader_buf);
 
                 var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
                 var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
 
                 var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
                 try toker.tokenize(init.arena.allocator());
-            } else {
+            } else if (stat.kind == .directory) {
                 if (std.Io.Dir.cwd().openDir(init.io, filename, .{ .iterate = true })) |dir| {
                     // defer dir.close(); // *shrug*
 
@@ -106,8 +102,8 @@ pub fn main(init: std.process.Init) !void {
 
                         var reader = doc.reader(init.io, &reader_buf);
 
-                        const stat = try doc.stat(init.io);
-                        const file_size = stat.size;
+                        const doc_stat = try doc.stat(init.io);
+                        const file_size = doc_stat.size;
 
                         var toker = HtmlTokenizer.init(&indexer);
 

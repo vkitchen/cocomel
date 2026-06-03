@@ -62,7 +62,38 @@ pub fn main(init: std.process.Init) !void {
 
             const stat = try file.stat(init.io);
 
-            if (std.mem.endsWith(u8, filename, ".html")) {
+            if (stat.kind == .directory) {
+                var dir = try std.Io.Dir.cwd().openDir(init.io, filename, .{ .iterate = true });
+                // defer dir.close(); // *shrug*
+
+                var walker = try dir.walk(init.arena.allocator());
+
+                var buffer: [1000]u8 = undefined;
+                var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
+
+                while (try walker.next(init.io)) |handle| {
+                    if (!std.mem.endsWith(u8, handle.path, ".html"))
+                        continue;
+                    const raw_address = handle.path[0 .. handle.path.len - 5];
+                    const result_len = try decoder.calcSizeForSlice(raw_address);
+                    try decoder.decode(&buffer, raw_address);
+                    const address = buffer[0..result_len];
+
+                    try indexer.addDocId(init.arena.allocator(), address);
+
+                    var doc = try handle.dir.openFile(init.io, handle.path, .{});
+                    defer doc.close(init.io);
+
+                    var reader = doc.reader(init.io, &reader_buf);
+
+                    const doc_stat = try doc.stat(init.io);
+                    const file_size = doc_stat.size;
+
+                    var toker = HtmlTokenizer.init(&indexer);
+
+                    try toker.tokenize(&reader.interface, file_size);
+                }
+            } else if (std.mem.endsWith(u8, filename, ".html")) {
                 var reader = file.reader(init.io, &reader_buf);
 
                 try indexer.addDocId(init.arena.allocator(), filename);
@@ -78,40 +109,8 @@ pub fn main(init: std.process.Init) !void {
 
                 var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
                 try toker.tokenize(init.arena.allocator());
-            } else if (stat.kind == .directory) {
-                if (std.Io.Dir.cwd().openDir(init.io, filename, .{ .iterate = true })) |dir| {
-                    // defer dir.close(); // *shrug*
-
-                    var walker = try dir.walk(init.arena.allocator());
-
-                    var buffer: [1000]u8 = undefined;
-                    var decoder = std.base64.Base64Decoder.init(std.fs.base64_alphabet, '=');
-
-                    while (try walker.next(init.io)) |handle| {
-                        if (!std.mem.endsWith(u8, handle.path, ".html"))
-                            continue;
-                        const raw_address = handle.path[0 .. handle.path.len - 5];
-                        const result_len = try decoder.calcSizeForSlice(raw_address);
-                        try decoder.decode(&buffer, raw_address);
-                        const address = buffer[0..result_len];
-
-                        try indexer.addDocId(init.arena.allocator(), address);
-
-                        var doc = try handle.dir.openFile(init.io, handle.path, .{});
-                        defer doc.close(init.io);
-
-                        var reader = doc.reader(init.io, &reader_buf);
-
-                        const doc_stat = try doc.stat(init.io);
-                        const file_size = doc_stat.size;
-
-                        var toker = HtmlTokenizer.init(&indexer);
-
-                        try toker.tokenize(&reader.interface, file_size);
-                    }
-                } else |_| {
-                    std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
-                }
+            } else {
+                std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
             }
         }
 

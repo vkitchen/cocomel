@@ -4,6 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const hash = @import("dictionary.zig").hash;
 const Ranker = @import("ranking_fn.zig").Ranker;
 const snippets = @import("snippets.zig");
@@ -33,12 +34,19 @@ pub const Index = struct {
     docs_offset: u32,
     hash_offset: u32,
     snippets_offset: u32,
+    has_snippets: bool,
 
     pub fn init(allocator: std.mem.Allocator, index: []const u8) !Self {
-        const docs_count = read32(index, index.len - 16);
-        const docs_offset = read32(index, index.len - 12);
-        const hash_offset = read32(index, index.len - 8);
-        const snippets_offset = read32(index, index.len - 4);
+        const docs_count = read32(index, index.len - 20);
+        const docs_offset = read32(index, index.len - 16);
+        const hash_offset = read32(index, index.len - 12);
+        const snippets_offset = read32(index, index.len - 8);
+        const has_snippets = index[index.len - 3];
+        const index_version = read16(index, index.len - 2);
+        if (index_version != config.index_version) {
+            std.debug.print("Incorrect index version\n", .{});
+            std.process.exit(1);
+        }
 
         var doc_lengths = try allocator.alloc(u32, docs_count);
         var max_length: u32 = 0;
@@ -63,6 +71,7 @@ pub const Index = struct {
             .docs_offset = docs_offset,
             .snippets_offset = snippets_offset,
             .docs_count = docs_count,
+            .has_snippets = has_snippets != 0,
         };
     }
 

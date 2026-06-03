@@ -15,7 +15,7 @@ pub fn main(init: std.process.Init) !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var searcher = try Search.init(init.io, allocator, std.Io.Dir.cwd(), config.files.index, config.files.snippets);
+    var searcher = try Search.init(init.io, allocator, std.Io.Dir.cwd(), config.index_name);
 
     std.debug.print("{s}", .{"Query> "});
 

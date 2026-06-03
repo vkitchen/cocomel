@@ -3,10 +3,8 @@
 // Copyright (c) Vaughan Kitchen
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
-pub const files = .{
-    .index = "index.ccml",
-    .snippets = "snippets.ccml",
-};
+pub const index_name = "index.ccml";
+pub const index_version = 1;
 
 pub const socket_name = "/tmp/cocomel.sock";
 

@@ -26,7 +26,7 @@ pub fn main(init: std.process.Init) !void {
 
     const dir = if (args.len == 1) std.Io.Dir.cwd() else try std.Io.Dir.openDirAbsolute(init.io, args[1], .{});
 
-    var searcher = try Search.init(init.io, init.gpa, dir, config.files.index, config.files.snippets);
+    var searcher = try Search.init(init.io, init.gpa, dir, config.index_name);
 
     std.Io.Dir.deleteFileAbsolute(init.io, config.socket_name) catch {};
 

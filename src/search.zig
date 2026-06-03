@@ -29,18 +29,13 @@ pub const Search = struct {
     query: std.ArrayListUnmanaged(query.Term),
     results: []Result,
 
-    pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8, snippets_filename: []const u8) !Self {
+    pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
-        const snippets_file = dir.readFileAlloc(io, snippets_filename, allocator, std.Io.Limit.unlimited) catch |err| switch (err) {
-            error.FileNotFound => "",
-            else => return err,
-        };
-        const snippets = snippets_file.len != 0;
 
         const index = try Index.init(allocator, index_file);
 
         const snippeter = blk: {
-            if (snippets) {
+            if (index.has_snippets) {
                 var max_snippet: u32 = 0;
                 var doc_id: u32 = 0;
                 while (doc_id < index.docs_count) : (doc_id += 1) {
@@ -53,7 +48,7 @@ pub const Search = struct {
                 const snippets_buf = try allocator.alloc(u8, max_snippet);
                 const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
                 const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
-                break :blk try Snippeter.init(snippets_allocator, snippets_file, snippets_terms);
+                break :blk try Snippeter.init(snippets_allocator, index_file, snippets_terms);
             } else {
                 break :blk undefined;
             }
@@ -61,7 +56,7 @@ pub const Search = struct {
 
         return .{
             .index = index,
-            .snippets = snippets,
+            .snippets = index.has_snippets,
             .snippeter = snippeter,
             .ranker = Ranker.init(@floatFromInt(index.docs_count), index.average_length),
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),

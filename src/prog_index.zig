@@ -10,6 +10,7 @@ const config = @import("config.zig");
 const HtmlTokenizer = @import("tokenizer_html.zig").HtmlTokenizer;
 const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
+const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
 const Indexer = @import("indexer.zig").Indexer;
 
 var reader_buf: [config.io_buffer_size]u8 = undefined;
@@ -31,7 +32,9 @@ pub fn main(init: std.process.Init) !void {
     var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
     defer res.deinit();
 
-    var indexer = try Indexer.init(init.io, init.arena.allocator(), res.args.snippets != 0, res.args.bigrams != 0);
+    var serialiser = try CcmlSerialiser.init(init.io, res.args.snippets != 0);
+
+    var indexer = try Indexer.init(init.arena.allocator(), &serialiser, res.args.bigrams != 0);
 
     if (res.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
@@ -50,7 +53,7 @@ pub fn main(init: std.process.Init) !void {
             }
         }
 
-        try indexer.write(init.io, init.arena.allocator());
+        try indexer.write(init.arena.allocator());
         return;
     } else {
         for (res.positionals[0]) |filename| {
@@ -115,7 +118,7 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
 
-            try indexer.write(init.io, init.arena.allocator());
+            try indexer.write(init.arena.allocator());
             return;
         }
     }

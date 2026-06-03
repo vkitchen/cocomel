@@ -21,6 +21,7 @@ pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
         \\--docids               Print docids.
+        \\--titles               Print titles.
         \\--terms                Print terms.
         \\
     );
@@ -42,10 +43,13 @@ pub fn main(init: std.process.Init) !void {
 
     if (res.args.help != 0) {
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
-    } else if (res.args.docids != 0) {
+    } else if (res.args.docids != 0 or res.args.titles != 0) {
         for (0..index.docs_count) |id| {
             const doc_id = index.name(@truncate(id));
-            try stdout.print("{s}\n", .{doc_id[0]});
+            if (res.args.docids != 0)
+                try stdout.print("{s}\n", .{doc_id[0]});
+            if (res.args.titles != 0)
+                try stdout.print("{s}\n", .{doc_id[1]});
         }
 
         return;

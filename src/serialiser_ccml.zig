@@ -118,11 +118,7 @@ pub const CcmlSerialiser = struct {
             const name_offset = self.writer.logicalPos();
             try self.writer.interface.writeInt(u32, d.len, native_endian);
             try self.writeStr(d.name);
-            if (d.title) |title| {
-                try self.writeStr(title);
-            } else {
-                try self.writer.interface.writeInt(u16, 0, native_endian);
-            }
+            try self.writeStr(d.title);
             docs.items[i].name.ptr = @ptrFromInt(name_offset);
         }
 

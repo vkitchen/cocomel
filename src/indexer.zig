@@ -67,7 +67,7 @@ pub const Indexer = struct {
     }
 
     pub fn addTitle(self: *Self, title: []u8) !void {
-        if (self.doc_ids.items[self.doc_ids.items.len - 1].title != null)
+        if (self.doc_ids.items[self.doc_ids.items.len - 1].title.len != 0)
             return;
         self.doc_ids.items[self.doc_ids.items.len - 1].title = try str.dup(self.allocator, title);
     }

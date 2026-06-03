@@ -64,6 +64,7 @@ pub fn main(init: std.process.Init) !void {
         }
 
         try indexer.write(init.arena.allocator());
+        std.debug.print("Memory usage: {Bi:.2}\n", .{init.arena.queryCapacity()});
         return;
     } else {
         for (res.positionals[0]) |filename| {
@@ -119,6 +120,7 @@ pub fn main(init: std.process.Init) !void {
         }
 
         try indexer.write(init.arena.allocator());
+        std.debug.print("Memory usage: {Bi:.2}\n", .{init.arena.queryCapacity()});
         return;
     }
 

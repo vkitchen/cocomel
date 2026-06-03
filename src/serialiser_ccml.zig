@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
+const index = @import("index.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("Doc.zig");
 const Posting = @import("dictionary.zig").Posting;
@@ -131,16 +132,15 @@ pub const CcmlSerialiser = struct {
         for (self.snippet_indices.items) |s|
             try self.writer.interface.writeInt(u32, s, native_endian);
 
-        // Metadata
-        try self.writer.interface.writeInt(u32, @truncate(docs.items.len), native_endian);
-        try self.writer.interface.writeInt(u32, @truncate(docs_offset), native_endian);
-        try self.writer.interface.writeInt(u32, @truncate(dictionary_offset), native_endian);
-        try self.writer.interface.writeInt(u32, @truncate(snippets_offset), native_endian);
-
-        // Config
-        try self.writer.interface.writeByte(0); // padding
-        try self.writer.interface.writeByte(if (self.snippets) 1 else 0);
-        try self.writer.interface.writeInt(u16, config.index_version, native_endian);
+        // Header
+        try self.writer.interface.writeStruct(index.Header{
+            .docs_count = @truncate(docs.items.len),
+            .docs_offset = @truncate(docs_offset),
+            .dictionary_offset = @truncate(dictionary_offset),
+            .snippets_offset = @truncate(snippets_offset),
+            .has_snippets = if (self.snippets) 1 else 0,
+            .version = config.index_version,
+        }, native_endian);
 
         try self.writer.flush();
 

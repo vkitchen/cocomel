@@ -23,55 +23,53 @@ fn read32(str: []const u8, offset: usize) u32 {
     return std.mem.bytesToValue(u32, str[offset .. offset + @sizeOf(u32)][0..4]);
 }
 
+pub const Header = packed struct {
+    docs_count: u32,
+    docs_offset: u32,
+    dictionary_offset: u32,
+    snippets_offset: u32,
+    _: u8 = 0, // padding
+    has_snippets: u8,
+    version: u16,
+};
+
 pub const Index = struct {
     const Self = @This();
 
     index: []const u8,
+    header: *align(1) const Header,
     doc_lengths: []u32,
     max_length: u32,
     average_length: f64,
-    docs_count: u32,
-    docs_offset: u32,
-    hash_offset: u32,
-    snippets_offset: u32,
-    has_snippets: bool,
 
     pub fn init(allocator: std.mem.Allocator, index: []const u8) !Self {
-        const docs_count = read32(index, index.len - 20);
-        const docs_offset = read32(index, index.len - 16);
-        const hash_offset = read32(index, index.len - 12);
-        const snippets_offset = read32(index, index.len - 8);
-        const has_snippets = index[index.len - 3];
-        const index_version = read16(index, index.len - 2);
-        if (index_version != config.index_version) {
+        const header = std.mem.bytesAsValue(Header, index[index.len - @bitSizeOf(Header) / 8 ..]);
+
+        if (header.version != config.index_version) {
             std.debug.print("Incorrect index version\n", .{});
             std.process.exit(1);
         }
 
-        var doc_lengths = try allocator.alloc(u32, docs_count);
+        var doc_lengths = try allocator.alloc(u32, header.docs_count);
         var max_length: u32 = 0;
         var average_length: f64 = 0;
 
         var i: u32 = 0;
-        while (i < docs_count) : (i += 1) {
-            const offset = read32(index, docs_offset + i * @sizeOf(u32));
+        while (i < header.docs_count) : (i += 1) {
+            const offset = read32(index, header.docs_offset + i * @sizeOf(u32));
             doc_lengths[i] = read32(index, offset);
             if (doc_lengths[i] > max_length)
                 max_length = doc_lengths[i];
             average_length += @floatFromInt(doc_lengths[i]);
         }
-        average_length /= @floatFromInt(docs_count);
+        average_length /= @floatFromInt(header.docs_count);
 
         return .{
             .index = index,
+            .header = header,
             .doc_lengths = doc_lengths,
             .max_length = max_length,
             .average_length = average_length,
-            .hash_offset = hash_offset,
-            .docs_offset = docs_offset,
-            .snippets_offset = snippets_offset,
-            .docs_count = docs_count,
-            .has_snippets = has_snippets != 0,
         };
     }
 
@@ -79,7 +77,7 @@ pub const Index = struct {
     // [ doclen  ][ strlen  ][ str  ][ strlen  ][ str  ]
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const stride = doc_id * @sizeOf(u32);
-        const name_offset = read32(self.index, self.docs_offset + stride) + @sizeOf(u32);
+        const name_offset = read32(self.index, self.header.docs_offset + stride) + @sizeOf(u32);
         const name_length = read16(self.index, name_offset);
         const name_start = name_offset + @sizeOf(u16);
         const title_offset = name_start + name_length;
@@ -92,8 +90,8 @@ pub const Index = struct {
 
     pub fn snippet(self: *const Self, doc_id: u32) [2]u32 {
         const stride = doc_id * @sizeOf(u32);
-        const start = read32(self.index, self.snippets_offset + stride);
-        const end = read32(self.index, self.snippets_offset + stride + @sizeOf(u32));
+        const start = read32(self.index, self.header.snippets_offset + stride);
+        const end = read32(self.index, self.header.snippets_offset + stride + @sizeOf(u32));
         return [2]u32{ start, end };
     }
 
@@ -137,8 +135,8 @@ pub const Index = struct {
     }
 
     pub fn find(self: *const Self, key: []const u8, ranker: *Ranker, results: []Result, neg: bool) void {
-        const cap = read32(self.index, self.hash_offset);
-        const table = self.hash_offset + @sizeOf(u32);
+        const cap = read32(self.index, self.header.dictionary_offset);
+        const table = self.header.dictionary_offset + @sizeOf(u32);
 
         var i = hash(key, cap);
         while (true) {

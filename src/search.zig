@@ -35,10 +35,10 @@ pub const Search = struct {
         const index = try Index.init(allocator, index_file);
 
         const snippeter = blk: {
-            if (index.has_snippets) {
+            if (index.header.has_snippets != 0) {
                 var max_snippet: u32 = 0;
                 var doc_id: u32 = 0;
-                while (doc_id < index.docs_count) : (doc_id += 1) {
+                while (doc_id < index.header.docs_count) : (doc_id += 1) {
                     const range = index.snippet(doc_id);
                     const snippet_length = range[1] - range[0];
                     if (snippet_length > max_snippet)
@@ -56,11 +56,11 @@ pub const Search = struct {
 
         return .{
             .index = index,
-            .snippets = index.has_snippets,
+            .snippets = index.header.has_snippets != 0,
             .snippeter = snippeter,
-            .ranker = Ranker.init(@floatFromInt(index.docs_count), index.average_length),
+            .ranker = Ranker.init(@floatFromInt(index.header.docs_count), index.average_length),
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
-            .results = try allocator.alloc(Result, index.docs_count),
+            .results = try allocator.alloc(Result, index.header.docs_count),
         };
     }
 

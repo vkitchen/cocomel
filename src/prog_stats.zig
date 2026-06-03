@@ -44,7 +44,7 @@ pub fn main(init: std.process.Init) !void {
     if (res.args.help != 0) {
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
     } else if (res.args.docids != 0 or res.args.titles != 0) {
-        for (0..index.docs_count) |id| {
+        for (0..index.header.docs_count) |id| {
             const doc_id = index.name(@truncate(id));
             if (res.args.docids != 0)
                 try stdout.print("{s}\n", .{doc_id[0]});
@@ -54,8 +54,8 @@ pub fn main(init: std.process.Init) !void {
 
         return;
     } else if (res.args.terms != 0) {
-        const cap = read32(index_file, index.hash_offset);
-        const table = index.hash_offset + @sizeOf(u32);
+        const cap = read32(index_file, index.header.dictionary_offset);
+        const table = index.header.dictionary_offset + @sizeOf(u32);
 
         for (0..cap) |i| {
             const postings_offset = table + i * @sizeOf(u64);
@@ -73,7 +73,7 @@ pub fn main(init: std.process.Init) !void {
     }
 
     try stdout.print("Index size: {Bi:.2}\n", .{index_file.len});
-    try stdout.print("Docs: {d}\n", .{index.docs_count});
+    try stdout.print("Docs: {d}\n", .{index.header.docs_count});
     try stdout.print("Longest doc: {d}\n", .{index.max_length});
     try stdout.print("Average doc length: {d:.2}\n", .{index.average_length});
 }

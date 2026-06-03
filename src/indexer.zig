@@ -41,6 +41,8 @@ pub const Indexer = struct {
         term_ = str.stripPunct(term_, term_);
         term_ = stem(term_);
 
+        if (term_.len == 0) return;
+
         try self.dict.insert(term_, @truncate(self.doc_ids.items.len - 1));
         if (self.bigrams) {
             if (self.has_prev) {

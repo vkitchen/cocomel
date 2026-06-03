@@ -72,7 +72,7 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
 
-    try stdout.print("Index size: {d} B\n", .{index_file.len});
+    try stdout.print("Index size: {Bi:.2}\n", .{index_file.len});
     try stdout.print("Docs: {d}\n", .{index.docs_count});
     try stdout.print("Longest doc: {d}\n", .{index.max_length});
     try stdout.print("Average doc length: {d:.2}\n", .{index.average_length});

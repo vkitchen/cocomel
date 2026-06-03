@@ -77,6 +77,6 @@ pub const Indexer = struct {
 
         const bytes_written = try self.serialiser.write(allocator, &self.doc_ids, &self.dict);
 
-        std.debug.print("Index is {d}B\n", .{bytes_written});
+        std.debug.print("Index is {Bi:.2}\n", .{bytes_written});
     }
 };

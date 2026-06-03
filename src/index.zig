@@ -15,12 +15,18 @@ pub const Result = struct {
     score: f64,
 };
 
-fn read16(str: []const u8, offset: usize) u16 {
-    return std.mem.bytesToValue(u16, str[offset .. offset + @sizeOf(u16)][0..2]);
+fn read16(buf: []const u8, offset: usize) u16 {
+    return std.mem.bytesToValue(u16, buf[offset .. offset + @sizeOf(u16)][0..2]);
 }
 
-fn read32(str: []const u8, offset: usize) u32 {
-    return std.mem.bytesToValue(u32, str[offset .. offset + @sizeOf(u32)][0..4]);
+fn read32(buf: []const u8, offset: usize) u32 {
+    return std.mem.bytesToValue(u32, buf[offset .. offset + @sizeOf(u32)][0..4]);
+}
+
+fn readStr(buf: []const u8, offset: usize) []const u8 {
+    const str_len = read16(buf, offset);
+    const str_start = offset + @sizeOf(u16);
+    return buf[str_start .. str_start + str_len];
 }
 
 pub const Header = packed struct {
@@ -80,14 +86,10 @@ pub const Index = struct {
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const stride = doc_id * @sizeOf(u32);
         const name_offset = read32(self.index, self.header.docs_offset + stride) + @sizeOf(u32);
-        const name_length = read16(self.index, name_offset);
-        const name_start = name_offset + @sizeOf(u16);
-        const title_offset = name_start + name_length;
-        const title_length = read16(self.index, title_offset);
-        const title_start = title_offset + @sizeOf(u16);
-        if (title_length == 0)
-            return .{ self.index[name_start .. name_start + name_length], &.{} };
-        return .{ self.index[name_start .. name_start + name_length], self.index[title_start .. title_start + title_length] };
+        const doc_name = readStr(self.index, name_offset);
+        const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
+        const title = readStr(self.index, title_offset);
+        return .{ doc_name, title };
     }
 
     pub fn snippet(self: *const Self, doc_id: u32) [2]u32 {
@@ -147,9 +149,7 @@ pub const Index = struct {
             const term_store = read32(self.index, postings_offset);
             if (term_store == 0)
                 return;
-            const term_length = read16(self.index, term_store);
-            const term_start = term_store + @sizeOf(u16);
-            const term = self.index[term_start .. term_start + term_length];
+            const term = readStr(self.index, term_store);
             if (std.mem.eql(u8, term, key))
                 return self.postings(read32(self.index, postings_offset + @sizeOf(u32)), ranker, results, neg);
 

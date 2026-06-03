@@ -50,6 +50,11 @@ pub const CcmlSerialiser = struct {
         try self.snippet_indices.append(allocator, @truncate(self.writer.logicalPos()));
     }
 
+    fn writeStr(self: *Self, str: []u8) !void {
+        try self.writer.interface.writeInt(u16, @truncate(str.len), native_endian);
+        try self.writer.interface.writeAll(str);
+    }
+
     fn writeDictionary(self: *Self, allocator: std.mem.Allocator, h: *Dictionary) !u64 {
         const offsets = try allocator.alloc([2]u32, h.cap);
         @memset(offsets, .{ 0, 0 });
@@ -61,8 +66,7 @@ pub const CcmlSerialiser = struct {
                 try posting.flush();
 
                 const term_offset = self.writer.logicalPos();
-                try self.writer.interface.writeInt(u16, @truncate(posting.term.len), native_endian);
-                try self.writer.interface.writeAll(posting.term);
+                try self.writeStr(posting.term);
 
                 // df_t
                 const ids_offset = self.writer.logicalPos();
@@ -113,11 +117,9 @@ pub const CcmlSerialiser = struct {
         for (docs.items, 0..) |d, i| {
             const name_offset = self.writer.logicalPos();
             try self.writer.interface.writeInt(u32, d.len, native_endian);
-            try self.writer.interface.writeInt(u16, @truncate(d.name.len), native_endian);
-            try self.writer.interface.writeAll(d.name);
+            try self.writeStr(d.name);
             if (d.title) |title| {
-                try self.writer.interface.writeInt(u16, @truncate(title.len), native_endian);
-                try self.writer.interface.writeAll(title);
+                try self.writeStr(title);
             } else {
                 try self.writer.interface.writeInt(u16, 0, native_endian);
             }

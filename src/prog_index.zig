@@ -101,14 +101,14 @@ pub fn main(init: std.process.Init) !void {
                 var toker = HtmlTokenizer.init(&indexer);
 
                 try toker.tokenize(&reader.interface, stat.size);
-            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
-                var reader = file.reader(init.io, &reader_buf);
-
-                var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
-                var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
-
-                var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
-                try toker.tokenize(init.arena.allocator());
+//            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
+//                var reader = file.reader(init.io, &reader_buf);
+//
+//                var gzip_buf: [std.compress.flate.max_window_len]u8 = undefined;
+//                var gzip_stream = std.compress.flate.Decompress.init(&reader.interface, .gzip, &gzip_buf);
+//
+//                var toker = TarTokenizer.init(&indexer, &gzip_stream.reader);
+//                try toker.tokenize(init.arena.allocator());
             } else {
                 std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
             }

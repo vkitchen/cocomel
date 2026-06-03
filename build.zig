@@ -54,6 +54,7 @@ pub fn build(b: *std.Build) !void {
             .optimize = .ReleaseSafe,
         }),
     });
+    stats.root_module.addImport("clap", clap.module("clap"));
     b.installArtifact(stats);
 
     const test_step = b.step("test", "Run tests");

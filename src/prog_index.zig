@@ -117,10 +117,10 @@ pub fn main(init: std.process.Init) !void {
                     std.debug.print("WARNING: Don't know how to index '{s}'\n", .{filename});
                 }
             }
-
-            try indexer.write(init.arena.allocator());
-            return;
         }
+
+        try indexer.write(init.arena.allocator());
+        return;
     }
 
     // No processing was done print help

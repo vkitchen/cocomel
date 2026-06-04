@@ -9,6 +9,9 @@ const index = @import("index.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("Doc.zig");
 const Posting = @import("dictionary.zig").Posting;
+const Ranker = @import("ranking_fn_bm25.zig").Ranker;
+const Quantiser = @import("quantiser.zig").Quantiser;
+const vbyte = @import("compress_int_vbyte.zig");
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const file_format = std.fmt.comptimePrint("cocomel v{d}\n", .{config.index_version});
@@ -55,55 +58,6 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
-    fn writeDictionary(self: *Self, allocator: std.mem.Allocator, h: *Dictionary) !u64 {
-        const offsets = try allocator.alloc([2]u32, h.cap);
-        @memset(offsets, .{ 0, 0 });
-
-        // Write contents
-        for (h.store, 0..) |p, hi| {
-            if (p != null) {
-                const posting = p.?;
-                try posting.flush();
-
-                const term_offset = self.writer.logicalPos();
-                try self.writeStr(posting.term);
-
-                // df_t
-                const ids_offset = self.writer.logicalPos();
-                try self.writer.interface.writeInt(u32, @truncate(posting.df_t), native_endian);
-                // postings chunks
-                var i: u8 = 255;
-                while (i > 0) : (i -= 1) {
-                    if (posting.ids[i - 1] == null)
-                        continue;
-                    const postings_list = posting.ids[i - 1].?;
-                    try self.writer.interface.writeInt(u32, @truncate(postings_list.items.len), native_endian);
-                    try self.writer.interface.writeInt(u8, i, native_endian);
-                    try self.writer.interface.writeAll(postings_list.items);
-                }
-                // If there is no impact 1 write a dummy postings list
-                if (posting.ids[0] == null)
-                    try self.writer.interface.writeInt(u32, 0, native_endian);
-
-                offsets[hi][0] = @truncate(term_offset);
-                offsets[hi][1] = @truncate(ids_offset);
-            }
-        }
-
-        // Write table
-        const table_offset = self.writer.logicalPos();
-        try self.writer.interface.writeInt(u32, h.cap, native_endian);
-
-        for (offsets) |p| {
-            try self.writer.interface.writeInt(u32, p[0], native_endian);
-            try self.writer.interface.writeInt(u32, p[1], native_endian);
-        }
-
-        std.debug.print("Terms count {d}\n", .{h.len});
-
-        return table_offset;
-    }
-
     pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
@@ -113,10 +67,110 @@ pub const CcmlSerialiser = struct {
         for (self.snippet_indices.items) |s|
             try self.writer.interface.writeInt(u32, s, native_endian);
 
+        // Flush postings
+        for (dictionary.store) |p| {
+            if (p == null) continue;
+            const posting = p.?;
+
+            try posting.flush();
+        }
+
+        // Find average document length
+        var average_doc_length: f64 = 0;
+
+        for (docs.items) |d|
+            average_doc_length += @floatFromInt(d.len);
+        average_doc_length /= @floatFromInt(docs.items.len);
+
+        var ranker = Ranker.init(@floatFromInt(docs.items.len), average_doc_length);
+
+        // Find minimum and maximum rsv
+        var min_score: f64 = std.math.floatMax(f64);
+        var max_score: f64 = 0;
+        for (dictionary.store) |post| {
+            if (post == null) continue;
+            const posting = post.?;
+
+            ranker.compIdf(@floatFromInt(posting.df_t));
+
+            var offset: u32 = 0;
+            var last_id: u32 = 0;
+            for (0..posting.tfs.items.len) |i| {
+                // decode vbyte
+                var doc_id: u32 = 0;
+                offset += vbyte.read(posting.ids.items[offset..], &doc_id);
+                doc_id += last_id;
+                const doc_len = docs.items[doc_id].len;
+                const doc_score = ranker.compScore(@floatFromInt(posting.tfs.items[i]), @floatFromInt(doc_len));
+                last_id = doc_id;
+                if (doc_score < min_score) min_score = doc_score;
+                if (doc_score > min_score) max_score = doc_score;
+            }
+        }
+
+        const dictionary_offsets = try allocator.alloc(u32, dictionary.cap);
+        @memset(dictionary_offsets, 0);
+
+        // Quantise
+        var doc_ids = [_]std.ArrayList(u8){.empty} ** 256;
+        var last_ids = [_]u32{0} ** 256;
+
+        var quantiser = Quantiser.init(min_score, max_score);
+
+        for (dictionary.store, 0..) |post, hi| {
+            if (post == null) continue;
+            const posting = post.?;
+
+            for (&doc_ids) |*d| d.clearRetainingCapacity();
+            @memset(&last_ids, 0);
+
+            ranker.compIdf(@floatFromInt(posting.df_t));
+
+            var offset: u32 = 0;
+            var last_id: u32 = 0;
+            for (0..posting.tfs.items.len) |i| {
+                // Decode vbyte
+                var doc_id: u32 = 0;
+                offset += vbyte.read(posting.ids.items[offset..], &doc_id);
+                doc_id += last_id;
+                const doc_len = docs.items[doc_id].len;
+                const doc_score = ranker.compScore(@floatFromInt(posting.tfs.items[i]), @floatFromInt(doc_len));
+                const rsv = quantiser.quantise(doc_score);
+
+                // Store quantised value
+                try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
+                const last = doc_ids[rsv].items.len;
+                doc_ids[rsv].items.len += vbyte.spaceRequired(doc_id - last_ids[rsv]);
+                _ = vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
+                last_ids[rsv] = doc_id;
+
+                last_id = doc_id;
+            }
+
+            // Write postings
+            const term_offset = self.writer.logicalPos();
+            try self.writeStr(posting.term);
+
+            // Write chunks
+            var i: u8 = 255;
+            while (i > 0) : (i -= 1) {
+                if (doc_ids[i].items.len == 0)
+                    continue;
+                try self.writer.interface.writeInt(u32, @truncate(doc_ids[i].items.len), native_endian);
+                try self.writer.interface.writeInt(u8, i, native_endian);
+                try self.writer.interface.writeAll(doc_ids[i].items);
+            }
+            // Null terminate
+            try self.writer.interface.writeInt(u32, 0, native_endian);
+
+            dictionary_offsets[hi] = @truncate(term_offset);
+        }
+
         // Document ID strings
+        var max_doc_length: u32 = 0;
         for (docs.items, 0..) |d, i| {
+            if (d.len > max_doc_length) max_doc_length = d.len;
             const name_offset = self.writer.logicalPos();
-            try self.writer.interface.writeInt(u32, d.len, native_endian);
             try self.writeStr(d.name);
             try self.writeStr(d.title);
             docs.items[i].name.ptr = @ptrFromInt(name_offset);
@@ -128,7 +182,11 @@ pub const CcmlSerialiser = struct {
             try self.writer.interface.writeInt(u32, @truncate(@intFromPtr(d.name.ptr)), native_endian);
 
         // Dictionary
-        const dictionary_offset = try self.writeDictionary(allocator, dictionary);
+        const dictionary_offset = self.writer.logicalPos();
+        try self.writer.interface.writeInt(u32, dictionary.cap, native_endian);
+        try self.writer.interface.writeSliceEndian(u32, dictionary_offsets, native_endian);
+
+        std.debug.print("Terms count {d}\n", .{dictionary.len});
 
         // Header
         try self.writer.interface.writeStruct(index.Header{
@@ -136,6 +194,7 @@ pub const CcmlSerialiser = struct {
             .docs_offset = @truncate(docs_offset),
             .dictionary_offset = @truncate(dictionary_offset),
             .snippets_offset = @truncate(snippets_offset),
+            .max_doc_length = max_doc_length,
             .version = config.index_version,
         }, native_endian);
 

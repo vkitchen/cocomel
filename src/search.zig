@@ -9,14 +9,13 @@ const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
 const query = @import("tokenizer_query.zig");
-const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const Snippeter = @import("snippets.zig").Snippeter;
 const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
 
 fn cmpResults(context: void, a: Result, b: Result) bool {
-    return std.sort.desc(f64)(context, a.score, b.score);
+    return std.sort.desc(u16)(context, a.score, b.score);
 }
 
 pub const Search = struct {
@@ -25,14 +24,13 @@ pub const Search = struct {
     index: Index,
     snippets: bool,
     snippeter: Snippeter,
-    ranker: Ranker,
     query: std.ArrayListUnmanaged(query.Term),
     results: []Result,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
 
-        const index = try Index.init(allocator, index_file);
+        const index = try Index.init(index_file);
 
         const snippeter = blk: {
             if (index.hasSnippets()) {
@@ -47,7 +45,7 @@ pub const Search = struct {
 
                 const snippets_buf = try allocator.alloc(u8, max_snippet);
                 const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
-                const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.max_length);
+                const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.header.max_doc_length);
                 break :blk try Snippeter.init(snippets_allocator, index_file, snippets_terms);
             } else {
                 break :blk undefined;
@@ -58,7 +56,6 @@ pub const Search = struct {
             .index = index,
             .snippets = index.hasSnippets(),
             .snippeter = snippeter,
-            .ranker = Ranker.init(@floatFromInt(index.header.docs_count), index.average_length),
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.header.docs_count),
         };
@@ -81,11 +78,11 @@ pub const Search = struct {
 
         for (self.query.items) |term| {
             if (!term.neg)
-                self.index.find(term.term, &self.ranker, self.results, term.neg);
+                self.index.find(term.term, self.results, term.neg);
         }
         for (self.query.items) |term| {
             if (term.neg)
-                self.index.find(term.term, &self.ranker, self.results, term.neg);
+                self.index.find(term.term, self.results, term.neg);
         }
 
         std.sort.pdq(Result, self.results, {}, cmpResults);

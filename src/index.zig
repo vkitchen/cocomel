@@ -6,13 +6,12 @@
 const std = @import("std");
 const config = @import("config.zig");
 const hash = @import("dictionary.zig").hash;
-const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 
 pub const Result = struct {
     doc_id: u32,
-    score: f64,
+    score: u16,
 };
 
 fn read16(buf: []const u8, offset: usize) u16 {
@@ -34,6 +33,7 @@ pub const Header = packed struct {
     docs_offset: u32,
     dictionary_offset: u32,
     snippets_offset: u32,
+    max_doc_length: u32,
     version: u16,
 };
 
@@ -42,11 +42,8 @@ pub const Index = struct {
 
     index: []const u8,
     header: *align(1) const Header,
-    doc_lengths: []u32,
-    max_length: u32,
-    average_length: f64,
 
-    pub fn init(allocator: std.mem.Allocator, index: []const u8) !Self {
+    pub fn init(index: []const u8) !Self {
         const header = std.mem.bytesAsValue(Header, index[index.len - @bitSizeOf(Header) / 8 ..]);
 
         if (header.version != config.index_version) {
@@ -54,26 +51,9 @@ pub const Index = struct {
             std.process.exit(1);
         }
 
-        var doc_lengths = try allocator.alloc(u32, header.docs_count);
-        var max_length: u32 = 0;
-        var average_length: f64 = 0;
-
-        var i: u32 = 0;
-        while (i < header.docs_count) : (i += 1) {
-            const offset = read32(index, header.docs_offset + i * @sizeOf(u32));
-            doc_lengths[i] = read32(index, offset);
-            if (doc_lengths[i] > max_length)
-                max_length = doc_lengths[i];
-            average_length += @floatFromInt(doc_lengths[i]);
-        }
-        average_length /= @floatFromInt(header.docs_count);
-
         return .{
             .index = index,
             .header = header,
-            .doc_lengths = doc_lengths,
-            .max_length = max_length,
-            .average_length = average_length,
         };
     }
 
@@ -81,11 +61,11 @@ pub const Index = struct {
         return self.header.snippets_offset != 0;
     }
 
-    // [   u32   ][   u16   ][ []u8 ][   u16   ][ []u8 ]
-    // [ doclen  ][ strlen  ][ str  ][ strlen  ][ str  ]
+    // [   u16   ][ []u8 ][   u16   ][ []u8 ]
+    // [ strlen  ][ str  ][ strlen  ][ str  ]
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const stride = doc_id * @sizeOf(u32);
-        const name_offset = read32(self.index, self.header.docs_offset + stride) + @sizeOf(u32);
+        const name_offset = read32(self.index, self.header.docs_offset + stride);
         const doc_name = readStr(self.index, name_offset);
         const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
         const title = readStr(self.index, title_offset);
@@ -99,7 +79,7 @@ pub const Index = struct {
         return [2]u32{ start, end };
     }
 
-    fn postings_chunk(self: *const Self, offset: u32, ranker: *Ranker, results: []Result, neg: bool) void {
+    fn postings_chunk(self: *const Self, offset: u32, results: []Result, neg: bool) void {
         const ids_len = read32(self.index, offset);
         const score = self.index[offset + @sizeOf(u32)];
         const ids = offset + @sizeOf(u32) + @sizeOf(u8);
@@ -110,9 +90,8 @@ pub const Index = struct {
             var doc_id: u32 = 0;
             i += vbyte.read(self.index[ids + i ..], &doc_id);
             doc_id += last_id;
-            const doc_len = self.doc_lengths[doc_id];
             if (!neg) {
-                results[doc_id].score += ranker.compScore(@floatFromInt(score), @floatFromInt(doc_len));
+                results[doc_id].score += score;
             } else {
                 results[doc_id].score = 0;
             }
@@ -120,38 +99,33 @@ pub const Index = struct {
         }
     }
 
-    fn postings(self: *const Self, offset: u32, ranker: *Ranker, results: []Result, neg: bool) void {
-        const df_t = read32(self.index, offset);
-        var chunk_offset = offset + @sizeOf(u32);
+    fn postings(self: *const Self, offset: u32, results: []Result, neg: bool) void {
+        var chunk_offset = offset;
         var chunk_len = read32(self.index, chunk_offset);
         var chunk_score: u8 = 255;
 
-        ranker.compIdf(@floatFromInt(df_t));
-
         while (chunk_len != 0) {
             chunk_score = self.index[chunk_offset + @sizeOf(u32)];
-            self.postings_chunk(chunk_offset, ranker, results, neg);
-            if (chunk_score == 1)
-                break;
+            self.postings_chunk(chunk_offset, results, neg);
             chunk_offset += @sizeOf(u32) + @sizeOf(u8) + chunk_len;
             chunk_len = read32(self.index, chunk_offset);
         }
     }
 
-    pub fn find(self: *const Self, key: []const u8, ranker: *Ranker, results: []Result, neg: bool) void {
+    pub fn find(self: *const Self, key: []const u8, results: []Result, neg: bool) void {
         const cap = read32(self.index, self.header.dictionary_offset);
         const table = self.header.dictionary_offset + @sizeOf(u32);
 
         var i = hash(key, cap);
         while (true) {
-            const postings_offset = table + i * @sizeOf(u64);
+            const postings_offset = table + i * @sizeOf(u32);
 
             const term_store = read32(self.index, postings_offset);
             if (term_store == 0)
                 return;
             const term = readStr(self.index, term_store);
             if (std.mem.eql(u8, term, key))
-                return self.postings(read32(self.index, postings_offset + @sizeOf(u32)), ranker, results, neg);
+                return self.postings(@truncate(term_store + @sizeOf(u16) + term.len), results, neg);
 
             i = i + 1 & (cap - 1);
         }

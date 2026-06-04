@@ -34,7 +34,7 @@ pub fn main(init: std.process.Init) !void {
     defer res.deinit();
 
     const index_file = try std.Io.Dir.cwd().readFileAlloc(init.io, config.index_name, init.arena.allocator(), std.Io.Limit.unlimited);
-    const index = try Index.init(init.arena.allocator(), index_file);
+    const index = try Index.init(index_file);
 
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_writer = std.Io.File.stdout().writer(init.io, &stdout_buffer);
@@ -58,7 +58,7 @@ pub fn main(init: std.process.Init) !void {
         const table = index.header.dictionary_offset + @sizeOf(u32);
 
         for (0..cap) |i| {
-            const postings_offset = table + i * @sizeOf(u64);
+            const postings_offset = table + i * @sizeOf(u32);
 
             const term_store = read32(index_file, postings_offset);
             if (term_store == 0)
@@ -74,6 +74,5 @@ pub fn main(init: std.process.Init) !void {
 
     try stdout.print("Index size: {Bi:.2}\n", .{index_file.len});
     try stdout.print("Docs: {d}\n", .{index.header.docs_count});
-    try stdout.print("Longest doc: {d}\n", .{index.max_length});
-    try stdout.print("Average doc length: {d:.2}\n", .{index.average_length});
+    try stdout.print("Longest doc: {d}\n", .{index.header.max_doc_length});
 }

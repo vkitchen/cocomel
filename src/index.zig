@@ -6,7 +6,7 @@
 const std = @import("std");
 const config = @import("config.zig");
 const hash = @import("dictionary.zig").hash;
-const Ranker = @import("ranking_fn.zig").Ranker;
+const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 

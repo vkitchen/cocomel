@@ -8,9 +8,6 @@ pub const index_version = 1;
 
 pub const socket_name = "/tmp/cocomel.sock";
 
-// tf-idf, bm25
-pub const ranking_fn = "bm25";
-
 // s, none
 pub const stemmer = "s";
 

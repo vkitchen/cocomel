@@ -93,18 +93,31 @@ pub const CcmlSerialiser = struct {
 
             ranker.compIdf(@floatFromInt(posting.df_t));
 
-            var offset: u32 = 0;
+            var ids_chunk = posting.ids.first;
+            var tfs_chunk = posting.tfs.first;
+            var ids_i: u32 = 0;
+            var tfs_i: u32 = 0;
             var last_id: u32 = 0;
-            for (0..posting.tfs.items.len) |i| {
-                // decode vbyte
+            while (ids_chunk != null) {
+                // Decode vbyte
                 var doc_id: u32 = 0;
-                offset += vbyte.read(posting.ids.items[offset..], &doc_id);
+                ids_i += vbyte.read(ids_chunk.?.items[ids_i..], &doc_id);
                 doc_id += last_id;
                 const doc_len = docs.items[doc_id].len;
-                const doc_score = ranker.compScore(@floatFromInt(posting.tfs.items[i]), @floatFromInt(doc_len));
-                last_id = doc_id;
+                const doc_score = ranker.compScore(@floatFromInt(tfs_chunk.?.items[tfs_i]), @floatFromInt(doc_len));
+                tfs_i += 1;
                 if (doc_score < min_score) min_score = doc_score;
                 if (doc_score > min_score) max_score = doc_score;
+
+                if (ids_i >= ids_chunk.?.items.len) {
+                    ids_chunk = ids_chunk.?.next;
+                    ids_i = 0;
+                }
+                if (tfs_i >= tfs_chunk.?.items.len) {
+                    tfs_chunk = tfs_chunk.?.next;
+                    tfs_i = 0;
+                }
+                last_id = doc_id;
             }
         }
 
@@ -126,16 +139,20 @@ pub const CcmlSerialiser = struct {
 
             ranker.compIdf(@floatFromInt(posting.df_t));
 
-            var offset: u32 = 0;
+            var ids_chunk = posting.ids.first;
+            var tfs_chunk = posting.tfs.first;
+            var ids_i: u32 = 0;
+            var tfs_i: u32 = 0;
             var last_id: u32 = 0;
-            for (0..posting.tfs.items.len) |i| {
-                // Decode vbyte
+            while (ids_chunk != null) {
+                // decode vbyte
                 var doc_id: u32 = 0;
-                offset += vbyte.read(posting.ids.items[offset..], &doc_id);
+                ids_i += vbyte.read(ids_chunk.?.items[ids_i..], &doc_id);
                 doc_id += last_id;
                 const doc_len = docs.items[doc_id].len;
-                const doc_score = ranker.compScore(@floatFromInt(posting.tfs.items[i]), @floatFromInt(doc_len));
+                const doc_score = ranker.compScore(@floatFromInt(tfs_chunk.?.items[tfs_i]), @floatFromInt(doc_len));
                 const rsv = quantiser.quantise(doc_score);
+                tfs_i += 1;
 
                 // Store quantised value
                 try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
@@ -144,6 +161,14 @@ pub const CcmlSerialiser = struct {
                 _ = vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
                 last_ids[rsv] = doc_id;
 
+                if (ids_i >= ids_chunk.?.items.len) {
+                    ids_chunk = ids_chunk.?.next;
+                    ids_i = 0;
+                }
+                if (tfs_i >= tfs_chunk.?.items.len) {
+                    tfs_chunk = tfs_chunk.?.next;
+                    tfs_i = 0;
+                }
                 last_id = doc_id;
             }
 

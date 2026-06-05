@@ -84,6 +84,7 @@ pub const CcmlSerialiser = struct {
             const posting = post.?;
 
             posting.df_t += 1;
+
             ranker.compIdf(@floatFromInt(posting.df_t));
 
             var ids_chunk = posting.ids.first;
@@ -129,6 +130,7 @@ pub const CcmlSerialiser = struct {
 
         var quantiser = Quantiser.init(min_score, max_score);
 
+        var vbyte_buf: [5]u8 = undefined;
         for (dictionary.store, 0..) |post, hi| {
             if (post == null) continue;
             const posting = post.?;
@@ -137,6 +139,29 @@ pub const CcmlSerialiser = struct {
             @memset(&last_ids, 0);
 
             ranker.compIdf(@floatFromInt(posting.df_t));
+
+            // Special case unique terms
+            if (posting.df_t == 1) {
+                const doc_len = docs.items[posting.id].len;
+                const doc_score = ranker.compScore(@floatFromInt(posting.freq), @floatFromInt(doc_len));
+                const rsv = quantiser.quantise(doc_score);
+                const len = vbyte.store(&vbyte_buf, posting.id);
+
+                // Write posting
+                const term_offset = self.writer.logicalPos();
+                try self.writeStr(posting.term);
+
+                // Write chunks
+                try self.writer.interface.writeInt(u32, len, native_endian);
+                try self.writer.interface.writeInt(u8, rsv, native_endian);
+                try self.writer.interface.writeAll(vbyte_buf[0..len]);
+                // Null terminate
+                try self.writer.interface.writeInt(u32, 0, native_endian);
+
+                dictionary_offsets[hi] = @truncate(term_offset);
+
+                continue;
+            }
 
             var ids_chunk = posting.ids.first;
             var tfs_chunk = posting.tfs.first;

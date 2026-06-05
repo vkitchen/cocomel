@@ -67,14 +67,6 @@ pub const CcmlSerialiser = struct {
         for (self.snippet_indices.items) |s|
             try self.writer.interface.writeInt(u32, s, native_endian);
 
-        // Flush postings
-        for (dictionary.store) |p| {
-            if (p == null) continue;
-            const posting = p.?;
-
-            try posting.flush();
-        }
-
         // Find average document length
         var average_doc_length: f64 = 0;
 
@@ -91,6 +83,7 @@ pub const CcmlSerialiser = struct {
             if (post == null) continue;
             const posting = post.?;
 
+            posting.df_t += 1;
             ranker.compIdf(@floatFromInt(posting.df_t));
 
             var ids_chunk = posting.ids.first;
@@ -119,6 +112,12 @@ pub const CcmlSerialiser = struct {
                 }
                 last_id = doc_id;
             }
+
+            // Score last
+            const doc_len = docs.items[posting.id].len;
+            const doc_score = ranker.compScore(@floatFromInt(posting.freq), @floatFromInt(doc_len));
+            if (doc_score < min_score) min_score = doc_score;
+            if (doc_score > min_score) max_score = doc_score;
         }
 
         const dictionary_offsets = try allocator.alloc(u32, dictionary.cap);
@@ -171,6 +170,15 @@ pub const CcmlSerialiser = struct {
                 }
                 last_id = doc_id;
             }
+
+            // Quantise last
+            const doc_len = docs.items[posting.id].len;
+            const doc_score = ranker.compScore(@floatFromInt(posting.freq), @floatFromInt(doc_len));
+            const rsv = quantiser.quantise(doc_score);
+            try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
+            const last = doc_ids[rsv].items.len;
+            doc_ids[rsv].items.len += vbyte.spaceRequired(posting.id - last_ids[rsv]);
+            _ = vbyte.store(doc_ids[rsv].items[last..], posting.id - last_ids[rsv]);
 
             // Write postings
             const term_offset = self.writer.logicalPos();

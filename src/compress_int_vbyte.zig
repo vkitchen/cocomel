@@ -31,9 +31,8 @@ pub fn spaceRequired(val: u32) u32 {
     }
     if (val < 1 << 28) {
         return 4;
-    } else {
-        return 5;
     }
+    return 5;
 }
 
 pub fn store(p: []u8, val: u32) u32 {

@@ -27,8 +27,8 @@ pub const Postings = struct {
         try self.ids.ensureUnusedCapacity(self.allocator, 5);
         const chunk = self.ids.last.?;
         const last = chunk.items.len;
-        chunk.items.len += vbyte.spaceRequired(self.id - self.last_id);
-        _ = vbyte.store(chunk.items[last..], self.id - self.last_id);
+        chunk.items.len += 5;
+        chunk.items.len -= 5 - vbyte.store(chunk.items[last..], self.id - self.last_id);
         try self.tfs.append(self.allocator, self.freq);
         self.last_id = self.id;
         self.df_t += 1;

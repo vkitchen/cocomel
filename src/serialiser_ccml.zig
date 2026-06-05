@@ -181,8 +181,8 @@ pub const CcmlSerialiser = struct {
                 // Store quantised value
                 try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
                 const last = doc_ids[rsv].items.len;
-                doc_ids[rsv].items.len += vbyte.spaceRequired(doc_id - last_ids[rsv]);
-                _ = vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
+                doc_ids[rsv].items.len += 5;
+                doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
                 last_ids[rsv] = doc_id;
 
                 if (ids_i >= ids_chunk.?.items.len) {
@@ -202,8 +202,8 @@ pub const CcmlSerialiser = struct {
             const rsv = quantiser.quantise(doc_score);
             try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
             const last = doc_ids[rsv].items.len;
-            doc_ids[rsv].items.len += vbyte.spaceRequired(posting.id - last_ids[rsv]);
-            _ = vbyte.store(doc_ids[rsv].items[last..], posting.id - last_ids[rsv]);
+            doc_ids[rsv].items.len += 5;
+            doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], posting.id - last_ids[rsv]);
 
             // Write postings
             const term_offset = self.writer.logicalPos();

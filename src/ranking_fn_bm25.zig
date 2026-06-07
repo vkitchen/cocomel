@@ -4,12 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-
-// Values are taken from ATIRE which was tuned on classic TREC collections
-// Reference: https://github.com/andrewtrotman/ATIRE/blob/master/source/ranking_function_bm25.h
-// Reference: https://www.elastic.co/blog/practical-bm25-part-3-considerations-for-picking-b-and-k1-in-elasticsearch
-const k1 = 0.9; // Term saturation
-const b = 0.4; // Document length normalisation
+const config = @import("config.zig");
 
 // Reference: http://www.cs.otago.ac.nz/homepages/andrew/papers/2014-2.pdf
 // This is the ATIRE variant of BM25. In emperical studies no variant performs substantially better
@@ -45,6 +40,6 @@ pub const Ranker = struct {
     }
 
     pub fn compScore(r: *Self, tf: f64, doc_len: f64) f64 {
-        return r.idf * (k1 + 1) * tf / (k1 * (1 - b + b * (doc_len / r.avg_len)) + tf);
+        return r.idf * (config.bm25_k1 + 1) * tf / (config.bm25_k1 * (1 - config.bm25_b + config.bm25_b * (doc_len / r.avg_len)) + tf);
     }
 };

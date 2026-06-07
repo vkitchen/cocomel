@@ -8,6 +8,12 @@ pub const index_version = 1;
 
 pub const socket_name = "/tmp/cocomel.sock";
 
+// Values are taken from ATIRE which was tuned on classic TREC collections
+// Reference: https://github.com/andrewtrotman/ATIRE/blob/master/source/ranking_function_bm25.h
+// Reference: https://www.elastic.co/blog/practical-bm25-part-3-considerations-for-picking-b-and-k1-in-elasticsearch
+pub const bm25_k1 = 0.9; // Term saturation
+pub const bm25_b = 0.4; // Document length normalisation
+
 // s, none
 pub const stemmer = "s";
 

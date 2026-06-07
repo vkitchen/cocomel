@@ -46,6 +46,16 @@ pub fn build(b: *std.Build) !void {
     });
     b.installArtifact(search_cli);
 
+    const search_trec = b.addExecutable(.{
+        .name = "search-trec",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/prog_search_trec.zig"),
+            .target = target,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    b.installArtifact(search_trec);
+
     const stats = b.addExecutable(.{
         .name = "stats",
         .root_module = b.createModule(.{

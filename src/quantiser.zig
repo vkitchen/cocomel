@@ -29,7 +29,7 @@ pub const Quantiser = struct {
         return .{ .min_rsv = min_rsv, .max_rsv = max_rsv };
     }
 
-    pub fn quantise(self: *Self, score: f64) u8 {
+    pub fn quantise(self: *const Self, score: f64) u8 {
         const scale = 2 << 7 - 2;
         const res: u8 = @intFromFloat((score - self.min_rsv) / (self.max_rsv - self.min_rsv) * scale);
         return res + 1;

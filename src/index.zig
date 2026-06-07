@@ -9,6 +9,8 @@ const hash = @import("dictionary.zig").hash;
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 
+pub const version = 1;
+
 pub const Result = struct {
     doc_id: u32,
     score: u16,
@@ -46,7 +48,7 @@ pub const Index = struct {
     pub fn init(index: []const u8) !Self {
         const header = std.mem.bytesAsValue(Header, index[index.len - @bitSizeOf(Header) / 8 ..]);
 
-        if (header.version != config.index_version) {
+        if (header.version != version) {
             std.debug.print("Incorrect index version\n", .{});
             std.process.exit(1);
         }

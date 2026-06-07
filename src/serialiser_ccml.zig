@@ -14,7 +14,7 @@ const Quantiser = @import("quantiser.zig").Quantiser;
 const vbyte = @import("compress_int_vbyte.zig");
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
-const file_format = std.fmt.comptimePrint("cocomel v{d}\n", .{config.index_version});
+const file_format = std.fmt.comptimePrint("cocomel v{d}\n", .{index.version});
 
 pub const CcmlSerialiser = struct {
     const Self = @This();
@@ -151,7 +151,7 @@ pub const CcmlSerialiser = struct {
             .dictionary_offset = @truncate(dictionary_offset),
             .snippets_offset = @truncate(snippets_offset),
             .max_doc_length = max_doc_length,
-            .version = config.index_version,
+            .version = index.version,
         }, native_endian);
 
         try self.writer.flush();

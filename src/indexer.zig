@@ -7,13 +7,14 @@ const std = @import("std");
 const config = @import("config.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("doc.zig");
+const Stemmer = @import("stem.zig").Stemmer;
 const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
-const stem = @import("stem.zig").stem;
 const str = @import("str.zig");
 
 pub const Indexer = struct {
     const Self = @This();
 
+    stemmer: Stemmer,
     serialiser: *CcmlSerialiser,
     buffer: [config.max_term_length]u8 = undefined,
     doc_ids: std.ArrayList(Doc),
@@ -23,8 +24,9 @@ pub const Indexer = struct {
     prev_len: usize = 0,
     has_prev: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator, serialiser: *CcmlSerialiser, bigrams: bool) !Self {
+    pub fn init(allocator: std.mem.Allocator, stemmer: Stemmer, serialiser: *CcmlSerialiser, bigrams: bool) !Self {
         return .{
+            .stemmer = stemmer,
             .serialiser = serialiser,
             .doc_ids = .empty,
             .dict = try Dictionary.init(allocator),
@@ -37,7 +39,7 @@ pub const Indexer = struct {
 
         var term_ = std.ascii.lowerString(term, term);
         term_ = str.stripPunct(term_, term_);
-        term_ = stem(term_);
+        term_ = self.stemmer.stem(term_);
 
         if (term_.len == 0) return;
 
@@ -73,7 +75,7 @@ pub const Indexer = struct {
     pub fn write(self: *Self, allocator: std.mem.Allocator) !void {
         std.debug.print("{s}\n", .{"Writing index..."});
 
-        const bytes_written = try self.serialiser.write(allocator, &self.doc_ids, &self.dict);
+        const bytes_written = try self.serialiser.write(allocator, &self.doc_ids, &self.dict, self.stemmer.algorithm);
 
         std.debug.print("Index size {Bi:.2}\n", .{bytes_written});
     }

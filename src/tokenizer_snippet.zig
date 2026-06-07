@@ -4,7 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const stem = @import("stem.zig").stem;
+const Stemmer = @import("stem.zig").Stemmer;
 const str = @import("str.zig");
 
 pub const Term = struct {
@@ -16,12 +16,13 @@ pub const Term = struct {
 pub const Tokenizer = struct {
     const Self = @This();
 
+    stemmer: Stemmer,
     snippets: []const u8,
     index: usize,
     end: usize,
 
-    pub fn init(snippets: []const u8, start: usize, end: usize) Self {
-        return .{ .snippets = snippets, .index = start, .end = end };
+    pub fn init(stemmer: Stemmer, snippets: []const u8, start: usize, end: usize) Self {
+        return .{ .stemmer = stemmer, .snippets = snippets, .index = start, .end = end };
     }
 
     pub fn tokenize(self: *Self, allocator: std.mem.Allocator, result: *std.ArrayListUnmanaged(Term)) !void {
@@ -38,7 +39,7 @@ pub const Tokenizer = struct {
                 var stemmed = try str.dup(allocator, self.snippets[self.index .. self.index + i]);
                 stemmed = std.ascii.lowerString(stemmed, stemmed);
                 stemmed = str.stripPunct(stemmed, stemmed);
-                stemmed = stem(stemmed);
+                stemmed = self.stemmer.stem(stemmed);
 
                 result.appendAssumeCapacity(Term{
                     .original = self.snippets[self.index .. self.index + i],

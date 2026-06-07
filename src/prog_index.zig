@@ -10,8 +10,9 @@ const config = @import("config.zig");
 const HtmlTokenizer = @import("tokenizer_html.zig").HtmlTokenizer;
 const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
-const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
+const Stemmer = @import("stem.zig").Stemmer;
 const Indexer = @import("indexer.zig").Indexer;
+const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
 
 var reader_buf: [config.io_buffer_size]u8 = undefined;
 var filename_buf: [1000]u8 = undefined;
@@ -31,20 +32,33 @@ pub fn main(init: std.process.Init) !void {
         \\--snippets             Whether to generate a snippet index for the input.
         \\--bigrams              Whether to include bigrams in index.
         \\--wsj                  Whether the files to index are in trec wsj format.
+        \\--stem <str>           Stemmer to use. Only "s" supported.
         \\<file>...
         \\
     );
 
     const cli_parsers = comptime .{
+        .str = clap.parsers.string,
         .file = clap.parsers.string,
     };
 
     var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
     defer res.deinit();
 
+    var stemmer = Stemmer.init(Stemmer.Alg.none);
+
+    if (res.args.stem) |alg| {
+        if (std.mem.eql(u8, alg, "s")) {
+            stemmer = Stemmer.init(Stemmer.Alg.s);
+        } else {
+            std.debug.print("Unknown stemmer {s}\n", .{alg});
+            return;
+        }
+    }
+
     var serialiser = try CcmlSerialiser.init(init.io, res.args.snippets != 0);
 
-    var indexer = try Indexer.init(init.arena.allocator(), &serialiser, res.args.bigrams != 0);
+    var indexer = try Indexer.init(init.arena.allocator(), stemmer, &serialiser, res.args.bigrams != 0);
 
     if (res.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});

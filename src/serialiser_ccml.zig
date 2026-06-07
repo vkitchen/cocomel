@@ -8,6 +8,7 @@ const config = @import("config.zig");
 const index = @import("index.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("doc.zig");
+const Stemmer = @import("stem.zig").Stemmer;
 const Posting = @import("dictionary.zig").Posting;
 const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const Quantiser = @import("quantiser.zig").Quantiser;
@@ -58,7 +59,7 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
-    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary) !u64 {
+    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary, stemmer: Stemmer.Alg) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
 
@@ -146,6 +147,7 @@ pub const CcmlSerialiser = struct {
 
         // Header
         try self.writer.interface.writeStruct(index.Header{
+            .stemmer = stemmer,
             .docs_count = @truncate(docs.items.len),
             .docs_offset = @truncate(docs_offset),
             .dictionary_offset = @truncate(dictionary_offset),

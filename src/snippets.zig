@@ -4,6 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const Stemmer = @import("stem.zig").Stemmer;
 const Tokenizer = @import("tokenizer_snippet.zig").Tokenizer;
 const Term = @import("tokenizer_snippet.zig").Term;
 const query = @import("tokenizer_query.zig");
@@ -14,12 +15,14 @@ pub const Snippeter = struct {
     const Self = @This();
 
     allocator: std.heap.FixedBufferAllocator,
+    stemmer: Stemmer,
     snippets: []const u8,
     terms: std.ArrayListUnmanaged(Term),
 
-    pub fn init(allocator: std.heap.FixedBufferAllocator, snippets: []const u8, terms: std.ArrayListUnmanaged(Term)) !Self {
+    pub fn init(allocator: std.heap.FixedBufferAllocator, stemmer: Stemmer, snippets: []const u8, terms: std.ArrayListUnmanaged(Term)) !Self {
         return .{
             .allocator = allocator,
+            .stemmer = stemmer,
             .snippets = snippets,
             .terms = terms,
         };
@@ -29,7 +32,7 @@ pub const Snippeter = struct {
         self.terms.clearRetainingCapacity();
         self.allocator.reset();
 
-        var toker = Tokenizer.init(self.snippets, start, end);
+        var toker = Tokenizer.init(self.stemmer, self.snippets, start, end);
         try toker.tokenize(self.allocator.allocator(), &self.terms);
 
         var hits: usize = 0;

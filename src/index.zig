@@ -8,6 +8,7 @@ const config = @import("config.zig");
 const hash = @import("dictionary.zig").hash;
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
+const Stemmer = @import("stem.zig").Stemmer;
 
 pub const version = 1;
 
@@ -31,6 +32,7 @@ fn readStr(buf: []const u8, offset: usize) []const u8 {
 }
 
 pub const Header = packed struct {
+    stemmer: Stemmer.Alg,
     docs_count: u32,
     docs_offset: u32,
     dictionary_offset: u32,

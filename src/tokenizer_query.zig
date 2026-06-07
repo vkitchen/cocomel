@@ -4,7 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
-const stem = @import("stem.zig").stem;
+const Stemmer = @import("stem.zig").Stemmer;
 
 pub const Term = struct {
     pub const Type = enum { word, phrase };
@@ -88,13 +88,14 @@ const Tokenizer = struct {
 pub const Parser = struct {
     const Self = @This();
 
+    stemmer: Stemmer,
     index: usize = 0,
     raw: []u8,
     query: *std.ArrayListUnmanaged(Term),
     toker: Tokenizer,
 
-    pub fn init(store: *std.ArrayListUnmanaged(Term), raw: []u8) Self {
-        return .{ .query = store, .raw = raw, .toker = Tokenizer.init(raw) };
+    pub fn init(stemmer: Stemmer, store: *std.ArrayListUnmanaged(Term), raw: []u8) Self {
+        return .{ .stemmer = stemmer, .query = store, .raw = raw, .toker = Tokenizer.init(raw) };
     }
 
     pub fn parse(self: *Self) void {
@@ -121,7 +122,7 @@ pub const Parser = struct {
                     self.index += 1;
                 }
                 var term = std.ascii.lowerString(self.raw[self.index..], tok.token);
-                term = stem(term);
+                term = self.stemmer.stem(term);
                 self.index += term.len;
                 if (!is_phrase) {
                     self.query.appendAssumeCapacity(.{ .type = .word, .term = term, .neg = is_neg });

@@ -9,6 +9,7 @@ const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
 const query = @import("tokenizer_query.zig");
+const Stemmer = @import("stem.zig").Stemmer;
 const Snippeter = @import("snippets.zig").Snippeter;
 const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
@@ -46,7 +47,7 @@ pub const Search = struct {
                 const snippets_buf = try allocator.alloc(u8, max_snippet);
                 const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
                 const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.header.max_doc_length);
-                break :blk try Snippeter.init(snippets_allocator, index_file, snippets_terms);
+                break :blk try Snippeter.init(snippets_allocator, Stemmer.init(index.header.stemmer), index_file, snippets_terms);
             } else {
                 break :blk undefined;
             }
@@ -64,7 +65,7 @@ pub const Search = struct {
     pub fn search(self: *Self, query_raw: []u8) ![]Result {
         self.query.clearRetainingCapacity();
 
-        var tok = query.Parser.init(&self.query, query_raw);
+        var tok = query.Parser.init(Stemmer.init(self.index.header.stemmer), &self.query, query_raw);
         tok.parse();
 
         // TODO reenable once allocation is fixed

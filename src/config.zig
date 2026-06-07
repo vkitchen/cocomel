@@ -13,9 +13,6 @@ pub const socket_name = "/tmp/cocomel.sock";
 pub const bm25_k1 = 0.9; // Term saturation
 pub const bm25_b = 0.4; // Document length normalisation
 
-// s, none
-pub const stemmer = "s";
-
 pub const io_buffer_size = 4096;
 pub const max_term_length = 100; // longest token from document
 pub const max_query_length = 1000; // chars in query

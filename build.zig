@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const optimize = std.builtin.OptimizeMode.ReleaseSafe;
+
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
 
@@ -10,7 +12,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_index.zig"),
             .target = target,
-            .optimize = .ReleaseSafe,
+            .optimize = optimize,
         }),
     });
     indexer.root_module.addImport("clap", clap.module("clap"));
@@ -21,7 +23,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_cocomel.zig"),
             .target = target,
-            .optimize = .ReleaseSafe,
+            .optimize = optimize,
         }),
     });
     b.installArtifact(daemon);
@@ -31,7 +33,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_client.zig"),
             .target = target,
-            .optimize = .ReleaseSafe,
+            .optimize = optimize,
         }),
     });
     b.installArtifact(search_client);
@@ -41,7 +43,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_search.zig"),
             .target = target,
-            .optimize = .ReleaseSafe,
+            .optimize = optimize,
         }),
     });
     b.installArtifact(search_cli);
@@ -51,7 +53,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_search_trec.zig"),
             .target = target,
-            .optimize = .ReleaseSafe,
+            .optimize = optimize,
         }),
     });
     b.installArtifact(search_trec);
@@ -61,7 +63,7 @@ pub fn build(b: *std.Build) !void {
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/prog_stats.zig"),
             .target = target,
-            .optimize = .ReleaseSafe,
+            .optimize = optimize,
         }),
     });
     stats.root_module.addImport("clap", clap.module("clap"));

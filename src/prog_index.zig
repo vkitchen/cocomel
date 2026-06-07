@@ -94,7 +94,7 @@ pub fn main(init: std.process.Init) !void {
                     var reader = doc.reader(init.io, &reader_buf);
 
                     var toker = HtmlTokenizer.init(&indexer, &reader.interface);
-                    try toker.tokenize();
+                    try toker.tokenize(init.arena.allocator());
                 }
             } else if (std.mem.endsWith(u8, filename, ".html")) {
                 const file_stem = std.fs.path.stem(filename);
@@ -105,7 +105,7 @@ pub fn main(init: std.process.Init) !void {
                 var reader = file.reader(init.io, &reader_buf);
 
                 var toker = HtmlTokenizer.init(&indexer, &reader.interface);
-                try toker.tokenize();
+                try toker.tokenize(init.arena.allocator());
                 //            } else if (std.mem.endsWith(u8, filename, ".tar.gz")) {
                 //                var reader = file.reader(init.io, &reader_buf);
                 //

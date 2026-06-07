@@ -73,7 +73,7 @@ pub const WsjTokenizer = struct {
                 while (i < self.indexer.buffer.len and std.ascii.isDigit(try self.reader.peekByte())) : (i += 1)
                     self.indexer.buffer[i] = try self.reader.takeByte();
 
-                try self.indexer.addTerm(self.indexer.buffer[0..i]);
+                try self.indexer.addTerm(allocator, self.indexer.buffer[0..i]);
                 continue;
             }
             // Word
@@ -82,7 +82,7 @@ pub const WsjTokenizer = struct {
                 while (i < self.indexer.buffer.len and std.ascii.isAlphabetic(try self.reader.peekByte())) : (i += 1)
                     self.indexer.buffer[i] = try self.reader.takeByte();
 
-                try self.indexer.addTerm(self.indexer.buffer[0..i]);
+                try self.indexer.addTerm(allocator, self.indexer.buffer[0..i]);
                 continue;
             }
             self.reader.toss(1);

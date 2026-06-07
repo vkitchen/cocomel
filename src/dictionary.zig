@@ -20,7 +20,6 @@ pub fn hash(key: []const u8, cap: u32) u32 {
 pub const Dictionary = struct {
     const Self = @This();
 
-    allocator: std.mem.Allocator,
     cap: u32 = 1 << 19,
     len: u32 = 0,
     store: []?*Postings,
@@ -28,12 +27,12 @@ pub const Dictionary = struct {
     pub fn init(allocator: std.mem.Allocator) !Self {
         const store = try allocator.alloc(?*Postings, 1 << 19);
         @memset(store, null);
-        return .{ .allocator = allocator, .store = store };
+        return .{ .store = store };
     }
 
-    fn expand(self: *Self) !void {
+    fn expand(self: *Self, allocator: std.mem.Allocator) !void {
         const new_cap = self.cap << 1;
-        var new_store = try self.allocator.alloc(?*Postings, new_cap);
+        var new_store = try allocator.alloc(?*Postings, new_cap);
         @memset(new_store, null);
 
         for (self.store) |p| {
@@ -46,14 +45,14 @@ pub const Dictionary = struct {
             }
         }
 
-        self.allocator.free(self.store);
+        allocator.free(self.store);
         self.cap = new_cap;
         self.store = new_store;
     }
 
-    pub fn insert(self: *Self, key: []const u8, doc_id: u32) !void {
+    pub fn insert(self: *Self, allocator: std.mem.Allocator, key: []const u8, doc_id: u32) !void {
         if (self.len > self.cap / 2)
-            try self.expand();
+            try self.expand(allocator);
 
         var i = hash(key, self.cap);
         while (self.store[i] != null) {
@@ -63,15 +62,15 @@ pub const Dictionary = struct {
                     postings.freq +|= 1;
                     return;
                 }
-                try postings.flush();
+                try postings.flush(allocator);
                 postings.id = doc_id;
                 return;
             }
             i = i + 1 & (self.cap - 1);
         }
 
-        const postings = try self.allocator.create(Postings);
-        postings.* = Postings.init(self.allocator, try str.dup(self.allocator, key), doc_id);
+        const postings = try allocator.create(Postings);
+        postings.* = Postings.init(try str.dup(allocator, key), doc_id);
 
         self.store[i] = postings;
 

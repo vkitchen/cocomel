@@ -41,7 +41,7 @@ pub const HtmlTokenizer = struct {
         return try html.unescape(self.indexer.buffer[start .. start + i]);
     }
 
-    pub fn tokenize(self: *Self) !void {
+    pub fn tokenize(self: *Self, allocator: std.mem.Allocator) !void {
         while (true) {
             const char = self.reader.peekByte() catch |err| {
                 if (err == error.EndOfStream) return;
@@ -87,7 +87,7 @@ pub const HtmlTokenizer = struct {
                         i += 1;
                     }
 
-                    try self.indexer.addTitle(self.indexer.buffer[0..i]);
+                    try self.indexer.addTitle(allocator, self.indexer.buffer[0..i]);
 
                     while (try self.reader.peekByte() != '>')
                         self.reader.toss(1);
@@ -115,7 +115,7 @@ pub const HtmlTokenizer = struct {
                     i += 1;
                 }
 
-                try self.indexer.addTerm(self.indexer.buffer[0..i]);
+                try self.indexer.addTerm(allocator, self.indexer.buffer[0..i]);
                 continue;
             }
 

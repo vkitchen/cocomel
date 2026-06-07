@@ -14,7 +14,6 @@ const str = @import("str.zig");
 pub const Indexer = struct {
     const Self = @This();
 
-    allocator: std.mem.Allocator,
     serialiser: *CcmlSerialiser,
     buffer: [config.max_term_length]u8 = undefined,
     doc_ids: std.ArrayList(Doc),
@@ -26,7 +25,6 @@ pub const Indexer = struct {
 
     pub fn init(allocator: std.mem.Allocator, serialiser: *CcmlSerialiser, bigrams: bool) !Self {
         return .{
-            .allocator = allocator,
             .serialiser = serialiser,
             .doc_ids = .empty,
             .dict = try Dictionary.init(allocator),
@@ -34,7 +32,7 @@ pub const Indexer = struct {
         };
     }
 
-    pub fn addTerm(self: *Self, term: []u8) !void {
+    pub fn addTerm(self: *Self, allocator: std.mem.Allocator, term: []u8) !void {
         try self.serialiser.addSnippetTerm(term);
 
         var term_ = std.ascii.lowerString(term, term);
@@ -43,12 +41,12 @@ pub const Indexer = struct {
 
         if (term_.len == 0) return;
 
-        try self.dict.insert(term_, @truncate(self.doc_ids.items.len - 1));
+        try self.dict.insert(allocator, term_, @truncate(self.doc_ids.items.len - 1));
         if (self.bigrams) {
             if (self.has_prev) {
                 self.prev_buffer[self.prev_len] = ' ';
                 @memcpy(self.prev_buffer[self.prev_len + 1 .. self.prev_len + 1 + term_.len], term_);
-                try self.dict.insert(self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
+                try self.dict.insert(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
             }
             @memcpy(self.prev_buffer[0..term_.len], term_);
             self.prev_len = term_.len;
@@ -61,15 +59,15 @@ pub const Indexer = struct {
         self.has_prev = false;
         try self.serialiser.newDocId(allocator);
 
-        try self.doc_ids.append(self.allocator, .{ .name = try str.dup(self.allocator, doc_id) });
+        try self.doc_ids.append(allocator, .{ .name = try str.dup(allocator, doc_id) });
         if (self.doc_ids.items.len % 10000 == 0)
             std.debug.print("{d} Documents\n", .{self.doc_ids.items.len});
     }
 
-    pub fn addTitle(self: *Self, title: []u8) !void {
+    pub fn addTitle(self: *Self, allocator: std.mem.Allocator, title: []u8) !void {
         if (self.doc_ids.items[self.doc_ids.items.len - 1].title.len != 0)
             return;
-        self.doc_ids.items[self.doc_ids.items.len - 1].title = try str.dup(self.allocator, title);
+        self.doc_ids.items[self.doc_ids.items.len - 1].title = try str.dup(allocator, title);
     }
 
     pub fn write(self: *Self, allocator: std.mem.Allocator) !void {

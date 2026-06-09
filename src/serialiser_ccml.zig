@@ -64,9 +64,14 @@ pub const CcmlSerialiser = struct {
         try self.newDocId(allocator);
 
         // Snippets
-        const snippets_offset = if (self.snippets) self.writer.logicalPos() else 0;
-        for (self.snippet_indices.items) |s|
-            try self.writer.interface.writeInt(u32, s, native_endian);
+        var snippets_offset: u64 = 0;
+        if (self.snippets) {
+            while (self.writer.logicalPos() % @alignOf(u32) != 0) try self.writer.interface.writeByte(0);
+            snippets_offset = self.writer.logicalPos();
+            try self.writer.interface.writeInt(u32, @truncate(self.snippet_indices.items.len), native_endian);
+            for (self.snippet_indices.items) |s|
+                try self.writer.interface.writeInt(u32, s, native_endian);
+        }
 
         // Find average document length
         var average_doc_length: f64 = 0;
@@ -134,11 +139,14 @@ pub const CcmlSerialiser = struct {
         }
 
         // Document IDs array
+        while (self.writer.logicalPos() % @alignOf(u32) != 0) try self.writer.interface.writeByte(0);
         const docs_offset = self.writer.logicalPos();
+        try self.writer.interface.writeInt(u32, @truncate(docs.items.len), native_endian);
         for (docs.items) |d|
             try self.writer.interface.writeInt(u32, @truncate(@intFromPtr(d.name.ptr)), native_endian);
 
         // Dictionary
+        while (self.writer.logicalPos() % @alignOf(u32) != 0) try self.writer.interface.writeByte(0);
         const dictionary_offset = self.writer.logicalPos();
         try self.writer.interface.writeInt(u32, dictionary.cap, native_endian);
         try self.writer.interface.writeSliceEndian(u32, dictionary_offsets, native_endian);

@@ -26,9 +26,15 @@ fn read32(buf: []const u8, offset: usize) u32 {
 }
 
 fn readStr(buf: []const u8, offset: usize) []const u8 {
-    const str_len = read16(buf, offset);
-    const str_start = offset + @sizeOf(u16);
-    return buf[str_start .. str_start + str_len];
+    const len = read16(buf, offset);
+    const start = offset + @sizeOf(u16);
+    return buf[start .. start + len];
+}
+
+fn readArray(buf: []const u8, offset: usize) []const u32 {
+    const len = read32(buf, offset);
+    const start = offset + @sizeOf(u32);
+    return @alignCast(std.mem.bytesAsSlice(u32, buf[start .. start + len * @sizeOf(u32)]));
 }
 
 pub const Header = packed struct {
@@ -46,6 +52,9 @@ pub const Index = struct {
 
     index: []const u8,
     header: *align(1) const Header,
+    docs: []const u32,
+    dictionary: []const u32,
+    snippets: []const u32,
 
     pub fn init(index: []const u8) !Self {
         const header = std.mem.bytesAsValue(Header, index[index.len - @bitSizeOf(Header) / 8 ..]);
@@ -58,6 +67,9 @@ pub const Index = struct {
         return .{
             .index = index,
             .header = header,
+            .docs = readArray(index, header.docs_offset),
+            .dictionary = readArray(index, header.dictionary_offset),
+            .snippets = if (header.snippets_offset != 0) readArray(index, header.snippets_offset) else &.{},
         };
     }
 
@@ -68,8 +80,7 @@ pub const Index = struct {
     // [   u16   ][ []u8 ][   u16   ][ []u8 ]
     // [ strlen  ][ str  ][ strlen  ][ str  ]
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
-        const stride = doc_id * @sizeOf(u32);
-        const name_offset = read32(self.index, self.header.docs_offset + stride);
+        const name_offset = self.docs[doc_id];
         const doc_name = readStr(self.index, name_offset);
         const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
         const title = readStr(self.index, title_offset);
@@ -77,10 +88,7 @@ pub const Index = struct {
     }
 
     pub fn snippet(self: *const Self, doc_id: u32) [2]u32 {
-        const stride = doc_id * @sizeOf(u32);
-        const start = read32(self.index, self.header.snippets_offset + stride);
-        const end = read32(self.index, self.header.snippets_offset + stride + @sizeOf(u32));
-        return [2]u32{ start, end };
+        return [2]u32{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
     fn postings_chunk(self: *const Self, offset: u32, results: []Result, neg: bool) void {
@@ -106,10 +114,8 @@ pub const Index = struct {
     fn postings(self: *const Self, offset: u32, results: []Result, neg: bool) void {
         var chunk_offset = offset;
         var chunk_len = read32(self.index, chunk_offset);
-        var chunk_score: u8 = 255;
 
         while (chunk_len != 0) {
-            chunk_score = self.index[chunk_offset + @sizeOf(u32)];
             self.postings_chunk(chunk_offset, results, neg);
             chunk_offset += @sizeOf(u32) + @sizeOf(u8) + chunk_len;
             chunk_len = read32(self.index, chunk_offset);
@@ -117,21 +123,15 @@ pub const Index = struct {
     }
 
     pub fn find(self: *const Self, key: []const u8, results: []Result, neg: bool) void {
-        const cap = read32(self.index, self.header.dictionary_offset);
-        const table = self.header.dictionary_offset + @sizeOf(u32);
-
-        var i = hash(key, cap);
+        var i = hash(key, @truncate(self.dictionary.len));
         while (true) {
-            const postings_offset = table + i * @sizeOf(u32);
-
-            const term_store = read32(self.index, postings_offset);
-            if (term_store == 0)
+            if (self.dictionary[i] == 0)
                 return;
-            const term = readStr(self.index, term_store);
+            const term = readStr(self.index, self.dictionary[i]);
             if (std.mem.eql(u8, term, key))
-                return self.postings(@truncate(term_store + @sizeOf(u16) + term.len), results, neg);
+                return self.postings(@truncate(self.dictionary[i] + @sizeOf(u16) + term.len), results, neg);
 
-            i = i + 1 & (cap - 1);
+            i = i + 1 & (@as(u32, @truncate(self.dictionary.len)) - 1);
         }
     }
 };

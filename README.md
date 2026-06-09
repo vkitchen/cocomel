@@ -1,40 +1,51 @@
 # Cocomel - A search engine
 
-This is the search engine which powers [potatocastles.com](http://potatocastles.com). If you're looking for the website it is here [vkitchen/potatoes](https://github.com/vkitchen/potatoes) and the crawler it is here [vkitchen/crawler](https://github.com/vkitchen/crawler)
+The score-at-a-time search engine which powers [potatocastles.com](https://potatocastles.com).
+In the same family of search engines as [ATIRE](https://github.com/andrewtrotman/ATIRE/), [JASS](https://github.com/lintool/JASS), [JASSv2](https://github.com/andrewtrotman/JASSv2/), and [IOQP](https://github.com/JMMackenzie/IOQP/).
+The potato castles website can be found here [vkitchen/potatoes](https://github.com/vkitchen/potatoes) and the crawler is [vkitchen/crawler](https://github.com/vkitchen/crawler)
+
+## Why score-at-a-time?
+
+As this is a hobby project and I have limited funds and only a single computer at my disposal making the best use of that computer is important.
+The key advantage of score-at-a-time is that it easily lends itself towards [anytime ranking](https://andrewtrotman.github.io/papers/2015-2.pdf).
+Processing is performed in descending impact order of (term, document) pairs where the documents about the least common terms in the query are considered first.
+An initial result set is taken using the most relevant term in the query and is then expanded upon through the processing of additional terms or documents.
+As this initial result set is a best approximation and is iteratively refined, processing can be aborted at anytime due to either server load or responsiveness requirements and relevant documents will be returned.
+Instead of scaling out for availability cocomel is designed so that it will be possible (once implemented) to shed load by reducing the quality of the result set during peak traffic.
+Outside of anytime ranking score-at-a-time offers two further advantages which are decreased tail latency, and a smaller index size reducing memory usage as the index is loaded into memory on startup.
+The disadvantage of score-at-a-time is the lack of conjuctive queries (AND operator) compared to document-at-a-time leading to results which may confuse some users.
 
 ## Goals
 
-1. Index 10 million pages
-2. Handle 100 requests per second
+1. Responsive
+2. Low memory
+3. Performant
 
-## Why another search engine?
+## Features
 
-Because none of the others were in Zig?
+* Snippets
 
-In seriousness though there's not actually a great ecosystem of OpenSource search engines available (please prove me wrong). And what is available isn't typically intended for Web Search so I decided it would be easier to just start from scratch rather than adapt something. There is also of course the pedagogical advantage of doing everything yourself which is the main reason why I didn't just fork [JASSv2](https://github.com/andrewtrotman/JASSv2) (2-Clause BSD licensed) which does do a lot of what I wanted
+## TODO
 
-What I want:
-1. Designed for a single node (optimises raw performance rather than scaling out)
-2. Fast queries and fast indexing (I only have the one machine to run it all on)
-3. Low memory usage (there is a physical limit of RAM in the computer. I would like to index as much as possible in it)
-4. No allocation after startup (the server shouldn't have to allocate to handle a request except for caching)
-5. Simple (I don't want lots of complex features I won't use making the code hard to understand)
-6. Advanced features (simple doesn't mean it can't do select things other search engines do poorly)
-7. Specialised (this is a recipe search engine and should take advantage of that vertical)
-8. Adaptable (it should be possible to repurpose it to other verticals without significant changes)
-
-This project is still in its early stages but its making progress
-
-## Development
-
-Development is largely driven by the needs of the [potatocastles.com](http://potatocastles.com) website and is ordered by what is most pressing until it gets fully off the ground. However if you have interest contributing or using it for other use cases you're more than welcome and I'd love to hear from you
-
-Currently the core of the search is working and most development is geared towards building out the feature set. This is largely extending upon the domains as currently exist and introducing concepts such as richer parsing, learn to rank, semantic search, improved snippeting etc. the things that make a search engine polished
+* CIFF
+* Top-k retrieval
+* Early termination
+* Porter2 stemming
+* Wildcard search
+* Index from tar archives
+* Phrase searching
+* Thesaurus
+* Faster compression
 
 ## Compiling
 
-You'll need to install Zig `0.16.0` and then run `zig build`. Other versions of Zig including nightlies may or may not work but remain untested. Zig is still pre-1.0 so expect breakages when attempting to build with other releases
+You'll need to install Zig `0.16.0` and then run `zig build`.
+Other versions of Zig including nightlies may or may not work but remain untested.
+Zig is still pre-1.0 so expect breakages when attempting to build with other releases.
 
 ## Usage
 
-Indexing is geared towards the output from a naive crawler. As such there is little support for the sort of file structure you may already have and you may need to do some processing in order to get them into a form which the index understands. It is intended in the future that the indexer will support indexing from a wider variety of files so that this is easier. At this stage though only a gzipped tarball is accepted where the contained filenames are equivalent to the desired URLs stripped of the `http://` prefix. After you have compressed your HTML files into this format run `./zig-out/bin/index websites.tar.gz` this will generate two files in the current directory named `index.ccml` and `snippets.ccml`. There are two search programs `./zig-out/bin/search` and `./zig-out/bin/search-recipes` these both expect the two index files to be in the current working directory when run. `search` is a cli program to test the search. `search-recipes` is a cgi binary for deployment to a webserver and is by default cross-compiled for Linux as that is what my webserver is hosted on
+Cocomel can index either the wsj collection or a folder of html files.
+Usage can be found with `./zig-out/bin/index --help`.
+Searching is performed with `./zig-out/bin/search`.
+There is also a daemon `./zig-out/bin/cocomel` and client `./zig-out/bin/search-client`.

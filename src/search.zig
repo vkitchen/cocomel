@@ -26,6 +26,7 @@ pub const Search = struct {
     snippets: bool,
     snippeter: Snippeter,
     query: std.ArrayListUnmanaged(query.Term),
+    postings: std.ArrayList(u32),
     results: []Result,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
@@ -58,6 +59,7 @@ pub const Search = struct {
             .snippets = index.hasSnippets(),
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
+            .postings = try std.ArrayList(u32).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.header.docs_count),
         };
     }
@@ -71,19 +73,32 @@ pub const Search = struct {
         // TODO reenable once allocation is fixed
         // try expandQuery(allocator, &self.query);
 
-        var i: u32 = 0;
-        while (i < self.results.len) : (i += 1) {
-            self.results[i].doc_id = i;
+        for (0..self.results.len) |i| {
+            self.results[i].doc_id = @truncate(i);
             self.results[i].score = 0;
         }
 
+        self.postings.clearRetainingCapacity();
+
+        // TODO fix term negation
         for (self.query.items) |term| {
-            if (!term.neg)
-                self.index.find(term.term, self.results, term.neg);
+            const offset = self.index.find(term.term);
+            if (offset != 0) self.postings.appendAssumeCapacity(offset);
         }
-        for (self.query.items) |term| {
-            if (term.neg)
-                self.index.find(term.term, self.results, term.neg);
+
+        while (true) {
+            var max_impact: u8 = 0;
+            var max_i: usize = 0;
+            for (self.postings.items, 0..) |offset, i| {
+                if (self.index.chunkScore(offset) > max_impact) {
+                    max_impact = self.index.chunkScore(offset);
+                    max_i = i;
+                }
+            }
+
+            if (max_impact == 0) break;
+
+            self.postings.items[max_i] = self.index.processChunk(self.postings.items[max_i], self.results);
         }
 
         std.sort.pdq(Result, self.results, {}, cmpResults);

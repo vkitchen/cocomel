@@ -91,7 +91,12 @@ pub const Index = struct {
         return [2]u32{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    fn postings_chunk(self: *const Self, offset: u32, results: []Result, neg: bool) void {
+    pub fn chunkScore(self: *const Self, offset: u32) u8 {
+        if (read32(self.index, offset) == 0) return 0;
+        return self.index[offset + @sizeOf(u32)];
+    }
+
+    pub fn processChunk(self: *const Self, offset: u32, results: []Result) u32 {
         const ids_len = read32(self.index, offset);
         const score = self.index[offset + @sizeOf(u32)];
         const ids = offset + @sizeOf(u32) + @sizeOf(u8);
@@ -102,34 +107,21 @@ pub const Index = struct {
             var doc_id: u32 = 0;
             i += vbyte.read(self.index[ids + i ..], &doc_id);
             doc_id += last_id;
-            if (!neg) {
-                results[doc_id].score += score;
-            } else {
-                results[doc_id].score = 0;
-            }
+            results[doc_id].score += score;
             last_id = doc_id;
         }
+
+        return offset + @sizeOf(u32) + @sizeOf(u8) + ids_len;
     }
 
-    fn postings(self: *const Self, offset: u32, results: []Result, neg: bool) void {
-        var chunk_offset = offset;
-        var chunk_len = read32(self.index, chunk_offset);
-
-        while (chunk_len != 0) {
-            self.postings_chunk(chunk_offset, results, neg);
-            chunk_offset += @sizeOf(u32) + @sizeOf(u8) + chunk_len;
-            chunk_len = read32(self.index, chunk_offset);
-        }
-    }
-
-    pub fn find(self: *const Self, key: []const u8, results: []Result, neg: bool) void {
+    pub fn find(self: *const Self, key: []const u8) u32 {
         var i = hash(key, @truncate(self.dictionary.len));
         while (true) {
             if (self.dictionary[i] == 0)
-                return;
+                return 0;
             const term = readStr(self.index, self.dictionary[i]);
             if (std.mem.eql(u8, term, key))
-                return self.postings(@truncate(self.dictionary[i] + @sizeOf(u16) + term.len), results, neg);
+                return @truncate(self.dictionary[i] + @sizeOf(u16) + term.len);
 
             i = i + 1 & (@as(u32, @truncate(self.dictionary.len)) - 1);
         }

@@ -41,14 +41,13 @@ fn readArray(buf: []const u8, offset: u64) []const u64 {
     return @alignCast(std.mem.bytesAsSlice(u64, buf[start .. start + len * @sizeOf(u64)]));
 }
 
-pub const Header = packed struct {
-    _padding: u64 = 0,
+pub const Header = extern struct {
     max_doc_length: u64,
     snippets_offset: u64,
     docs_offset: u64,
     dictionary_offset: u64,
     stemmer: Stemmer.Alg,
-    _reserved: u40 = 0,
+    _reserved: [5]u8 = .{0} ** 5,
     version: u16,
 };
 

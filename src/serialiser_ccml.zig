@@ -156,7 +156,6 @@ pub const CcmlSerialiser = struct {
         // Header
         try self.writer.interface.writeStruct(index.Header{
             .stemmer = stemmer,
-            .docs_count = docs.items.len,
             .docs_offset = docs_offset,
             .dictionary_offset = dictionary_offset,
             .snippets_offset = snippets_offset,

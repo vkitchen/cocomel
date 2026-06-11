@@ -38,7 +38,7 @@ pub const Search = struct {
             if (index.hasSnippets()) {
                 var max_snippet: u64 = 0;
                 var doc_id: u32 = 0;
-                while (doc_id < index.header.docs_count) : (doc_id += 1) {
+                while (doc_id < index.docs.len) : (doc_id += 1) {
                     const range = index.snippet(doc_id);
                     const snippet_length = range[1] - range[0];
                     if (snippet_length > max_snippet)
@@ -60,7 +60,7 @@ pub const Search = struct {
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(u64).initCapacity(allocator, config.max_query_terms),
-            .results = try allocator.alloc(Result, index.header.docs_count),
+            .results = try allocator.alloc(Result, index.docs.len),
         };
     }
 

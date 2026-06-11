@@ -43,7 +43,6 @@ fn readArray(buf: []const u8, offset: u64) []const u64 {
 
 pub const Header = packed struct {
     stemmer: Stemmer.Alg,
-    docs_count: u64,
     docs_offset: u64,
     dictionary_offset: u64,
     snippets_offset: u64,

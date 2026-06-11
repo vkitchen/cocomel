@@ -18,9 +18,9 @@ pub const Postings = struct {
     df_t: u32 = 0,
     id: u32,
     last_id: u32 = 0,
-    freq: config.TfType = 1,
+    freq: config.TermFrequencyType = 1,
     ids: ArrayChain(u8) = .{},
-    tfs: ArrayChain(config.TfType) = .{},
+    tfs: ArrayChain(config.TermFrequencyType) = .{},
 
     pub fn init(term: []u8, id: u32) Self {
         return .{ .term = term, .id = id };

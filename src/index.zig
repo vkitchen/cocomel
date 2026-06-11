@@ -42,11 +42,13 @@ fn readArray(buf: []const u8, offset: u64) []const u64 {
 }
 
 pub const Header = packed struct {
-    stemmer: Stemmer.Alg,
+    _padding: u64 = 0,
+    max_doc_length: u64,
+    snippets_offset: u64,
     docs_offset: u64,
     dictionary_offset: u64,
-    snippets_offset: u64,
-    max_doc_length: u64,
+    stemmer: Stemmer.Alg,
+    _reserved: u40 = 0,
     version: u16,
 };
 
@@ -54,13 +56,13 @@ pub const Index = struct {
     const Self = @This();
 
     index: []const u8,
-    header: *align(1) const Header,
+    header: *const Header,
     docs: []const u64,
     dictionary: []const u64,
     snippets: []const u64,
 
     pub fn init(index: []const u8) !Self {
-        const header = std.mem.bytesAsValue(Header, index[index.len - @bitSizeOf(Header) / 8 ..]);
+        const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));
 
         if (header.version != version) {
             std.debug.print("Incorrect index version\n", .{});

@@ -154,12 +154,13 @@ pub const CcmlSerialiser = struct {
         std.debug.print("Terms count {d}\n", .{dictionary.len});
 
         // Header
+        while (self.writer.logicalPos() % @alignOf(index.Header) != 0) try self.writer.interface.writeByte(0);
         try self.writer.interface.writeStruct(index.Header{
-            .stemmer = stemmer,
+            .max_doc_length = max_doc_length,
+            .snippets_offset = snippets_offset,
             .docs_offset = docs_offset,
             .dictionary_offset = dictionary_offset,
-            .snippets_offset = snippets_offset,
-            .max_doc_length = max_doc_length,
+            .stemmer = stemmer,
             .version = index.version,
         }, native_endian);
 

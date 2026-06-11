@@ -98,7 +98,7 @@ pub const CcmlSerialiser = struct {
         @memset(dictionary_offsets, 0);
 
         // Quantise
-        var doc_ids = [_]std.ArrayList(u8){.empty} ** 256;
+        var doc_ids = [_]std.ArrayList(u8){.empty} ** (1 << config.quantise_bits);
 
         const quantiser = Quantiser.init(min_score, max_score);
 
@@ -114,12 +114,12 @@ pub const CcmlSerialiser = struct {
             try self.writeStr(post.?.term);
 
             // Write chunks
-            var i: u8 = 255;
+            var i: index.ImpactType = (1 << config.quantise_bits) - 1;
             while (i > 0) : (i -= 1) {
                 if (doc_ids[i].items.len == 0)
                     continue;
                 try self.writer.interface.writeInt(u32, @truncate(doc_ids[i].items.len), native_endian);
-                try self.writer.interface.writeInt(u8, i, native_endian);
+                try self.writer.interface.writeInt(index.ImpactType, i, native_endian);
                 try self.writer.interface.writeAll(doc_ids[i].items);
             }
             // Null terminate

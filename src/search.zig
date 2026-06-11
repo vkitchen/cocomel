@@ -87,7 +87,7 @@ pub const Search = struct {
         }
 
         while (true) {
-            var max_impact: u8 = 0;
+            var max_impact: u16 = 0;
             var max_i: usize = 0;
             for (self.postings.items, 0..) |offset, i| {
                 if (self.index.chunkScore(offset) > max_impact) {

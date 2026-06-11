@@ -80,8 +80,8 @@ pub const Postings = struct {
         return .{ min_score, max_score };
     }
 
-    pub fn quantise(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser, doc_ids: *[256]std.ArrayList(u8)) !void {
-        var last_ids = [_]u32{0} ** 256;
+    pub fn quantise(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u8)) !void {
+        var last_ids = [_]u32{0} ** (1 << config.quantise_bits);
 
         ranker.compIdf(@floatFromInt(self.df_t + 1));
 

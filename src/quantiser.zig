@@ -4,6 +4,8 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
+const index = @import("index.zig");
 
 // Reference: https://github.com/Axiomatic314/ciffTools
 // This is the Katelyn Harlan variant of uniform quantisation
@@ -29,9 +31,9 @@ pub const Quantiser = struct {
         return .{ .min_rsv = min_rsv, .max_rsv = max_rsv };
     }
 
-    pub fn quantise(self: *const Self, score: f64) u8 {
-        const scale = 2 << 7 - 2;
-        const res: u8 = @intFromFloat((score - self.min_rsv) / (self.max_rsv - self.min_rsv) * scale);
+    pub fn quantise(self: *const Self, score: f64) index.ImpactType {
+        const scale = (1 << config.quantise_bits) - 2;
+        const res: index.ImpactType = @intFromFloat((score - self.min_rsv) / (self.max_rsv - self.min_rsv) * scale);
         return res + 1;
     }
 };

@@ -9,6 +9,9 @@ pub const socket_name = "/tmp/cocomel.sock";
 // u16 may offer a slight increase in precision but slows indexing
 pub const TermFrequencyType = u8;
 
+// Values above 8 use u16 impacts which slows search with minimal gains to precision
+pub const quantise_bits = 8;
+
 // Values are taken from ATIRE which was tuned on classic TREC collections
 // Reference: https://github.com/andrewtrotman/ATIRE/blob/master/source/ranking_function_bm25.h
 // Reference: https://www.elastic.co/blog/practical-bm25-part-3-considerations-for-picking-b-and-k1-in-elasticsearch

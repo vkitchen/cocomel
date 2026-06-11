@@ -12,6 +12,8 @@ const Stemmer = @import("stem.zig").Stemmer;
 
 pub const version = 1;
 
+pub const ImpactType = if (((1 << config.quantise_bits) - 1) > std.math.maxInt(u8)) u16 else u8;
+
 pub const Result = struct {
     doc_id: u32,
     score: u16,
@@ -95,15 +97,16 @@ pub const Index = struct {
         return [2]u64{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    pub fn chunkScore(self: *const Self, offset: u64) u8 {
+    pub fn chunkScore(self: *const Self, offset: u64) ImpactType {
         if (read32(self.index, offset) == 0) return 0;
-        return self.index[offset + @sizeOf(u32)];
+        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
+        return score;
     }
 
     pub fn processChunk(self: *const Self, offset: u64, results: []Result) u64 {
         const ids_len = read32(self.index, offset);
-        const score = self.index[offset + @sizeOf(u32)];
-        const ids = offset + @sizeOf(u32) + @sizeOf(u8);
+        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
+        const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
 
         var i: u32 = 0;
         var last_id: u32 = 0;
@@ -115,7 +118,7 @@ pub const Index = struct {
             last_id = doc_id;
         }
 
-        return offset + @sizeOf(u32) + @sizeOf(u8) + ids_len;
+        return offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len;
     }
 
     pub fn find(self: *const Self, key: []const u8) u64 {

@@ -4,8 +4,10 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 pub const index_name = "index.ccml";
-
 pub const socket_name = "/tmp/cocomel.sock";
+
+// u16 may offer a slight increase in precision but slows indexing
+pub const TfType = u8;
 
 // Values are taken from ATIRE which was tuned on classic TREC collections
 // Reference: https://github.com/andrewtrotman/ATIRE/blob/master/source/ranking_function_bm25.h

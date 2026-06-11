@@ -4,6 +4,7 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 const ArrayChain = @import("array_chain.zig").ArrayChain;
 const Doc = @import("doc.zig");
 const Ranker = @import("ranking_fn_bm25.zig").Ranker;
@@ -17,9 +18,9 @@ pub const Postings = struct {
     df_t: u32 = 0,
     id: u32,
     last_id: u32 = 0,
-    freq: u8 = 1,
-    ids: ArrayChain = .{},
-    tfs: ArrayChain = .{},
+    freq: config.TfType = 1,
+    ids: ArrayChain(u8) = .{},
+    tfs: ArrayChain(config.TfType) = .{},
 
     pub fn init(term: []u8, id: u32) Self {
         return .{ .term = term, .id = id };

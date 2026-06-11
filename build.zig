@@ -1,9 +1,8 @@
 const std = @import("std");
 
-const optimize = std.builtin.OptimizeMode.ReleaseSafe;
-
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
+    const optimize = b.standardOptimizeOption(.{});
 
     const clap = b.dependency("clap", .{});
 

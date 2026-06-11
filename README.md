@@ -1,6 +1,6 @@
 # Cocomel - A search engine
 
-The score-at-a-time search engine which powers [potatocastles.com](https://potatocastles.com).
+The score-at-a-time search engine that powers [potatocastles.com](https://potatocastles.com).
 In the same family of search engines as [ATIRE](https://github.com/andrewtrotman/ATIRE/), [JASS](https://github.com/lintool/JASS), [JASSv2](https://github.com/andrewtrotman/JASSv2/), and [IOQP](https://github.com/JMMackenzie/IOQP/).
 The potato castles website can be found here [vkitchen/potatoes](https://github.com/vkitchen/potatoes) and the crawler is [vkitchen/crawler](https://github.com/vkitchen/crawler)
 
@@ -39,7 +39,7 @@ The disadvantage of score-at-a-time is the lack of conjuctive queries (AND opera
 
 ## Compiling
 
-You'll need to install Zig `0.16.0` and then run `zig build`.
+You'll need to install Zig `0.16.0` then run `zig build -Doptimize=ReleaseSafe`.
 Other versions of Zig including nightlies may or may not work but remain untested.
 Zig is still pre-1.0 so expect breakages when attempting to build with other releases.
 

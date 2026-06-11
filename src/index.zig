@@ -17,33 +17,37 @@ pub const Result = struct {
     score: u16,
 };
 
-fn read16(buf: []const u8, offset: usize) u16 {
+fn read16(buf: []const u8, offset: u64) u16 {
     return std.mem.bytesToValue(u16, buf[offset .. offset + @sizeOf(u16)][0..2]);
 }
 
-fn read32(buf: []const u8, offset: usize) u32 {
+fn read32(buf: []const u8, offset: u64) u32 {
     return std.mem.bytesToValue(u32, buf[offset .. offset + @sizeOf(u32)][0..4]);
 }
 
-fn readStr(buf: []const u8, offset: usize) []const u8 {
+fn read64(buf: []const u8, offset: u64) u64 {
+    return std.mem.bytesToValue(u64, buf[offset .. offset + @sizeOf(u64)][0..8]);
+}
+
+fn readStr(buf: []const u8, offset: u64) []const u8 {
     const len = read16(buf, offset);
     const start = offset + @sizeOf(u16);
     return buf[start .. start + len];
 }
 
-fn readArray(buf: []const u8, offset: usize) []const u32 {
-    const len = read32(buf, offset);
-    const start = offset + @sizeOf(u32);
-    return @alignCast(std.mem.bytesAsSlice(u32, buf[start .. start + len * @sizeOf(u32)]));
+fn readArray(buf: []const u8, offset: u64) []const u64 {
+    const len = read64(buf, offset);
+    const start = offset + @sizeOf(u64);
+    return @alignCast(std.mem.bytesAsSlice(u64, buf[start .. start + len * @sizeOf(u64)]));
 }
 
 pub const Header = packed struct {
     stemmer: Stemmer.Alg,
-    docs_count: u32,
-    docs_offset: u32,
-    dictionary_offset: u32,
-    snippets_offset: u32,
-    max_doc_length: u32,
+    docs_count: u64,
+    docs_offset: u64,
+    dictionary_offset: u64,
+    snippets_offset: u64,
+    max_doc_length: u64,
     version: u16,
 };
 
@@ -52,9 +56,9 @@ pub const Index = struct {
 
     index: []const u8,
     header: *align(1) const Header,
-    docs: []const u32,
-    dictionary: []const u32,
-    snippets: []const u32,
+    docs: []const u64,
+    dictionary: []const u64,
+    snippets: []const u64,
 
     pub fn init(index: []const u8) !Self {
         const header = std.mem.bytesAsValue(Header, index[index.len - @bitSizeOf(Header) / 8 ..]);
@@ -87,16 +91,16 @@ pub const Index = struct {
         return .{ doc_name, title };
     }
 
-    pub fn snippet(self: *const Self, doc_id: u32) [2]u32 {
-        return [2]u32{ self.snippets[doc_id], self.snippets[doc_id + 1] };
+    pub fn snippet(self: *const Self, doc_id: u32) [2]u64 {
+        return [2]u64{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    pub fn chunkScore(self: *const Self, offset: u32) u8 {
+    pub fn chunkScore(self: *const Self, offset: u64) u8 {
         if (read32(self.index, offset) == 0) return 0;
         return self.index[offset + @sizeOf(u32)];
     }
 
-    pub fn processChunk(self: *const Self, offset: u32, results: []Result) u32 {
+    pub fn processChunk(self: *const Self, offset: u64, results: []Result) u64 {
         const ids_len = read32(self.index, offset);
         const score = self.index[offset + @sizeOf(u32)];
         const ids = offset + @sizeOf(u32) + @sizeOf(u8);
@@ -114,8 +118,8 @@ pub const Index = struct {
         return offset + @sizeOf(u32) + @sizeOf(u8) + ids_len;
     }
 
-    pub fn find(self: *const Self, key: []const u8) u32 {
-        var i = hash(key, @truncate(self.dictionary.len));
+    pub fn find(self: *const Self, key: []const u8) u64 {
+        var i: u64 = hash(key, @truncate(self.dictionary.len));
         while (true) {
             if (self.dictionary[i] == 0)
                 return 0;
@@ -123,7 +127,7 @@ pub const Index = struct {
             if (std.mem.eql(u8, term, key))
                 return @truncate(self.dictionary[i] + @sizeOf(u16) + term.len);
 
-            i = i + 1 & (@as(u32, @truncate(self.dictionary.len)) - 1);
+            i = i + 1 & (self.dictionary.len - 1);
         }
     }
 };

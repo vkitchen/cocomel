@@ -26,7 +26,7 @@ pub const Search = struct {
     snippets: bool,
     snippeter: Snippeter,
     query: std.ArrayListUnmanaged(query.Term),
-    postings: std.ArrayList(u32),
+    postings: std.ArrayList(u64),
     results: []Result,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
@@ -36,7 +36,7 @@ pub const Search = struct {
 
         const snippeter = blk: {
             if (index.hasSnippets()) {
-                var max_snippet: u32 = 0;
+                var max_snippet: u64 = 0;
                 var doc_id: u32 = 0;
                 while (doc_id < index.header.docs_count) : (doc_id += 1) {
                     const range = index.snippet(doc_id);
@@ -59,7 +59,7 @@ pub const Search = struct {
             .snippets = index.hasSnippets(),
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
-            .postings = try std.ArrayList(u32).initCapacity(allocator, config.max_query_terms),
+            .postings = try std.ArrayList(u64).initCapacity(allocator, config.max_query_terms),
             .results = try allocator.alloc(Result, index.header.docs_count),
         };
     }

@@ -66,11 +66,11 @@ pub const CcmlSerialiser = struct {
         // Snippets
         var snippets_offset: u64 = 0;
         if (self.snippets) {
-            while (self.writer.logicalPos() % @alignOf(u32) != 0) try self.writer.interface.writeByte(0);
+            while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
             snippets_offset = self.writer.logicalPos();
-            try self.writer.interface.writeInt(u32, @truncate(self.snippet_indices.items.len), native_endian);
+            try self.writer.interface.writeInt(u64, self.snippet_indices.items.len, native_endian);
             for (self.snippet_indices.items) |s|
-                try self.writer.interface.writeInt(u32, s, native_endian);
+                try self.writer.interface.writeInt(u64, s, native_endian);
         }
 
         // Find average document length
@@ -94,7 +94,7 @@ pub const CcmlSerialiser = struct {
             if (scores[1] > max_score) max_score = scores[1];
         }
 
-        const dictionary_offsets = try allocator.alloc(u32, dictionary.cap);
+        const dictionary_offsets = try allocator.alloc(u64, dictionary.cap);
         @memset(dictionary_offsets, 0);
 
         // Quantise
@@ -125,7 +125,7 @@ pub const CcmlSerialiser = struct {
             // Null terminate
             try self.writer.interface.writeInt(u32, 0, native_endian);
 
-            dictionary_offsets[hi] = @truncate(term_offset);
+            dictionary_offsets[hi] = term_offset;
         }
 
         // Document ID strings
@@ -139,27 +139,27 @@ pub const CcmlSerialiser = struct {
         }
 
         // Document IDs array
-        while (self.writer.logicalPos() % @alignOf(u32) != 0) try self.writer.interface.writeByte(0);
+        while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
         const docs_offset = self.writer.logicalPos();
-        try self.writer.interface.writeInt(u32, @truncate(docs.items.len), native_endian);
+        try self.writer.interface.writeInt(u64, docs.items.len, native_endian);
         for (docs.items) |d|
-            try self.writer.interface.writeInt(u32, @truncate(@intFromPtr(d.name.ptr)), native_endian);
+            try self.writer.interface.writeInt(u64, @intFromPtr(d.name.ptr), native_endian);
 
         // Dictionary
-        while (self.writer.logicalPos() % @alignOf(u32) != 0) try self.writer.interface.writeByte(0);
+        while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
         const dictionary_offset = self.writer.logicalPos();
-        try self.writer.interface.writeInt(u32, dictionary.cap, native_endian);
-        try self.writer.interface.writeSliceEndian(u32, dictionary_offsets, native_endian);
+        try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
+        try self.writer.interface.writeSliceEndian(u64, dictionary_offsets, native_endian);
 
         std.debug.print("Terms count {d}\n", .{dictionary.len});
 
         // Header
         try self.writer.interface.writeStruct(index.Header{
             .stemmer = stemmer,
-            .docs_count = @truncate(docs.items.len),
-            .docs_offset = @truncate(docs_offset),
-            .dictionary_offset = @truncate(dictionary_offset),
-            .snippets_offset = @truncate(snippets_offset),
+            .docs_count = docs.items.len,
+            .docs_offset = docs_offset,
+            .dictionary_offset = dictionary_offset,
+            .snippets_offset = snippets_offset,
             .max_doc_length = max_doc_length,
             .version = index.version,
         }, native_endian);

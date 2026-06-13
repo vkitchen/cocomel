@@ -127,4 +127,46 @@ pub const Postings = struct {
         doc_ids[rsv].items.len += 5;
         doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], self.id - last_ids[rsv]);
     }
+
+    pub fn distribute(self: *Self, allocator: std.mem.Allocator, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u8)) !void {
+        var last_ids = [_]u32{0} ** (1 << config.quantise_bits);
+
+        var ids_chunk = self.ids.first;
+        var tfs_chunk = self.tfs.first;
+        var ids_i: u32 = 0;
+        var tfs_i: u32 = 0;
+        var last_id: u32 = 0;
+        while (ids_chunk != null) {
+            // decode vbyte
+            var doc_id: u32 = 0;
+            ids_i += vbyte.read(ids_chunk.?.items[ids_i..], &doc_id);
+            doc_id += last_id;
+            const rsv = tfs_chunk.?.items[tfs_i];
+            tfs_i += 1;
+
+            // Store quantised value
+            try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
+            const last = doc_ids[rsv].items.len;
+            doc_ids[rsv].items.len += 5;
+            doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
+            last_ids[rsv] = doc_id;
+
+            if (ids_i >= ids_chunk.?.items.len) {
+                ids_chunk = ids_chunk.?.next;
+                ids_i = 0;
+            }
+            if (tfs_i >= tfs_chunk.?.items.len) {
+                tfs_chunk = tfs_chunk.?.next;
+                tfs_i = 0;
+            }
+            last_id = doc_id;
+        }
+
+        // Quantise last
+        const rsv = self.freq;
+        try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
+        const last = doc_ids[rsv].items.len;
+        doc_ids[rsv].items.len += 5;
+        doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], self.id - last_ids[rsv]);
+    }
 };

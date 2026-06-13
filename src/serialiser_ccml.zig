@@ -17,11 +17,12 @@ const native_endian = @import("builtin").target.cpu.arch.endian();
 
 const file_format = std.fmt.comptimePrint("cocomel v{d}\n", .{index.version});
 
+var writer_buf: [config.io_buffer_size]u8 = undefined;
+
 pub const CcmlSerialiser = struct {
     const Self = @This();
 
     file: std.Io.File,
-    writer_buf: [config.io_buffer_size]u8 = undefined,
     writer: std.Io.File.Writer,
     snippet_indices: std.ArrayList(u32) = .empty,
     snippets: bool,
@@ -35,7 +36,7 @@ pub const CcmlSerialiser = struct {
             .snippets = snippets,
         };
 
-        self.writer = file.writer(io, &self.writer_buf);
+        self.writer = file.writer(io, &writer_buf);
 
         // Write header
         try self.writer.interface.writeAll(file_format);
@@ -59,7 +60,7 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
-    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary, stemmer: Stemmer.Alg) !u64 {
+    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary, stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
 
@@ -85,13 +86,15 @@ pub const CcmlSerialiser = struct {
         // Find minimum and maximum rsv
         var min_score: f64 = std.math.floatMax(f64);
         var max_score: f64 = 0;
-        for (dictionary.store) |post| {
-            if (post == null) continue;
+        if (quantise) {
+            for (dictionary.store) |post| {
+                if (post == null) continue;
 
-            const scores = post.?.score(docs, &ranker);
+                const scores = post.?.score(docs, &ranker);
 
-            if (scores[0] < min_score) min_score = scores[0];
-            if (scores[1] > max_score) max_score = scores[1];
+                if (scores[0] < min_score) min_score = scores[0];
+                if (scores[1] > max_score) max_score = scores[1];
+            }
         }
 
         const dictionary_offsets = try allocator.alloc(u64, dictionary.cap);
@@ -107,7 +110,12 @@ pub const CcmlSerialiser = struct {
 
             for (&doc_ids) |*d| d.clearRetainingCapacity();
 
-            try post.?.quantise(allocator, docs, &ranker, quantiser, &doc_ids);
+            // Processing pre-quantised CIFF?
+            if (quantise) {
+                try post.?.quantise(allocator, docs, &ranker, quantiser, &doc_ids);
+            } else {
+                try post.?.distribute(allocator, &doc_ids);
+            }
 
             // Write postings
             const term_offset = self.writer.logicalPos();

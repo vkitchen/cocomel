@@ -20,12 +20,12 @@ pub fn hash(key: []const u8, cap: u32) u32 {
 pub const Dictionary = struct {
     const Self = @This();
 
-    cap: u32 = 1 << 19,
+    cap: u32 = 1 << 27,
     len: u32 = 0,
     store: []?*Postings,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        const store = try allocator.alloc(?*Postings, 1 << 19);
+        const store = try allocator.alloc(?*Postings, 1 << 27);
         @memset(store, null);
         return .{ .store = store };
     }
@@ -50,7 +50,7 @@ pub const Dictionary = struct {
         self.store = new_store;
     }
 
-    pub fn insert(self: *Self, allocator: std.mem.Allocator, key: []const u8, doc_id: u32) !void {
+    pub fn insert(self: *Self, allocator: std.mem.Allocator, key: []const u8, doc_id: u32) !*Postings {
         if (self.len > self.cap / 2)
             try self.expand(allocator);
 
@@ -60,11 +60,11 @@ pub const Dictionary = struct {
             if (std.mem.eql(u8, postings.term, key)) {
                 if (postings.id == doc_id) {
                     postings.freq +|= 1;
-                    return;
+                    return postings;
                 }
                 try postings.flush(allocator);
                 postings.id = doc_id;
-                return;
+                return postings;
             }
             i = i + 1 & (self.cap - 1);
         }
@@ -75,5 +75,7 @@ pub const Dictionary = struct {
         self.store[i] = postings;
 
         self.len += 1;
+
+        return postings;
     }
 };

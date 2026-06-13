@@ -1,10 +1,18 @@
 const std = @import("std");
+const protobuf = @import("protobuf");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const clap = b.dependency("clap", .{});
+    const clap_dep = b.dependency("clap", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const protobuf_dep = b.dependency("protobuf", .{
+        .target = target,
+        .optimize = optimize,
+    });
 
     const indexer = b.addExecutable(.{
         .name = "index",
@@ -14,7 +22,7 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         }),
     });
-    indexer.root_module.addImport("clap", clap.module("clap"));
+    indexer.root_module.addImport("clap", clap_dep.module("clap"));
     b.installArtifact(indexer);
 
     const daemon = b.addExecutable(.{
@@ -65,8 +73,30 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         }),
     });
-    stats.root_module.addImport("clap", clap.module("clap"));
+    stats.root_module.addImport("clap", clap_dep.module("clap"));
     b.installArtifact(stats);
+
+    const convert = b.addExecutable(.{
+        .name = "convert",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/prog_convert.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    convert.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));
+    convert.root_module.addImport("clap", clap_dep.module("clap"));
+    b.installArtifact(convert);
+
+    const gen_proto = b.step("gen-proto", "Generates zig files from protocol buffer definitions");
+    const protoc_step = protobuf.RunProtocStep.create(protobuf_dep.builder, target, .{
+        .destination_directory = b.path("src/proto"),
+        .include_directories = &.{b.path("proto")},
+        .source_files = &.{
+            b.path("proto/CommonIndexFileFormat.proto"),
+        },
+    });
+    gen_proto.dependOn(&protoc_step.step);
 
     const test_step = b.step("test", "Run tests");
     const unit_tests = b.addTest(.{

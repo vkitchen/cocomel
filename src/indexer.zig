@@ -43,12 +43,12 @@ pub const Indexer = struct {
 
         if (term_.len == 0) return;
 
-        try self.dict.insert(allocator, term_, @truncate(self.doc_ids.items.len - 1));
+        _ = try self.dict.insert(allocator, term_, @truncate(self.doc_ids.items.len - 1));
         if (self.bigrams) {
             if (self.has_prev) {
                 self.prev_buffer[self.prev_len] = ' ';
                 @memcpy(self.prev_buffer[self.prev_len + 1 .. self.prev_len + 1 + term_.len], term_);
-                try self.dict.insert(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
+                _ = try self.dict.insert(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
             }
             @memcpy(self.prev_buffer[0..term_.len], term_);
             self.prev_len = term_.len;
@@ -75,7 +75,7 @@ pub const Indexer = struct {
     pub fn write(self: *Self, allocator: std.mem.Allocator) !void {
         std.debug.print("{s}\n", .{"Writing index..."});
 
-        const bytes_written = try self.serialiser.write(allocator, &self.doc_ids, &self.dict, self.stemmer.algorithm);
+        const bytes_written = try self.serialiser.write(allocator, &self.doc_ids, &self.dict, self.stemmer.algorithm, true);
 
         std.debug.print("Index size {Bi:.2}\n", .{bytes_written});
     }

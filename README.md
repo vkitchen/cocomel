@@ -27,7 +27,6 @@ The disadvantage of score-at-a-time is the lack of conjuctive queries (AND opera
 
 ## TODO
 
-* CIFF
 * Top-k retrieval
 * Early termination
 * Porter2 stemming
@@ -36,6 +35,11 @@ The disadvantage of score-at-a-time is the lack of conjuctive queries (AND opera
 * Phrase searching
 * Thesaurus
 * Faster compression
+* Handrolled CIFF parser
+
+## Notes
+
+* CIFF conversion using `./zig-out/bin/convert` expects quantised CIFF. This can be achieved using [ciffTools](https://github.com/Axiomatic314/ciffTools/)
 
 ## Compiling
 

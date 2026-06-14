@@ -8,6 +8,7 @@ const config = @import("config.zig");
 const hash = @import("dictionary.zig").hash;
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
+const TopK = @import("top_k_insert.zig").TopKInsert;
 const Stemmer = @import("stem.zig").Stemmer;
 
 pub const version = 1;
@@ -103,7 +104,8 @@ pub const Index = struct {
         return score;
     }
 
-    pub fn processChunk(self: *const Self, offset: u64, results: []Result) u64 {
+    // Special case for first term
+    pub fn processChunkSaturate(self: *const Self, offset: u64, topk: *TopK, accumulators: []u16) u64 {
         const ids_len = read32(self.index, offset);
         const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
         const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
@@ -114,7 +116,27 @@ pub const Index = struct {
             var doc_id: u32 = 0;
             i += vbyte.read(self.index[ids + i ..], &doc_id);
             doc_id += last_id;
-            results[doc_id].score += score;
+            accumulators[doc_id] += score;
+            topk.saturate(.{ .doc_id = doc_id, .score = accumulators[doc_id] });
+            last_id = doc_id;
+        }
+
+        return offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len;
+    }
+
+    pub fn processChunk(self: *const Self, offset: u64, topk: *TopK, accumulators: []u16) u64 {
+        const ids_len = read32(self.index, offset);
+        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
+        const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
+
+        var i: u32 = 0;
+        var last_id: u32 = 0;
+        while (i < ids_len) {
+            var doc_id: u32 = 0;
+            i += vbyte.read(self.index[ids + i ..], &doc_id);
+            doc_id += last_id;
+            accumulators[doc_id] += score;
+            topk.insert(.{ .doc_id = doc_id, .score = accumulators[doc_id] });
             last_id = doc_id;
         }
 

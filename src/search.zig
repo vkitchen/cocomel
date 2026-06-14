@@ -8,16 +8,13 @@ const Index = @import("index.zig").Index;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
+const TopK = @import("top_k_insert.zig").TopKInsert;
 const query = @import("tokenizer_query.zig");
 const Stemmer = @import("stem.zig").Stemmer;
 const Snippeter = @import("snippets.zig").Snippeter;
 const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
-
-fn cmpResults(context: void, a: Result, b: Result) bool {
-    return std.sort.desc(u16)(context, a.score, b.score);
-}
 
 pub const Search = struct {
     const Self = @This();
@@ -27,7 +24,8 @@ pub const Search = struct {
     snippeter: Snippeter,
     query: std.ArrayListUnmanaged(query.Term),
     postings: std.ArrayList(u64),
-    results: []Result,
+    topk: TopK = .{},
+    accumulators: []u16,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
@@ -60,7 +58,7 @@ pub const Search = struct {
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(u64).initCapacity(allocator, config.max_query_terms),
-            .results = try allocator.alloc(Result, index.docs.len),
+            .accumulators = try allocator.alloc(u16, index.docs.len),
         };
     }
 
@@ -73,11 +71,10 @@ pub const Search = struct {
         // TODO reenable once allocation is fixed
         // try expandQuery(allocator, &self.query);
 
-        for (0..self.results.len) |i| {
-            self.results[i].doc_id = @truncate(i);
-            self.results[i].score = 0;
-        }
+        // TODO don't use accumulators on single term query
+        @memset(self.accumulators, 0);
 
+        self.topk.clearRetainingCapacity();
         self.postings.clearRetainingCapacity();
 
         // TODO fix term negation
@@ -86,9 +83,31 @@ pub const Search = struct {
             if (offset != 0) self.postings.appendAssumeCapacity(offset);
         }
 
+        var max_impact: u16 = 0;
+        var max_i: usize = 0;
+
+        // Saturate top-k with highest scoring term
+        for (self.postings.items, 0..) |offset, i| {
+            if (self.index.chunkScore(offset) > max_impact) {
+                max_impact = self.index.chunkScore(offset);
+                max_i = i;
+            }
+        }
+
         while (true) {
-            var max_impact: u16 = 0;
-            var max_i: usize = 0;
+            self.postings.items[max_i] = self.index.processChunkSaturate(self.postings.items[max_i], &self.topk, self.accumulators);
+            // Successfully filled topk
+            if (self.topk.cap == self.topk.len) break;
+            // Term exhausted
+            if (self.index.chunkScore(self.postings.items[max_i]) == 0) break;
+        }
+
+        // Single term query? We're done
+        if (self.postings.items.len == 1) return self.topk.results();
+
+        // Now process normally
+        while (true) {
+            max_impact = 0;
             for (self.postings.items, 0..) |offset, i| {
                 if (self.index.chunkScore(offset) > max_impact) {
                     max_impact = self.index.chunkScore(offset);
@@ -98,20 +117,10 @@ pub const Search = struct {
 
             if (max_impact == 0) break;
 
-            self.postings.items[max_i] = self.index.processChunk(self.postings.items[max_i], self.results);
+            self.postings.items[max_i] = self.index.processChunk(self.postings.items[max_i], &self.topk, self.accumulators);
         }
 
-        std.sort.pdq(Result, self.results, {}, cmpResults);
-
-        var results_count: usize = 0;
-        for (self.results) |result| {
-            if (result.score == 0)
-                break;
-
-            results_count += 1;
-        }
-
-        return self.results[0..results_count];
+        return self.topk.sorted();
     }
 
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

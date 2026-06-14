@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-pub fn ArrayChain(comptime T: type) type { 
+pub fn ArrayChain(comptime T: type) type {
     return struct {
         const Self = @This();
 

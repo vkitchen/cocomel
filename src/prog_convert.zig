@@ -22,7 +22,7 @@ fn takeVByte(reader: *std.Io.Reader) !u64 {
     var byte = try reader.takeByte();
 
     var i: u6 = 0;
-    while (byte & (1 << 7) != 0) : (i += 1){
+    while (byte & (1 << 7) != 0) : (i += 1) {
         result |= @as(u64, byte & ((1 << 7) - 1)) << 7 * i;
         byte = try reader.takeByte();
     }
@@ -95,10 +95,10 @@ pub fn main(init: std.process.Init) !void {
             postings.?.df_t = @intCast(postings_list.df);
 
             if (i % 100000 == 0)
-                std.debug.print("Processed {d}/{d} Postings Lists\n", .{i, header.num_postings_lists});
+                std.debug.print("Processed {d}/{d} Postings Lists\n", .{ i, header.num_postings_lists });
         }
 
-        std.debug.print("Processed {d}/{d} Postings Lists\n", .{header.num_postings_lists, header.num_postings_lists});
+        std.debug.print("Processed {d}/{d} Postings Lists\n", .{ header.num_postings_lists, header.num_postings_lists });
 
         for (0..@intCast(header.num_docs)) |i| {
             len = try takeVByte(&reader.interface);
@@ -109,16 +109,16 @@ pub fn main(init: std.process.Init) !void {
 
             // TODO this is unexpected but technically allowed
             if (doc.docid != i) {
-                std.debug.print("Fatal: docid {d} appeared out of order in ciff. Expected docid {d}\n", .{doc.docid, i});
+                std.debug.print("Fatal: docid {d} appeared out of order in ciff. Expected docid {d}\n", .{ doc.docid, i });
                 std.process.exit(1);
             }
             try doc_ids.append(init.gpa, .{ .name = try arena.dupe(u8, doc.collection_docid), .len = @intCast(doc.doclength) });
 
             if (i % 100000 == 0)
-                std.debug.print("Processed {d}/{d} Docs\n", .{i, header.num_postings_lists});
+                std.debug.print("Processed {d}/{d} Docs\n", .{ i, header.num_postings_lists });
         }
 
-        std.debug.print("Processed {d}/{d} Docs\n", .{header.num_docs, header.num_docs});
+        std.debug.print("Processed {d}/{d} Docs\n", .{ header.num_docs, header.num_docs });
 
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);

@@ -24,10 +24,11 @@ The disadvantage of score-at-a-time is the lack of conjuctive queries (AND opera
 ## Features
 
 * Snippets
+* Top-k retrieval
 
 ## TODO
 
-* Top-k retrieval
+* Retrieval past top-k
 * Early termination
 * Porter2 stemming
 * Wildcard search

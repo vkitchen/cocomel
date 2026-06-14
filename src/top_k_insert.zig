@@ -4,15 +4,16 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const config = @import("config.zig");
 
 const Result = @import("index.zig").Result;
 
-pub var store: [1000]Result = undefined;
+pub var store: [config.max_top_k]Result = undefined;
 
 pub const TopKInsert = struct {
     const Self = @This();
 
-    cap: u32 = 1000,
+    cap: u32 = config.max_top_k,
     len: u32 = 0,
 
     pub fn clearRetainingCapacity(self: *Self) void {

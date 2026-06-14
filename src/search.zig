@@ -71,9 +71,6 @@ pub const Search = struct {
         // TODO reenable once allocation is fixed
         // try expandQuery(allocator, &self.query);
 
-        // TODO don't use accumulators on single term query
-        @memset(self.accumulators, 0);
-
         self.topk.clearRetainingCapacity();
         self.postings.clearRetainingCapacity();
 
@@ -82,6 +79,20 @@ pub const Search = struct {
             const offset = self.index.find(term.term);
             if (offset != 0) self.postings.appendAssumeCapacity(offset);
         }
+
+        // Special case for single term query skipping accumulator reset
+        if (self.postings.items.len == 1) {
+            while (true) {
+                self.postings.items[0] = self.index.processChunkNoAccumulators(self.postings.items[0], &self.topk);
+                // Successfully filled topk
+                if (self.topk.cap == self.topk.len) break;
+                // Term exhausted
+                if (self.index.chunkScore(self.postings.items[0]) == 0) break;
+            }
+            return self.topk.results();
+        }
+
+        @memset(self.accumulators, 0);
 
         var max_impact: u16 = 0;
         var max_i: usize = 0;
@@ -101,9 +112,6 @@ pub const Search = struct {
             // Term exhausted
             if (self.index.chunkScore(self.postings.items[max_i]) == 0) break;
         }
-
-        // Single term query? We're done
-        if (self.postings.items.len == 1) return self.topk.results();
 
         // Now process normally
         while (true) {

@@ -7,10 +7,6 @@ const std = @import("std");
 
 const Result = @import("index.zig").Result;
 
-fn cmpResults(context: void, a: Result, b: Result) bool {
-    return std.sort.desc(u16)(context, a.score, b.score);
-}
-
 pub var store: [1000]Result = undefined;
 
 pub const TopKInsert = struct {
@@ -33,33 +29,42 @@ pub const TopKInsert = struct {
         const worst_score: u16 = store[self.len - 1].score;
         // Can't make top-k
         if (self.len == self.cap and key.score <= worst_score) return;
-        // First try to promote
-        for (0..self.len) |i| {
-            if (store[i].doc_id == key.doc_id) {
-                store[i].score = key.score;
+        // Find insert spot
+        var i: usize = 0;
+        while (i < self.len and key.score <= store[i].score)
+            i += 1;
 
-                // Resort top-k
-                std.sort.pdq(Result, store[0..self.len], {}, cmpResults);
+        // Swap our new doc in
+        var bumped = store[i];
+        store[i] = key;
+        // We upgraded this doc and are now done
+        if (key.doc_id == bumped.doc_id)
+            return;
+        i += 1;
+        // Shuffle down remainder
+        while (i < self.len) : (i += 1) {
+            const tmp = store[i];
+            store[i] = bumped;
+            bumped = tmp;
+            // We upgraded this doc and are now done
+            if (key.doc_id == bumped.doc_id)
                 return;
-            }
         }
+        // Can append bumped doc?
         if (self.len < self.cap) {
-            // Can append?
-            store[self.len] = key;
+            store[self.len] = bumped;
             self.len += 1;
-        } else {
-            // Replace worst
-            store[self.len - 1] = key;
         }
-        // Resort top-k
-        std.sort.pdq(Result, store[0..self.len], {}, cmpResults);
     }
 
     pub fn results(self: *Self) []Result {
         return store[0..self.len];
     }
 
+    // Already sorted
     pub fn sorted(self: *Self) []Result {
-        return self.results();
+        return store[0..self.len];
     }
 };
+
+// TODO unit tests. This is mildly complex logic

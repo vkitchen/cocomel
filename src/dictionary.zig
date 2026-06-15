@@ -13,14 +13,21 @@ const Postings = @import("postings.zig").Postings;
 pub const Dictionary = struct {
     const Self = @This();
 
-    cap: u32 = 1 << 27,
+    cap: u32,
     len: u32 = 0,
     store: []?*Postings,
 
     pub fn init(allocator: std.mem.Allocator) !Self {
-        const store = try allocator.alloc(?*Postings, 1 << 27);
+        return initCapacity(allocator, 1 << 19);
+    }
+
+    pub fn initCapacity(allocator: std.mem.Allocator, cap: u32) !Self {
+        const top_bit: u5 = @truncate(@bitSizeOf(@TypeOf(cap)) - 1 - @clz(cap));
+        const fixed_cap = if (cap & (@as(u32, 1) << top_bit) == cap) cap else @as(u32, 1) << (top_bit + 1);
+
+        const store = try allocator.alloc(?*Postings, fixed_cap);
         @memset(store, null);
-        return .{ .store = store };
+        return .{ .cap = fixed_cap, .store = store };
     }
 
     fn expand(self: *Self, allocator: std.mem.Allocator) !void {

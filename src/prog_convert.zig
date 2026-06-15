@@ -58,9 +58,6 @@ pub fn main(init: std.process.Init) !void {
         var file = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
         defer file.close(init.io);
 
-        var doc_ids: std.ArrayList(Doc) = .empty;
-        var dict = try Dictionary.init(arena);
-
         var reader = file.reader(init.io, &reader_buf);
 
         var len = try takeVByte(&reader.interface);
@@ -68,6 +65,9 @@ pub fn main(init: std.process.Init) !void {
 
         var header = try ciff.Header.decode(&limited.interface, scratch);
         defer header.deinit(scratch);
+
+        var doc_ids: std.ArrayList(Doc) = try std.ArrayList(Doc).initCapacity(arena, @intCast(header.num_docs));
+        var dict = try Dictionary.initCapacity(arena, @intCast(header.num_postings_lists));
 
         for (0..@intCast(header.num_postings_lists)) |i| {
             len = try takeVByte(&reader.interface);
@@ -112,7 +112,7 @@ pub fn main(init: std.process.Init) !void {
                 std.debug.print("Fatal: docid {d} appeared out of order in ciff. Expected docid {d}\n", .{ doc.docid, i });
                 std.process.exit(1);
             }
-            try doc_ids.append(init.gpa, .{ .name = try arena.dupe(u8, doc.collection_docid), .len = @intCast(doc.doclength) });
+            doc_ids.appendAssumeCapacity(.{ .name = try arena.dupe(u8, doc.collection_docid), .len = @intCast(doc.doclength) });
 
             if (i % 100000 == 0)
                 std.debug.print("Processed {d}/{d} Docs\n", .{ i, header.num_postings_lists });
@@ -123,8 +123,5 @@ pub fn main(init: std.process.Init) !void {
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);
         _ = try serialiser.write(arena, &doc_ids, &dict, Stemmer.Alg.none, res.args.quantise != 0);
-
-        // Free memory
-        doc_ids.deinit(init.gpa);
     }
 }

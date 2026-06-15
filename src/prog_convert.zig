@@ -94,7 +94,7 @@ pub fn main(init: std.process.Init) !void {
             }
             postings.?.df_t = @intCast(postings_list.df);
 
-            if (i % 100000 == 0)
+            if (i % 1_000_000 == 0)
                 std.debug.print("Processed {d}/{d} Postings Lists\n", .{ i, header.num_postings_lists });
         }
 
@@ -114,8 +114,8 @@ pub fn main(init: std.process.Init) !void {
             }
             doc_ids.appendAssumeCapacity(.{ .name = try arena.dupe(u8, doc.collection_docid), .len = @intCast(doc.doclength) });
 
-            if (i % 100000 == 0)
-                std.debug.print("Processed {d}/{d} Docs\n", .{ i, header.num_postings_lists });
+            if (i % 1_000_000 == 0)
+                std.debug.print("Processed {d}/{d} Docs\n", .{ i, header.num_docs });
         }
 
         std.debug.print("Processed {d}/{d} Docs\n", .{ header.num_docs, header.num_docs });

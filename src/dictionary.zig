@@ -4,18 +4,11 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const Wyhash = std.hash.Wyhash;
+
 const str = @import("str.zig");
 const stem = @import("stem.zig").stem;
 const Postings = @import("postings.zig").Postings;
-
-pub fn hash(key: []const u8, cap: u32) u32 {
-    var result: u32 = 0;
-
-    for (key) |c|
-        result = c +% 31 *% result;
-
-    return result & cap - 1;
-}
 
 pub const Dictionary = struct {
     const Self = @This();
@@ -37,7 +30,7 @@ pub const Dictionary = struct {
 
         for (self.store) |p| {
             if (p != null) {
-                var i = hash(p.?.term, new_cap);
+                var i = Wyhash.hash(0, p.?.term) & self.cap - 1;
                 while (new_store[i] != null)
                     i = i + 1 & new_cap - 1;
 
@@ -54,7 +47,7 @@ pub const Dictionary = struct {
         if (self.len > self.cap / 2)
             try self.expand(allocator);
 
-        var i = hash(key, self.cap);
+        var i = Wyhash.hash(0, key) & self.cap - 1;
         while (self.store[i] != null) {
             var postings = self.store[i].?;
             if (std.mem.eql(u8, postings.term, key)) {
@@ -66,7 +59,7 @@ pub const Dictionary = struct {
                 postings.id = doc_id;
                 return postings;
             }
-            i = i + 1 & (self.cap - 1);
+            i = i + 1 & self.cap - 1;
         }
 
         const postings = try allocator.create(Postings);

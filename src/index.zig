@@ -4,6 +4,8 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const Wyhash = std.hash.Wyhash;
+
 const config = @import("config.zig");
 const hash = @import("dictionary.zig").hash;
 const snippets = @import("snippets.zig");
@@ -163,7 +165,7 @@ pub const Index = struct {
     }
 
     pub fn find(self: *const Self, key: []const u8) u64 {
-        var i: u64 = hash(key, @truncate(self.dictionary.len));
+        var i: u64 = Wyhash.hash(0, key) & self.dictionary.len - 1;
         while (true) {
             if (self.dictionary[i] == 0)
                 return 0;
@@ -171,7 +173,7 @@ pub const Index = struct {
             if (std.mem.eql(u8, term, key))
                 return @truncate(self.dictionary[i] + @sizeOf(u16) + term.len);
 
-            i = i + 1 & (self.dictionary.len - 1);
+            i = i + 1 & self.dictionary.len - 1;
         }
     }
 };

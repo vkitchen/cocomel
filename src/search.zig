@@ -34,6 +34,7 @@ pub const Search = struct {
     postings: std.ArrayList(u64),
     topk: TopK = .{},
     accumulators: []align(32) u16,
+    segment_buffer: []u32,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
@@ -67,6 +68,7 @@ pub const Search = struct {
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(u64).initCapacity(allocator, config.max_query_terms),
             .accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len),
+            .segment_buffer = try allocator.alloc(u32, index.docs.len), // TODO this only needs to be max_segment_len
         };
     }
 
@@ -91,11 +93,15 @@ pub const Search = struct {
         // Special case for single term query skipping accumulator reset
         if (self.postings.items.len == 1) {
             while (true) {
-                self.postings.items[0] = self.index.processChunkNoAccumulators(self.postings.items[0], &self.topk);
+                const score = self.index.segmentScore(self.postings.items[0]);
+                const pair = self.index.decompressSegment(self.postings.items[0], self.segment_buffer);
+                self.postings.items[0] = pair[0];
+                for (0..@min(self.topk.cap - self.topk.len, pair[1])) |i|
+                    self.topk.saturate(.{ .doc_id = self.segment_buffer[i], .score = score });
                 // Successfully filled topk
                 if (self.topk.cap == self.topk.len) break;
                 // Term exhausted
-                if (self.index.chunkScore(self.postings.items[0]) == 0) break;
+                if (self.index.segmentScore(self.postings.items[0]) == 0) break;
             }
             return self.topk.results();
         }
@@ -107,33 +113,46 @@ pub const Search = struct {
 
         // Saturate top-k with highest scoring term
         for (self.postings.items, 0..) |offset, i| {
-            if (self.index.chunkScore(offset) > max_impact) {
-                max_impact = self.index.chunkScore(offset);
+            if (self.index.segmentScore(offset) > max_impact) {
+                max_impact = self.index.segmentScore(offset);
                 max_i = i;
             }
         }
 
         while (true) {
-            self.postings.items[max_i] = self.index.processChunkSaturate(self.postings.items[max_i], &self.topk, self.accumulators);
+            const score = self.index.segmentScore(self.postings.items[max_i]);
+            const pair = self.index.decompressSegment(self.postings.items[max_i], self.segment_buffer);
+            self.postings.items[max_i] = pair[0];
+            for (0..pair[1]) |i| {
+                const doc_id = self.segment_buffer[i];
+                self.topk.saturate(.{ .doc_id = doc_id, .score = score });
+                self.accumulators[doc_id] = score;
+            }
             // Successfully filled topk
             if (self.topk.cap == self.topk.len) break;
             // Term exhausted
-            if (self.index.chunkScore(self.postings.items[max_i]) == 0) break;
+            if (self.index.segmentScore(self.postings.items[max_i]) == 0) break;
         }
 
         // Now process normally
         while (true) {
             max_impact = 0;
             for (self.postings.items, 0..) |offset, i| {
-                if (self.index.chunkScore(offset) > max_impact) {
-                    max_impact = self.index.chunkScore(offset);
+                if (self.index.segmentScore(offset) > max_impact) {
+                    max_impact = self.index.segmentScore(offset);
                     max_i = i;
                 }
             }
 
             if (max_impact == 0) break;
 
-            self.postings.items[max_i] = self.index.processChunk(self.postings.items[max_i], &self.topk, self.accumulators);
+            const pair = self.index.decompressSegment(self.postings.items[max_i], self.segment_buffer);
+            self.postings.items[max_i] = pair[0];
+            for (0..pair[1]) |i| {
+                const doc_id = self.segment_buffer[i];
+                self.accumulators[doc_id] += max_impact;
+                self.topk.insert(.{ .doc_id = doc_id, .score = self.accumulators[doc_id] });
+            }
         }
 
         return self.topk.sorted();

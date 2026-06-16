@@ -100,68 +100,29 @@ pub const Index = struct {
         return [2]u64{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    pub fn chunkScore(self: *const Self, offset: u64) ImpactType {
+    pub fn segmentScore(self: *const Self, offset: u64) ImpactType {
         if (read32(self.index, offset) == 0) return 0;
         const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
         return score;
     }
 
-    // Special case for only one term
-    pub fn processChunkNoAccumulators(self: *const Self, offset: u64, topk: *TopK) u64 {
+    pub fn decompressSegment(self: *const Self, offset: u64, buf: []u32) [2]u64 {
         const ids_len = read32(self.index, offset);
-        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
         const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
 
+        var buf_i: u64 = 0;
         var i: u32 = 0;
         var last_id: u32 = 0;
         while (i < ids_len) {
             var doc_id: u32 = 0;
             i += vbyte.read(self.index[ids + i ..], &doc_id);
             doc_id += last_id;
-            topk.saturate(.{ .doc_id = doc_id, .score = score });
+            buf[buf_i] = doc_id;
+            buf_i += 1;
             last_id = doc_id;
         }
 
-        return offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len;
-    }
-
-    // Special case for first term
-    pub fn processChunkSaturate(self: *const Self, offset: u64, topk: *TopK, accumulators: []u16) u64 {
-        const ids_len = read32(self.index, offset);
-        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
-        const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
-
-        var i: u32 = 0;
-        var last_id: u32 = 0;
-        while (i < ids_len) {
-            var doc_id: u32 = 0;
-            i += vbyte.read(self.index[ids + i ..], &doc_id);
-            doc_id += last_id;
-            accumulators[doc_id] += score;
-            topk.saturate(.{ .doc_id = doc_id, .score = accumulators[doc_id] });
-            last_id = doc_id;
-        }
-
-        return offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len;
-    }
-
-    pub fn processChunk(self: *const Self, offset: u64, topk: *TopK, accumulators: []u16) u64 {
-        const ids_len = read32(self.index, offset);
-        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
-        const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
-
-        var i: u32 = 0;
-        var last_id: u32 = 0;
-        while (i < ids_len) {
-            var doc_id: u32 = 0;
-            i += vbyte.read(self.index[ids + i ..], &doc_id);
-            doc_id += last_id;
-            accumulators[doc_id] += score;
-            topk.insert(.{ .doc_id = doc_id, .score = accumulators[doc_id] });
-            last_id = doc_id;
-        }
-
-        return offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len;
+        return .{ offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len, buf_i };
     }
 
     pub fn find(self: *const Self, key: []const u8) u64 {

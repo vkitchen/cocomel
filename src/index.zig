@@ -112,14 +112,11 @@ pub const Index = struct {
 
         var buf_i: u64 = 0;
         var i: u32 = 0;
-        var last_id: u32 = 0;
         while (i < ids_len) {
             var doc_id: u32 = 0;
             i += vbyte.read(self.index[ids + i ..], &doc_id);
-            doc_id += last_id;
             buf[buf_i] = doc_id;
             buf_i += 1;
-            last_id = doc_id;
         }
 
         return .{ offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len, buf_i };

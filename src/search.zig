@@ -24,6 +24,14 @@ fn memset(dest: []align(32) u8) void {
     c.memset_avx2(dest.ptr, dest.len);
 }
 
+fn cumulative_sum(doc_ids: []u32) void {
+    var last_id: u32 = 0;
+    for (0..doc_ids.len) |i| {
+        doc_ids[i] += last_id;
+        last_id = doc_ids[i];
+    }
+}
+
 pub const Search = struct {
     const Self = @This();
 
@@ -95,6 +103,7 @@ pub const Search = struct {
             while (true) {
                 const score = self.index.segmentScore(self.postings.items[0]);
                 const pair = self.index.decompressSegment(self.postings.items[0], self.segment_buffer);
+                cumulative_sum(self.segment_buffer[0..pair[1]]);
                 self.postings.items[0] = pair[0];
                 for (0..@min(self.topk.cap - self.topk.len, pair[1])) |i|
                     self.topk.saturate(.{ .doc_id = self.segment_buffer[i], .score = score });
@@ -122,6 +131,7 @@ pub const Search = struct {
         while (true) {
             const score = self.index.segmentScore(self.postings.items[max_i]);
             const pair = self.index.decompressSegment(self.postings.items[max_i], self.segment_buffer);
+            cumulative_sum(self.segment_buffer[0..pair[1]]);
             self.postings.items[max_i] = pair[0];
             for (0..pair[1]) |i| {
                 const doc_id = self.segment_buffer[i];
@@ -147,6 +157,7 @@ pub const Search = struct {
             if (max_impact == 0) break;
 
             const pair = self.index.decompressSegment(self.postings.items[max_i], self.segment_buffer);
+            cumulative_sum(self.segment_buffer[0..pair[1]]);
             self.postings.items[max_i] = pair[0];
             for (0..pair[1]) |i| {
                 const doc_id = self.segment_buffer[i];

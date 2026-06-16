@@ -33,6 +33,11 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         }),
     });
+    daemon.root_module.addCSourceFile(.{
+        .file = b.path("src/memset_avx2.c"),
+    });
+    daemon.root_module.addIncludePath(b.path("src"));
+    daemon.root_module.linkSystemLibrary("c", .{});
     b.installArtifact(daemon);
 
     const search_client = b.addExecutable(.{
@@ -53,6 +58,11 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         }),
     });
+    search_cli.root_module.addCSourceFile(.{
+        .file = b.path("src/memset_avx2.c"),
+    });
+    search_cli.root_module.addIncludePath(b.path("src"));
+    search_cli.root_module.linkSystemLibrary("c", .{});
     b.installArtifact(search_cli);
 
     const search_trec = b.addExecutable(.{
@@ -63,6 +73,11 @@ pub fn build(b: *std.Build) !void {
             .optimize = optimize,
         }),
     });
+    search_trec.root_module.addCSourceFile(.{
+        .file = b.path("src/memset_avx2.c"),
+    });
+    search_trec.root_module.addIncludePath(b.path("src"));
+    search_trec.root_module.linkSystemLibrary("c", .{});
     b.installArtifact(search_trec);
 
     const stats = b.addExecutable(.{

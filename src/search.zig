@@ -16,42 +16,12 @@ const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
 
-// ChatGPT generated
-pub fn memsetAvx2Aligned(dest: [*]align(32) u8, len: usize, value: u8) void {
-    const Vec = @Vector(32, u8);
+const c = @cImport({
+    @cInclude("memset_avx2.h");
+});
 
-    const v: Vec = @splat(value);
-
-    var ptr = dest;
-    var remaining = len;
-
-    // 256-byte chunks (8 AVX stores)
-    while (remaining >= 256) {
-        @as(*align(32) Vec, @ptrCast(ptr)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 32)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 64)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 96)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 128)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 160)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 192)).* = v;
-        @as(*align(32) Vec, @ptrCast(ptr + 224)).* = v;
-
-        ptr += 256;
-        remaining -= 256;
-    }
-
-    while (remaining >= 32) {
-        @as(*align(32) Vec, @ptrCast(ptr)).* = v;
-        ptr += 32;
-        remaining -= 32;
-    }
-
-    var ptr1: [*]align(1) u8 = ptr;
-    while (remaining > 0) {
-        ptr1[0] = value;
-        ptr1 += 1;
-        remaining -= 1;
-    }
+fn memset(dest: []align(32) u8) void {
+    c.memset_avx2(dest.ptr, dest.len);
 }
 
 pub const Search = struct {
@@ -130,8 +100,7 @@ pub const Search = struct {
             return self.topk.results();
         }
 
-        // @memset(self.accumulators, 0);
-        memsetAvx2Aligned(@ptrCast(std.mem.sliceAsBytes(self.accumulators)), self.accumulators.len * 2, 0);
+        memset(std.mem.sliceAsBytes(self.accumulators));
 
         var max_impact: u16 = 0;
         var max_i: usize = 0;

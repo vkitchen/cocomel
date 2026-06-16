@@ -16,6 +16,44 @@ const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
 
+// ChatGPT generated
+pub fn memsetAvx2Aligned(dest: [*]align(32) u8, len: usize, value: u8) void {
+    const Vec = @Vector(32, u8);
+
+    const v: Vec = @splat(value);
+
+    var ptr = dest;
+    var remaining = len;
+
+    // 256-byte chunks (8 AVX stores)
+    while (remaining >= 256) {
+        @as(*align(32) Vec, @ptrCast(ptr)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 32)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 64)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 96)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 128)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 160)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 192)).* = v;
+        @as(*align(32) Vec, @ptrCast(ptr + 224)).* = v;
+
+        ptr += 256;
+        remaining -= 256;
+    }
+
+    while (remaining >= 32) {
+        @as(*align(32) Vec, @ptrCast(ptr)).* = v;
+        ptr += 32;
+        remaining -= 32;
+    }
+
+    var ptr1: [*]align(1) u8 = ptr;
+    while (remaining > 0) {
+        ptr1[0] = value;
+        ptr1 += 1;
+        remaining -= 1;
+    }
+}
+
 pub const Search = struct {
     const Self = @This();
 
@@ -25,7 +63,7 @@ pub const Search = struct {
     query: std.ArrayListUnmanaged(query.Term),
     postings: std.ArrayList(u64),
     topk: TopK = .{},
-    accumulators: []u16,
+    accumulators: []align(32) u16,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
@@ -58,7 +96,7 @@ pub const Search = struct {
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(u64).initCapacity(allocator, config.max_query_terms),
-            .accumulators = try allocator.alloc(u16, index.docs.len),
+            .accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len),
         };
     }
 
@@ -92,7 +130,8 @@ pub const Search = struct {
             return self.topk.results();
         }
 
-        @memset(self.accumulators, 0);
+        // @memset(self.accumulators, 0);
+        memsetAvx2Aligned(@ptrCast(std.mem.sliceAsBytes(self.accumulators)), self.accumulators.len * 2, 0);
 
         var max_impact: u16 = 0;
         var max_i: usize = 0;

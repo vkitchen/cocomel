@@ -14,6 +14,16 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
+    const translate_c = b.addTranslateC(.{
+        .root_source_file = b.path("src/memset_avx2.h"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const c_mod = translate_c.createModule();
+    c_mod.addCSourceFile(.{
+        .file = b.path("src/memset_avx2.c"),
+    });
+
     const indexer = b.addExecutable(.{
         .name = "index",
         .root_module = b.createModule(.{
@@ -31,13 +41,14 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/prog_cocomel.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "c",
+                    .module = c_mod,
+                },
+            },
         }),
     });
-    daemon.root_module.addCSourceFile(.{
-        .file = b.path("src/memset_avx2.c"),
-    });
-    daemon.root_module.addIncludePath(b.path("src"));
-    daemon.root_module.linkSystemLibrary("c", .{});
     b.installArtifact(daemon);
 
     const search_client = b.addExecutable(.{
@@ -56,13 +67,14 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/prog_search.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "c",
+                    .module = c_mod,
+                },
+            },
         }),
     });
-    search_cli.root_module.addCSourceFile(.{
-        .file = b.path("src/memset_avx2.c"),
-    });
-    search_cli.root_module.addIncludePath(b.path("src"));
-    search_cli.root_module.linkSystemLibrary("c", .{});
     b.installArtifact(search_cli);
 
     const search_trec = b.addExecutable(.{
@@ -71,13 +83,14 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/prog_search_trec.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "c",
+                    .module = c_mod,
+                },
+            },
         }),
     });
-    search_trec.root_module.addCSourceFile(.{
-        .file = b.path("src/memset_avx2.c"),
-    });
-    search_trec.root_module.addIncludePath(b.path("src"));
-    search_trec.root_module.linkSystemLibrary("c", .{});
     b.installArtifact(search_trec);
 
     const stats = b.addExecutable(.{

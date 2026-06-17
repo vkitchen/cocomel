@@ -16,9 +16,7 @@ const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
 
-const c = @cImport({
-    @cInclude("memset_avx2.h");
-});
+const c = @import("c");
 
 fn memset(dest: []align(32) u8) void {
     c.memset_avx2(dest.ptr, dest.len);

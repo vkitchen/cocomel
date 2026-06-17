@@ -173,8 +173,6 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
         try self.writer.interface.writeSliceEndian(u64, dictionary_offsets, native_endian);
 
-        std.debug.print("Terms count {d}\n", .{dictionary.len});
-
         // Header
         while (self.writer.logicalPos() % @alignOf(index.Header) != 0) try self.writer.interface.writeByte(0);
         try self.writer.interface.writeStruct(index.Header{

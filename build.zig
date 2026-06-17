@@ -15,13 +15,19 @@ pub fn build(b: *std.Build) !void {
     });
 
     const translate_c = b.addTranslateC(.{
-        .root_source_file = b.path("src/memset_avx2.h"),
+        .root_source_file = b.path("src/c.h"),
         .target = target,
         .optimize = optimize,
     });
     const c_mod = translate_c.createModule();
-    c_mod.addCSourceFile(.{
-        .file = b.path("src/memset_avx2.c"),
+    c_mod.addIncludePath(b.path("vendor/simdcomp/include"));
+    c_mod.addCSourceFiles(.{
+        .files = &.{
+            "vendor/simdcomp/src/simdcomputil.c",
+            "vendor/simdcomp/src/simdbitpacking.c",
+            "src/memset_avx2.c",
+            "src/compress_int_bp128.c",
+        },
     });
 
     const indexer = b.addExecutable(.{
@@ -30,6 +36,12 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/prog_index.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "c",
+                    .module = c_mod,
+                },
+            },
         }),
     });
     indexer.root_module.addImport("clap", clap_dep.module("clap"));
@@ -110,6 +122,12 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path("src/prog_convert.zig"),
             .target = target,
             .optimize = optimize,
+            .imports = &.{
+                .{
+                    .name = "c",
+                    .module = c_mod,
+                },
+            },
         }),
     });
     convert.root_module.addImport("protobuf", protobuf_dep.module("protobuf"));

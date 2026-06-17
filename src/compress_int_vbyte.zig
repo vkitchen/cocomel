@@ -67,6 +67,20 @@ pub fn store(p: []u8, val: u32) u32 {
     }
 }
 
+pub fn unpack(in: []const u8, count: usize, out: []u32) usize {
+    var bytes_read: usize = 0;
+    for (0..count) |i|
+        bytes_read += read(in[bytes_read..], &out[i]);
+    return bytes_read;
+}
+
+pub fn pack(in: []u32, out: []u8) usize {
+    var bytes_written: usize = 0;
+    for (in) |val|
+        bytes_written += store(out[bytes_written..], val);
+    return bytes_written;
+}
+
 test "vbyte" {
     const std = @import("std");
 

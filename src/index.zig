@@ -13,6 +13,8 @@ const vbyte = @import("compress_int_vbyte.zig");
 const TopK = @import("top_k_insert.zig").TopKInsert;
 const Stemmer = @import("stem.zig").Stemmer;
 
+const c = @import("c");
+
 pub const version = 1;
 
 pub const ImpactType = if (((1 << config.quantise_bits) - 1) > std.math.maxInt(u8)) u16 else u8;
@@ -101,25 +103,18 @@ pub const Index = struct {
     }
 
     pub fn segmentScore(self: *const Self, offset: u64) ImpactType {
-        if (read32(self.index, offset) == 0) return 0;
-        const score = if (ImpactType == u16) read16(self.index, offset + @sizeOf(u32)) else self.index[offset + @sizeOf(u32)];
-        return score;
+        return if (ImpactType == u16) read16(self.index, offset) else self.index[offset];
     }
 
     pub fn decompressSegment(self: *const Self, offset: u64, buf: []u32) [2]u64 {
-        const ids_len = read32(self.index, offset);
-        const ids = offset + @sizeOf(u32) + @sizeOf(ImpactType);
+        const doc_count = read32(self.index, offset + @sizeOf(ImpactType));
+        const ids = offset + @sizeOf(ImpactType) + @sizeOf(u32);
 
-        var buf_i: u64 = 0;
-        var i: u32 = 0;
-        while (i < ids_len) {
-            var doc_id: u32 = 0;
-            i += vbyte.read(self.index[ids + i ..], &doc_id);
-            buf[buf_i] = doc_id;
-            buf_i += 1;
-        }
+        const bp128_compressed = (doc_count / 128) * 128;
+        var bytes_read = c.compress_int_bp128_unpack(self.index[ids..].ptr, bp128_compressed, buf.ptr);
+        bytes_read += vbyte.unpack(self.index[ids + bytes_read ..], doc_count - bp128_compressed, buf[bp128_compressed..]);
 
-        return .{ offset + @sizeOf(u32) + @sizeOf(ImpactType) + ids_len, buf_i };
+        return .{ offset + @sizeOf(ImpactType) + @sizeOf(u32) + bytes_read, doc_count };
     }
 
     pub fn find(self: *const Self, key: []const u8) u64 {

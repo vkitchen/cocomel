@@ -15,6 +15,8 @@ const Quantiser = @import("quantiser.zig").Quantiser;
 const vbyte = @import("compress_int_vbyte.zig");
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
+const c = @import("c");
+
 const file_format = std.fmt.comptimePrint("cocomel v{d}\n", .{index.version});
 
 var writer_buf: [config.io_buffer_size]u8 = undefined;
@@ -101,9 +103,12 @@ pub const CcmlSerialiser = struct {
         @memset(dictionary_offsets, 0);
 
         // Quantise
-        var doc_ids = [_]std.ArrayList(u8){.empty} ** (1 << config.quantise_bits);
+        var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
+        for (&doc_ids) |*d| try d.resize(allocator, docs.items.len); // reserve so arena doesn't get trampled
 
         const quantiser = Quantiser.init(min_score, max_score);
+
+        const compression_buffer = try allocator.alloc(u8, docs.items.len * @sizeOf(u32));
 
         for (dictionary.store, 0..) |post, hi| {
             if (post == null) continue;
@@ -112,26 +117,32 @@ pub const CcmlSerialiser = struct {
 
             // Processing pre-quantised CIFF?
             if (quantise) {
-                try post.?.quantise(allocator, docs, &ranker, quantiser, &doc_ids);
+                try post.?.quantise(docs, &ranker, quantiser, &doc_ids);
             } else {
-                try post.?.distribute(allocator, &doc_ids);
+                try post.?.distribute(&doc_ids);
             }
 
             // Write postings
             const term_offset = self.writer.logicalPos();
             try self.writeStr(post.?.term);
 
-            // Write chunks
+            // Write segments
             var i: index.ImpactType = (1 << config.quantise_bits) - 1;
             while (i > 0) : (i -= 1) {
                 if (doc_ids[i].items.len == 0)
                     continue;
-                try self.writer.interface.writeInt(u32, @truncate(doc_ids[i].items.len), native_endian);
+
+                const bp128_compressed = (doc_ids[i].items.len / 128) * 128;
+
+                var bytes_written = c.compress_int_bp128_pack(doc_ids[i].items.ptr, bp128_compressed, compression_buffer.ptr);
+                bytes_written += vbyte.pack(doc_ids[i].items[bp128_compressed..], compression_buffer[bytes_written..]);
+
                 try self.writer.interface.writeInt(index.ImpactType, i, native_endian);
-                try self.writer.interface.writeAll(doc_ids[i].items);
+                try self.writer.interface.writeInt(u32, @truncate(doc_ids[i].items.len), native_endian);
+                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
             }
             // Null terminate
-            try self.writer.interface.writeInt(u32, 0, native_endian);
+            try self.writer.interface.writeInt(index.ImpactType, 0, native_endian);
 
             dictionary_offsets[hi] = term_offset;
         }

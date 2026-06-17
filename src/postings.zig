@@ -80,7 +80,7 @@ pub const Postings = struct {
         return .{ min_score, max_score };
     }
 
-    pub fn quantise(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u8)) !void {
+    pub fn quantise(self: *Self, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u32)) !void {
         var last_ids = [_]u32{0} ** (1 << config.quantise_bits);
 
         ranker.compIdf(@floatFromInt(self.df_t + 1));
@@ -101,10 +101,7 @@ pub const Postings = struct {
             tfs_i += 1;
 
             // Store quantised value
-            try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
-            const last = doc_ids[rsv].items.len;
-            doc_ids[rsv].items.len += 5;
-            doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
+            doc_ids[rsv].appendAssumeCapacity(doc_id - last_ids[rsv]);
             last_ids[rsv] = doc_id;
 
             if (ids_i >= ids_chunk.?.items.len) {
@@ -122,13 +119,10 @@ pub const Postings = struct {
         const doc_len = docs.items[self.id].len;
         const doc_score = ranker.compScore(@floatFromInt(self.freq), @floatFromInt(doc_len));
         const rsv = quantiser.quantise(doc_score);
-        try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
-        const last = doc_ids[rsv].items.len;
-        doc_ids[rsv].items.len += 5;
-        doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], self.id - last_ids[rsv]);
+        doc_ids[rsv].appendAssumeCapacity(self.id - last_ids[rsv]);
     }
 
-    pub fn distribute(self: *Self, allocator: std.mem.Allocator, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u8)) !void {
+    pub fn distribute(self: *Self, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u32)) !void {
         var last_ids = [_]u32{0} ** (1 << config.quantise_bits);
 
         var ids_chunk = self.ids.first;
@@ -145,10 +139,7 @@ pub const Postings = struct {
             tfs_i += 1;
 
             // Store quantised value
-            try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
-            const last = doc_ids[rsv].items.len;
-            doc_ids[rsv].items.len += 5;
-            doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], doc_id - last_ids[rsv]);
+            doc_ids[rsv].appendAssumeCapacity(doc_id - last_ids[rsv]);
             last_ids[rsv] = doc_id;
 
             if (ids_i >= ids_chunk.?.items.len) {
@@ -164,9 +155,6 @@ pub const Postings = struct {
 
         // Quantise last
         const rsv = self.freq;
-        try doc_ids[rsv].ensureUnusedCapacity(allocator, 5);
-        const last = doc_ids[rsv].items.len;
-        doc_ids[rsv].items.len += 5;
-        doc_ids[rsv].items.len -= 5 - vbyte.store(doc_ids[rsv].items[last..], self.id - last_ids[rsv]);
+        doc_ids[rsv].appendAssumeCapacity(self.id - last_ids[rsv]);
     }
 };

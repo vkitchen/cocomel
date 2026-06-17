@@ -108,6 +108,7 @@ pub const CcmlSerialiser = struct {
 
         const quantiser = Quantiser.init(min_score, max_score);
 
+        var vbyte_buffer: [5]u8 = undefined;
         const compression_buffer = try allocator.alloc(u8, docs.items.len * @sizeOf(u32));
 
         for (dictionary.store, 0..) |post, hi| {
@@ -137,8 +138,10 @@ pub const CcmlSerialiser = struct {
                 var bytes_written = c.compress_int_bp128_pack(doc_ids[i].items.ptr, bp128_compressed, compression_buffer.ptr);
                 bytes_written += vbyte.pack(doc_ids[i].items[bp128_compressed..], compression_buffer[bytes_written..]);
 
+                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[i].items.len));
+
                 try self.writer.interface.writeInt(index.ImpactType, i, native_endian);
-                try self.writer.interface.writeInt(u32, @truncate(doc_ids[i].items.len), native_endian);
+                try self.writer.interface.writeAll(vbyte_buffer[0..segment_len]);
                 try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
             }
             // Null terminate

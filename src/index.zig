@@ -107,14 +107,14 @@ pub const Index = struct {
     }
 
     pub fn decompressSegment(self: *const Self, offset: u64, buf: []u32) [2]u64 {
-        const doc_count = read32(self.index, offset + @sizeOf(ImpactType));
-        const ids = offset + @sizeOf(ImpactType) + @sizeOf(u32);
+        var doc_count: u32 = 0;
+        const ids = offset + @sizeOf(ImpactType) + vbyte.read(self.index[offset + @sizeOf(ImpactType) ..], &doc_count);
 
         const bp128_compressed = (doc_count / 128) * 128;
         var bytes_read = c.compress_int_bp128_unpack(self.index[ids..].ptr, bp128_compressed, buf.ptr);
         bytes_read += vbyte.unpack(self.index[ids + bytes_read ..], doc_count - bp128_compressed, buf[bp128_compressed..]);
 
-        return .{ offset + @sizeOf(ImpactType) + @sizeOf(u32) + bytes_read, doc_count };
+        return .{ ids + bytes_read, doc_count };
     }
 
     pub fn find(self: *const Self, key: []const u8) u64 {

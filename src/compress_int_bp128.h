@@ -6,5 +6,7 @@
 
 size_t compress_int_bp128_pack(uint32_t *in, size_t len, uint8_t *out);
 size_t compress_int_bp128_unpack(const uint8_t *in, size_t count, uint32_t *out);
+size_t compress_int_bp128_pack_d1(uint32_t *in, size_t len, uint8_t *out);
+size_t compress_int_bp128_unpack_d1(const uint8_t *in, size_t count, uint32_t *out);
 
 #endif

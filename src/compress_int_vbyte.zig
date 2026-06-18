@@ -81,6 +81,17 @@ pub fn pack(in: []u32, out: []u8) usize {
     return bytes_written;
 }
 
+pub fn unpackD1(offset: u32, in: []const u8, count: usize, out: []u32) usize {
+    var last_id = offset;
+    var bytes_read: usize = 0;
+    for (0..count) |i| {
+        bytes_read += read(in[bytes_read..], &out[i]);
+        out[i] += last_id;
+        last_id = out[i];
+    }
+    return bytes_read;
+}
+
 test "vbyte" {
     const std = @import("std");
 

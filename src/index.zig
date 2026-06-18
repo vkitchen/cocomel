@@ -111,8 +111,9 @@ pub const Index = struct {
         const ids = offset + @sizeOf(ImpactType) + vbyte.read(self.index[offset + @sizeOf(ImpactType) ..], &doc_count);
 
         const bp128_compressed = (doc_count / 128) * 128;
-        var bytes_read = c.compress_int_bp128_unpack(self.index[ids..].ptr, bp128_compressed, buf.ptr);
-        bytes_read += vbyte.unpack(self.index[ids + bytes_read ..], doc_count - bp128_compressed, buf[bp128_compressed..]);
+        var bytes_read = c.compress_int_bp128_unpack_d1(self.index[ids..].ptr, bp128_compressed, buf.ptr);
+        const last_id: u32 = if (bp128_compressed > 0) buf[bp128_compressed - 1] else 0;
+        bytes_read += vbyte.unpackD1(last_id, self.index[ids + bytes_read ..], doc_count - bp128_compressed, buf[bp128_compressed..]);
 
         return .{ ids + bytes_read, doc_count };
     }

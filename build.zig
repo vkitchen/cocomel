@@ -25,9 +25,10 @@ pub fn build(b: *std.Build) !void {
         .files = &.{
             "vendor/simdcomp/src/simdcomputil.c",
             "vendor/simdcomp/src/simdbitpacking.c",
+            "vendor/simdcomp/src/simdpackedselect.c",
+            "vendor/simdcomp/src/simdintegratedbitpacking.c",
             "src/memset_avx2.c",
             "src/compress_int_bp128.c",
-            "src/cumulative_sum.c",
         },
     });
 

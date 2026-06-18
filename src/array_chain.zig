@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-const initial_capacity = 64;
+const initial_capacity = 128;
 
 pub fn ArrayChain(comptime T: type) type {
     return struct {
@@ -24,7 +24,7 @@ pub fn ArrayChain(comptime T: type) type {
             var chunk = self.last;
             if (chunk == null) {
                 chunk = try allocator.create(Chunk);
-                chunk.?.items = try allocator.alloc(T, initial_capacity);
+                chunk.?.items = try allocator.alloc(T, initial_capacity / @sizeOf(T));
                 chunk.?.items.len = 0;
                 chunk.?.capacity = initial_capacity;
                 chunk.?.next = null;

@@ -79,9 +79,6 @@ void cumulative_sum(uint32_t *data, size_t len) {
 	/*
 		Process remaining
 	*/
-	uint32_t previous = data[len_8 - 1];
-	for (size_t i = len_8; i < len; i++) {
-		data[i] += previous;
-		previous = data[i];
-	}
+	for (size_t i = len_8; i < len; i++)
+		data[i] += data[i-1];
 }

@@ -5,21 +5,17 @@
 // len = num ints
 // return = num bytes
 size_t compress_int_bp128_pack(uint32_t *in, size_t len, uint8_t *out) {
-	size_t written = 0;
+	uint8_t *p = out;
 
-	for (size_t read = 0; read < len; read += 128) {
+	for (uint32_t *end = in + len; in < end; in += 128) {
 		const uint8_t b = maxbits(in);
-		*out++ = b;
-		written += sizeof(uint8_t);
+		*p++ = b;
 
-		simdpackwithoutmask(in, (__m128i *)out, b);
-		in += 128;
-		out += b * sizeof(__m128i);
-
-		written += b * sizeof(__m128i);
+		simdpackwithoutmask(in, (__m128i *)p, b);
+		p += b * sizeof(__m128i);
 	}
 
-	return written;
+	return p - out;
 }
 
 // count = num ints

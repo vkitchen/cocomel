@@ -5,6 +5,8 @@
 
 const std = @import("std");
 
+const initial_capacity = 64;
+
 pub fn ArrayChain(comptime T: type) type {
     return struct {
         const Self = @This();
@@ -17,20 +19,18 @@ pub fn ArrayChain(comptime T: type) type {
 
         first: ?*Chunk = null,
         last: ?*Chunk = null,
-        next_chunk_size: usize = 64,
 
         fn ensureChunk(self: *Self, allocator: std.mem.Allocator) !void {
             var chunk = self.last;
             if (chunk == null) {
                 chunk = try allocator.create(Chunk);
-                chunk.?.items = try allocator.alloc(T, self.next_chunk_size);
+                chunk.?.items = try allocator.alloc(T, initial_capacity);
                 chunk.?.items.len = 0;
-                chunk.?.capacity = self.next_chunk_size;
+                chunk.?.capacity = initial_capacity;
                 chunk.?.next = null;
 
                 self.first = chunk;
                 self.last = chunk;
-                self.next_chunk_size *= 2;
             }
         }
 
@@ -40,14 +40,13 @@ pub fn ArrayChain(comptime T: type) type {
             var chunk = self.last.?;
             if (chunk.items.len + additional_count >= chunk.capacity) {
                 var nextChunk = try allocator.create(Chunk);
-                nextChunk.items = try allocator.alloc(T, self.next_chunk_size);
+                nextChunk.items = try allocator.alloc(T, chunk.capacity * 2);
                 nextChunk.items.len = 0;
-                nextChunk.capacity = self.next_chunk_size;
+                nextChunk.capacity = chunk.capacity * 2;
                 nextChunk.next = null;
 
                 chunk.next = nextChunk;
                 self.last = nextChunk;
-                self.next_chunk_size *= 2;
             }
         }
 

@@ -104,6 +104,8 @@ pub fn build(b: *std.Build) !void {
             },
         }),
     });
+    if (optimize == .ReleaseFast)
+        search_trec.lto = std.zig.LtoMode.full;
     b.installArtifact(search_trec);
 
     const stats = b.addExecutable(.{

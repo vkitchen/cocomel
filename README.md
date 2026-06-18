@@ -44,7 +44,7 @@ The disadvantage of score-at-a-time is the lack of conjuctive queries (AND opera
 
 ## Compiling
 
-You'll need to install Zig `0.16.0` then run `zig build -Doptimize=ReleaseSafe`.
+You'll need to install Zig `0.16.0` then run `zig build -Doptimize=ReleaseFast`.
 Other versions of Zig including nightlies may or may not work but remain untested.
 Zig is still pre-1.0 so expect breakages when attempting to build with other releases.
 

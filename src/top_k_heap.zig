@@ -8,6 +8,8 @@ const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const heap = @import("heap.zig");
 
+var store: [config.max_top_k]Result = undefined;
+
 fn cmpResults(_: void, a: Result, b: Result) bool {
     // Score descending
     if (a.score != b.score)
@@ -32,7 +34,8 @@ pub const TopKHeap = struct {
     pub fn saturate(self: *Self, key: Result) void {
         if (self.saturated) return;
 
-        heap.store[self.len] = key;
+        heap.docids[self.len] = key.docid;
+        heap.scores[self.len] = key.score;
         self.len += 1;
 
         if (self.len == self.cap) {
@@ -47,12 +50,13 @@ pub const TopKHeap = struct {
             // Was in the heap. Promote
             if (key.score - diff != 0) {
                 const where = heap.find(key);
-                heap.store[@intCast(where)].score = key.score;
+                heap.scores[where] = key.score;
                 return;
             }
             // TODO handle unlikely case of querying 3rd term and heap isn't saturated
 
-            heap.store[self.len] = key;
+            heap.docids[self.len] = key.docid;
+            heap.scores[self.len] = key.score;
             self.len += 1;
 
             if (self.len == self.cap) {
@@ -64,26 +68,30 @@ pub const TopKHeap = struct {
         }
 
         // Can't enter heap
-        if (key.score < heap.store[0].score or (key.score == heap.store[0].score and key.docid > heap.store[0].docid))
+        if (key.score < heap.scores[0] or (key.score == heap.scores[0] and key.docid > heap.docids[0]))
             return;
 
         // Previously didn't enter heap. Insert
-        if (key.score - diff < heap.store[0].score or (key.score - diff == heap.store[0].score and key.docid > heap.store[0].docid)) {
+        if (key.score - diff < heap.scores[0] or (key.score - diff == heap.scores[0] and key.docid > heap.docids[0])) {
             heap.push_back(key);
             return;
         }
 
         // Was in the heap. Promote
         const where = heap.find(key);
-        heap.promote(key, @intCast(where));
+        heap.promote(key, where);
     }
 
     pub fn results(self: *Self) []Result {
-        return heap.store[0..self.len];
+        for (0..self.len) |i|
+            store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
+        return store[0..self.len];
     }
 
     pub fn sorted(self: *Self) []Result {
-        std.sort.pdq(Result, heap.store[0..self.len], {}, cmpResults);
-        return heap.store[0..self.len];
+        for (0..self.len) |i|
+            store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
+        std.sort.pdq(Result, store[0..self.len], {}, cmpResults);
+        return store[0..self.len];
     }
 };

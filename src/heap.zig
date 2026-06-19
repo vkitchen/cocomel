@@ -10,12 +10,17 @@
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 
-pub var store: [config.max_top_k]Result = undefined;
+pub var docids: [1024]u32 = [_]u32{0} ** 1024; // Rounded for SIMD
+pub var scores: [config.max_top_k]u16 = undefined;
 
 fn swap(left: usize, right: usize) void {
-    const tmp = store[left];
-    store[left] = store[right];
-    store[right] = tmp;
+    const tmp_docid = docids[left];
+    docids[left] = docids[right];
+    docids[right] = tmp_docid;
+
+    const tmp_score = scores[left];
+    scores[left] = scores[right];
+    scores[right] = tmp_score;
 }
 
 fn left_of(position: usize) usize {
@@ -28,16 +33,16 @@ fn right_of(position: usize) usize {
 
 // Heap is saturated highest impact lowest docid first
 // Therefore a value is considered less than if it has lower score or higher docid
-fn lt(a: Result, b: Result) bool {
-    return a.score < b.score or (a.score == b.score and a.docid > b.docid);
+fn lt(a: usize, b: usize) bool {
+    return scores[a] < scores[b] or (scores[a] == scores[b] and docids[a] > docids[b]);
 }
 
-fn lteq(a: Result, b: Result) bool {
-    return a.score < b.score or (a.score == b.score and a.docid >= b.docid);
+fn lteq(a: Result, b: usize) bool {
+    return a.score < scores[b] or (a.score == scores[b] and a.docid >= docids[b]);
 }
 
-fn gt(a: Result, b: Result) bool {
-    return a.score > b.score or (a.score == b.score and a.docid < b.docid);
+fn gt(a: Result, b: usize) bool {
+    return a.score > scores[b] or (a.score == scores[b] and a.docid < docids[b]);
 }
 
 fn heapify(position: usize) void {
@@ -46,13 +51,13 @@ fn heapify(position: usize) void {
     const left = left_of(position);
     const right = right_of(position);
 
-    if (left < config.max_top_k and lt(store[left], store[position])) {
+    if (left < config.max_top_k and lt(left, position)) {
         smallest = left;
     } else {
         smallest = position;
     }
 
-    if (right < config.max_top_k and lt(store[right], store[smallest]))
+    if (right < config.max_top_k and lt(right, smallest))
         smallest = right;
 
     if (smallest != position) {
@@ -70,18 +75,21 @@ fn insert_from(key: Result, index: usize) void {
 
         // check store out of bound, it's also the stopping condition
         if (left < config.max_top_k and right < config.max_top_k) {
-            if (lteq(key, store[left]) and lteq(key, store[right])) {
+            if (lteq(key, left) and lteq(key, right)) {
                 break; // we're smaller then the left and the right so we're done
-            } else if (lt(store[left], store[right])) {
-                store[position] = store[left];
+            } else if (lt(left, right)) {
+                docids[position] = docids[left];
+                scores[position] = scores[left];
                 position = left;
             } else {
-                store[position] = store[right];
+                docids[position] = docids[right];
+                scores[position] = scores[right];
                 position = right;
             }
         } else if (left < config.max_top_k) { // and right > size (because this is an else)
-            if (gt(key, store[left])) {
-                store[position] = store[left];
+            if (gt(key, left)) {
+                docids[position] = docids[left];
+                scores[position] = scores[left];
                 position = left;
             } else {
                 break;
@@ -91,7 +99,8 @@ fn insert_from(key: Result, index: usize) void {
         }
     }
 
-    store[position] = key;
+    docids[position] = key.docid;
+    scores[position] = key.score;
 }
 
 pub fn make_heap() void {
@@ -106,12 +115,16 @@ pub fn push_back(key: Result) void {
     insert_from(key, 0);
 }
 
-pub fn find(key: Result) i64 {
-    for (0..config.max_top_k) |position|
-        if (store[position].docid == key.docid)
-            return @intCast(position);
+pub fn find(key: Result) usize {
+    const Vec = @Vector(1024, u32);
 
-    return -1;
+    const haystack: Vec = docids;
+    const needle: Vec = @splat(key.docid);
+
+    const mask = haystack == needle;
+    const bits: u1024 = @bitCast(mask);
+
+    return @ctz(bits);
 }
 
 pub fn promote(key: Result, position: usize) void {

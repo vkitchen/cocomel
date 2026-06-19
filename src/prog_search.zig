@@ -33,11 +33,11 @@ pub fn main(init: std.process.Init) !void {
 
     var i: usize = 0;
     while (i < @min(10, results.len)) : (i += 1) {
-        const doc_id = searcher.name(results[i].doc_id);
+        const doc_id = searcher.name(results[i].docid);
         std.debug.print("{d} {s}\n", .{ results[i].score, doc_id[0] });
         if (doc_id[1].len != 0)
             std.debug.print("{s}\n", .{doc_id[1]});
-        const snippet = try searcher.snippet(results[i].doc_id);
+        const snippet = try searcher.snippet(results[i].docid);
         if (snippet.len != 0) {
             for (snippet, 0..) |s, j| {
                 if (j > 0)

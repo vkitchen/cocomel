@@ -8,7 +8,7 @@ const Index = @import("index.zig").Index;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
-const TopK = @import("top_k_insert.zig").TopKInsert;
+const TopK = @import("top_k_heap.zig").TopKHeap;
 const query = @import("tokenizer_query.zig");
 const Stemmer = @import("stem.zig").Stemmer;
 const Snippeter = @import("snippets.zig").Snippeter;
@@ -95,7 +95,7 @@ pub const Search = struct {
                 const pair = self.index.decompressSegment(self.postings.items[0], self.segment_buffer);
                 self.postings.items[0] = pair[0];
                 for (0..@min(self.topk.cap - self.topk.len, pair[1])) |i|
-                    self.topk.saturate(.{ .doc_id = self.segment_buffer[i], .score = score });
+                    self.topk.saturate(.{ .docid = self.segment_buffer[i], .score = score });
                 // Successfully filled topk
                 if (self.topk.cap == self.topk.len) break;
                 // Term exhausted
@@ -123,7 +123,7 @@ pub const Search = struct {
             self.postings.items[max_i] = pair[0];
             for (0..pair[1]) |i| {
                 const doc_id = self.segment_buffer[i];
-                self.topk.saturate(.{ .doc_id = doc_id, .score = score });
+                self.topk.saturate(.{ .docid = doc_id, .score = score });
                 self.accumulators[doc_id] = score;
             }
             // Successfully filled topk
@@ -149,7 +149,7 @@ pub const Search = struct {
             for (0..pair[1]) |i| {
                 const doc_id = self.segment_buffer[i];
                 self.accumulators[doc_id] += max_impact;
-                self.topk.insert(.{ .doc_id = doc_id, .score = self.accumulators[doc_id] });
+                self.topk.insert(.{ .docid = doc_id, .score = self.accumulators[doc_id] }, max_impact);
             }
         }
 

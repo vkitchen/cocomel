@@ -20,7 +20,7 @@ pub const version = 1;
 pub const ImpactType = if (((1 << config.quantise_bits) - 1) > std.math.maxInt(u8)) u16 else u8;
 
 pub const Result = struct {
-    doc_id: u32,
+    docid: u32,
     score: u16,
 };
 

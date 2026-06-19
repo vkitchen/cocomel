@@ -65,7 +65,7 @@ pub fn main(init: std.process.Init) !void {
         var i: usize = query_header.offset;
         while (i < query_header.offset + query_header.no_results and i < results.len) : (i += 1) {
             // url
-            const names = searcher.name(results[i].doc_id);
+            const names = searcher.name(results[i].docid);
             try writer.interface.writeInt(u16, @truncate(names[0].len), native_endian);
             try writer.interface.writeAll(names[0]);
             // doc name
@@ -74,7 +74,7 @@ pub fn main(init: std.process.Init) !void {
                 try writer.interface.writeAll(names[1]);
             // snippet
             var snippet_length: usize = 0;
-            const snippet = try searcher.snippet(results[i].doc_id);
+            const snippet = try searcher.snippet(results[i].docid);
             for (snippet, 0..) |s, j| {
                 if (j > 0)
                     snippet_length += 1;

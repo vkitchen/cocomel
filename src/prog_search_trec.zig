@@ -28,7 +28,7 @@ pub fn main(init: std.process.Init) !void {
         const results = try searcher.search(query);
 
         for (0..@min(results.len, 1000)) |i| {
-            const doc_id = searcher.name(results[i].doc_id);
+            const doc_id = searcher.name(results[i].docid);
             try stdout.interface.print("{d} Q0 {s} {d} {d} cocomel\n", .{ query_id, doc_id[0], i + 1, results[i].score });
         }
     }

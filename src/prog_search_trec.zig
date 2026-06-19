@@ -14,7 +14,11 @@ pub fn main(init: std.process.Init) !void {
     var stdout_buffer: [1024]u8 = undefined;
     var stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
+    const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
+
     var searcher = try Search.init(init.io, init.arena.allocator(), std.Io.Dir.cwd(), config.index_name);
+
+    const read_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
     while (try stdin.interface.takeDelimiter('\n')) |query| {
         var query_id: usize = 0;
@@ -30,4 +34,10 @@ pub fn main(init: std.process.Init) !void {
     }
 
     try stdout.flush();
+
+    const search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
+
+    std.debug.print("Index read time: {d:.3}s\n", .{@as(f64, @floatFromInt(read_time - start_time)) / 1e9});
+    std.debug.print("Search time:     {d:.3}s\n", .{@as(f64, @floatFromInt(search_time - read_time)) / 1e9});
+    std.debug.print("Total time:      {d:.3}s\n", .{@as(f64, @floatFromInt(search_time - start_time)) / 1e9});
 }

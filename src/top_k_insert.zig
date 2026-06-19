@@ -10,6 +10,10 @@ const Result = @import("index.zig").Result;
 
 pub var store: [config.max_top_k]Result = undefined;
 
+fn lt(a: Result, b: Result) bool {
+    return a.score < b.score or (a.score == b.score and a.docid > b.docid);
+}
+
 pub const TopKInsert = struct {
     const Self = @This();
 
@@ -26,20 +30,20 @@ pub const TopKInsert = struct {
         self.len += 1;
     }
 
-    pub fn insert(self: *Self, key: Result) void {
-        const worst_score: u16 = store[self.len - 1].score;
+    pub fn insert(self: *Self, key: Result, _: u32) void {
+        const worst: Result = store[self.len - 1];
         // Can't make top-k
-        if (self.len == self.cap and key.score <= worst_score) return;
+        if (self.len == self.cap and lt(key, worst)) return;
         // Find insert spot
         var i: usize = 0;
-        while (i < self.len and key.score <= store[i].score)
+        while (i < self.len and lt(key, store[i]))
             i += 1;
 
         // Swap our new doc in
         var bumped = store[i];
         store[i] = key;
         // We upgraded this doc and are now done
-        if (key.doc_id == bumped.doc_id)
+        if (key.docid == bumped.docid)
             return;
         i += 1;
         // Shuffle down remainder
@@ -48,7 +52,7 @@ pub const TopKInsert = struct {
             store[i] = bumped;
             bumped = tmp;
             // We upgraded this doc and are now done
-            if (key.doc_id == bumped.doc_id)
+            if (key.docid == bumped.docid)
                 return;
         }
         // Can append bumped doc?

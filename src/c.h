@@ -2,6 +2,6 @@
 #define C_H
 
 #include "memset_avx2.h"
-#include "compress_int_bp128.h"
+#include "compress_int.h"
 
 #endif

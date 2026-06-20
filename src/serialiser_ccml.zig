@@ -133,10 +133,7 @@ pub const CcmlSerialiser = struct {
                 if (doc_ids[i].items.len == 0)
                     continue;
 
-                const bp128_compressed = (doc_ids[i].items.len / 128) * 128;
-
-                var bytes_written = c.compress_int_bp128_pack(doc_ids[i].items.ptr, bp128_compressed, compression_buffer.ptr);
-                bytes_written += vbyte.pack(doc_ids[i].items[bp128_compressed..], compression_buffer[bytes_written..]);
+                const bytes_written = c.compress_int_pack(doc_ids[i].items.ptr, doc_ids[i].items.len, compression_buffer.ptr);
 
                 const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[i].items.len));
 

@@ -29,6 +29,7 @@ pub const TopKHeap = struct {
     pub fn clearRetainingCapacity(self: *Self) void {
         self.len = 0;
         self.saturated = false;
+        @memset(heap.docids[0..1024], 0);
     }
 
     pub fn saturate(self: *Self, key: Result) void {
@@ -47,21 +48,32 @@ pub const TopKHeap = struct {
     pub fn insert(self: *Self, key: Result, diff: u32) void {
         // Heap requires more elements
         if (!self.saturated) {
-            // Was in the heap. Promote
-            if (key.score - diff != 0) {
-                const where = heap.find(key);
-                heap.scores[where] = key.score;
+            // First time this doc has been accumulated
+            if (key.score - diff == 0) {
+                heap.docids[self.len] = key.docid;
+                heap.scores[self.len] = key.score;
+                self.len += 1;
+
+                if (self.len == self.cap) {
+                    heap.make_heap();
+                    self.saturated = true;
+                }
                 return;
             }
-            // TODO handle unlikely case of querying 3rd term and heap isn't saturated
 
-            heap.docids[self.len] = key.docid;
-            heap.scores[self.len] = key.score;
-            self.len += 1;
+            // Was in the heap? Promote
+            const where = heap.find(key);
+            if (where != -1) {
+                heap.scores[@intCast(where)] = key.score;
+            } else {
+                heap.docids[self.len] = key.docid;
+                heap.scores[self.len] = key.score;
+                self.len += 1;
 
-            if (self.len == self.cap) {
-                heap.make_heap();
-                self.saturated = true;
+                if (self.len == self.cap) {
+                    heap.make_heap();
+                    self.saturated = true;
+                }
             }
 
             return;
@@ -79,7 +91,7 @@ pub const TopKHeap = struct {
 
         // Was in the heap. Promote
         const where = heap.find(key);
-        heap.promote(key, where);
+        heap.promote(key, @intCast(where));
     }
 
     pub fn results(self: *Self) []Result {

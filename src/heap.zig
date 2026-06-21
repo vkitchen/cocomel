@@ -115,7 +115,7 @@ pub fn push_back(key: Result) void {
     insert_from(key, 0);
 }
 
-pub fn find(key: Result) usize {
+pub fn find(key: Result) i64 {
     const Vec = @Vector(1024, u32);
 
     const haystack: Vec = docids;
@@ -124,7 +124,10 @@ pub fn find(key: Result) usize {
     const mask = haystack == needle;
     const bits: u1024 = @bitCast(mask);
 
-    return @ctz(bits);
+    if (bits != 0)
+        return @ctz(bits);
+
+    return -1;
 }
 
 pub fn promote(key: Result, position: usize) void {

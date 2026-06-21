@@ -7,12 +7,11 @@
 // Stolen from JASSv2 https://github.com/andrewtrotman/JASSv2/blob/master/source/heap.h
 // Modified for use in cocomel by Vaughan Kitchen
 
-const std = @import("std");
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 
 pub const top_k_rounded = (config.max_top_k + 7) / 8 * 8;
-const KMask = std.meta.Int(.unsigned, top_k_rounded);
+const KMask = @Int(.unsigned, top_k_rounded);
 
 pub var docids: [top_k_rounded]u32 = [_]u32{0} ** top_k_rounded; // Rounded for SIMD
 pub var scores: [config.max_top_k]u16 = undefined;

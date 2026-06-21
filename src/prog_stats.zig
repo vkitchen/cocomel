@@ -54,13 +54,7 @@ pub fn main(init: std.process.Init) !void {
 
         return;
     } else if (res.args.terms != 0) {
-        const cap = read32(index_file, index.header.dictionary_offset);
-        const table = index.header.dictionary_offset + @sizeOf(u32);
-
-        for (0..cap) |i| {
-            const postings_offset = table + i * @sizeOf(u32);
-
-            const term_store = read32(index_file, postings_offset);
+        for (index.dictionary) |term_store| {
             if (term_store == 0)
                 continue;
             const term_length = read16(index_file, term_store);

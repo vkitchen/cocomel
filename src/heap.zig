@@ -7,10 +7,14 @@
 // Stolen from JASSv2 https://github.com/andrewtrotman/JASSv2/blob/master/source/heap.h
 // Modified for use in cocomel by Vaughan Kitchen
 
+const std = @import("std");
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 
-pub var docids: [1024]u32 = [_]u32{0} ** 1024; // Rounded for SIMD
+pub const top_k_rounded = (config.max_top_k + 7) / 8 * 8;
+const KMask = std.meta.Int(.unsigned, top_k_rounded);
+
+pub var docids: [top_k_rounded]u32 = [_]u32{0} ** top_k_rounded; // Rounded for SIMD
 pub var scores: [config.max_top_k]u16 = undefined;
 
 fn swap(left: usize, right: usize) void {
@@ -116,13 +120,13 @@ pub fn push_back(key: Result) void {
 }
 
 pub fn find(key: Result) i64 {
-    const Vec = @Vector(1024, u32);
+    const Vec = @Vector(top_k_rounded, u32);
 
     const haystack: Vec = docids;
     const needle: Vec = @splat(key.docid);
 
     const mask = haystack == needle;
-    const bits: u1024 = @bitCast(mask);
+    const bits: KMask = @bitCast(mask);
 
     if (bits != 0)
         return @ctz(bits);

@@ -29,7 +29,7 @@ pub const TopKHeap = struct {
     pub fn clearRetainingCapacity(self: *Self) void {
         self.len = 0;
         self.saturated = false;
-        @memset(heap.docids[0..1024], 0);
+        @memset(heap.docids[0..heap.top_k_rounded], 0);
     }
 
     pub fn saturate(self: *Self, key: Result) void {

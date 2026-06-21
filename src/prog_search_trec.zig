@@ -22,10 +22,17 @@ pub fn main(init: std.process.Init) !void {
 
     var total_search_time: i96 = 0;
 
-    while (try stdin.interface.takeDelimiter('\n')) |query| {
+    while (try stdin.interface.takeDelimiter('\n')) |query_raw| {
+        var query = query_raw;
         var query_id: usize = 0;
-        if (std.mem.findScalar(u8, query, ' ')) |space|
-            query_id = std.fmt.parseInt(usize, query[0..space], 10) catch 0;
+        if (std.mem.findScalar(u8, query, ' ')) |space| {
+            if (std.fmt.parseInt(usize, query[0..space], 10)) |num| {
+                query_id = num;
+                query = query[space+1..];
+            } else |_| {
+                query_id = 0;
+            }
+        }
 
         const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

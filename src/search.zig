@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const Index = @import("index.zig").Index;
+const SegmentTuple = @import("index.zig").SegmentTuple;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
@@ -29,13 +30,13 @@ pub const Search = struct {
     snippets: bool,
     snippeter: Snippeter,
     query: std.ArrayListUnmanaged(query.Term),
-    postings: std.ArrayList(u64),
+    postings: std.ArrayList(SegmentTuple),
     topk: TopK = .{},
     accumulators: []align(32) u16,
     segment_buffer: []u32,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
-        const index_file = try dir.readFileAlloc(io, index_filename, allocator, std.Io.Limit.unlimited);
+        const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
 
         const index = try Index.init(index_file);
 
@@ -64,7 +65,7 @@ pub const Search = struct {
             .snippets = index.hasSnippets(),
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
-            .postings = try std.ArrayList(u64).initCapacity(allocator, config.max_query_terms),
+            .postings = try std.ArrayList(SegmentTuple).initCapacity(allocator, config.max_query_terms),
             .accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len),
             .segment_buffer = try allocator.alloc(u32, index.docs.len), // TODO this only needs to be max_segment_len
         };
@@ -84,22 +85,24 @@ pub const Search = struct {
 
         // TODO fix term negation
         for (self.query.items) |term| {
-            const offset = self.index.find(term.term);
-            if (offset != 0) self.postings.appendAssumeCapacity(offset);
+            const pair = self.index.find(term.term);
+            if (pair.header != 0) self.postings.appendAssumeCapacity(pair);
         }
 
         // Special case for single term query skipping accumulator reset
         if (self.postings.items.len == 1) {
             while (true) {
-                const score = self.index.segmentScore(self.postings.items[0]);
-                const pair = self.index.decompressSegment(self.postings.items[0], self.segment_buffer);
-                self.postings.items[0] = pair[0];
-                for (0..@min(self.topk.cap - self.topk.len, pair[1])) |i|
+                // Read segment
+                const score = self.index.segmentScore(self.postings.items[0].header);
+                const len = self.index.decompressSegment(&self.postings.items[0], self.segment_buffer);
+
+                // Accumulate segment
+                for (0..@min(self.topk.cap - self.topk.len, len)) |i|
                     self.topk.saturate(.{ .docid = self.segment_buffer[i], .score = score });
                 // Successfully filled topk
                 if (self.topk.cap == self.topk.len) break;
                 // Term exhausted
-                if (self.index.segmentScore(self.postings.items[0]) == 0) break;
+                if (self.index.segmentScore(self.postings.items[0].header) == 0) break;
             }
             return self.topk.results();
         }
@@ -110,18 +113,20 @@ pub const Search = struct {
         var max_i: usize = 0;
 
         // Saturate top-k with highest scoring term
-        for (self.postings.items, 0..) |offset, i| {
-            if (self.index.segmentScore(offset) > max_impact) {
-                max_impact = self.index.segmentScore(offset);
+        for (self.postings.items, 0..) |pair, i| {
+            if (self.index.segmentScore(pair.header) > max_impact) {
+                max_impact = self.index.segmentScore(pair.header);
                 max_i = i;
             }
         }
 
         while (true) {
-            const score = self.index.segmentScore(self.postings.items[max_i]);
-            const pair = self.index.decompressSegment(self.postings.items[max_i], self.segment_buffer);
-            self.postings.items[max_i] = pair[0];
-            for (0..pair[1]) |i| {
+            // Read segment
+            const score = self.index.segmentScore(self.postings.items[max_i].header);
+            const len = self.index.decompressSegment(&self.postings.items[max_i], self.segment_buffer);
+
+            // Accumulate segment
+            for (0..len) |i| {
                 const doc_id = self.segment_buffer[i];
                 self.topk.saturate(.{ .docid = doc_id, .score = score });
                 self.accumulators[doc_id] = score;
@@ -129,24 +134,25 @@ pub const Search = struct {
             // Successfully filled topk
             if (self.topk.cap == self.topk.len) break;
             // Term exhausted
-            if (self.index.segmentScore(self.postings.items[max_i]) == 0) break;
+            if (self.index.segmentScore(self.postings.items[max_i].header) == 0) break;
         }
 
         // Now process normally
         while (true) {
             max_impact = 0;
-            for (self.postings.items, 0..) |offset, i| {
-                if (self.index.segmentScore(offset) > max_impact) {
-                    max_impact = self.index.segmentScore(offset);
+            for (self.postings.items, 0..) |pair, i| {
+                if (self.index.segmentScore(pair.header) > max_impact) {
+                    max_impact = self.index.segmentScore(pair.header);
                     max_i = i;
                 }
             }
 
             if (max_impact == 0) break;
+            // Read segment
+            const len = self.index.decompressSegment(&self.postings.items[max_i], self.segment_buffer);
 
-            const pair = self.index.decompressSegment(self.postings.items[max_i], self.segment_buffer);
-            self.postings.items[max_i] = pair[0];
-            for (0..pair[1]) |i| {
+            // Accumulate segment
+            for (0..len) |i| {
                 const doc_id = self.segment_buffer[i];
                 self.accumulators[doc_id] += max_impact;
                 self.topk.insert(.{ .docid = doc_id, .score = self.accumulators[doc_id] }, max_impact);

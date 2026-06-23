@@ -24,6 +24,11 @@ pub const Result = struct {
     score: u16,
 };
 
+pub const SegmentTuple = struct {
+    segment: u64,
+    header: u64,
+};
+
 fn read16(buf: []const u8, offset: u64) u16 {
     return std.mem.bytesToValue(u16, buf[offset .. offset + @sizeOf(u16)][0..2]);
 }
@@ -51,8 +56,10 @@ fn readArray(buf: []const u8, offset: u64) []const u64 {
 pub const Header = extern struct {
     max_doc_length: u64,
     snippets_offset: u64,
-    docs_offset: u64,
+    segments_start: u64,
+    segments_end: u64,
     dictionary_offset: u64,
+    docs_offset: u64,
     stemmer: Stemmer.Alg,
     _reserved: [5]u8 = .{0} ** 5,
     version: u16,
@@ -65,9 +72,10 @@ pub const Index = struct {
     header: *const Header,
     docs: []const u64,
     dictionary: []const u64,
+    segments: []align(16) const u8,
     snippets: []const u64,
 
-    pub fn init(index: []const u8) !Self {
+    pub fn init(index: []align(16) const u8) !Self {
         const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));
 
         if (header.version != version) {
@@ -80,6 +88,7 @@ pub const Index = struct {
             .header = header,
             .docs = readArray(index, header.docs_offset),
             .dictionary = readArray(index, header.dictionary_offset),
+            .segments = @alignCast(index[header.segments_start .. header.segments_end]),
             .snippets = if (header.snippets_offset != 0) readArray(index, header.snippets_offset) else &.{},
         };
     }
@@ -106,23 +115,28 @@ pub const Index = struct {
         return if (ImpactType == u16) read16(self.index, offset) else self.index[offset];
     }
 
-    pub fn decompressSegment(self: *const Self, offset: u64, buf: []u32) [2]u64 {
+    pub fn decompressSegment(self: *const Self, segment: *SegmentTuple, buf: []u32) u64 {
         var doc_count: u32 = 0;
-        const ids = offset + @sizeOf(ImpactType) + vbyte.read(self.index[offset + @sizeOf(ImpactType) ..], &doc_count);
+        const selectors = segment.header + @sizeOf(ImpactType) + vbyte.read(self.index[segment.header + @sizeOf(ImpactType) ..], &doc_count);
 
-        const bytes_read = c.compress_int_unpack_d1(self.index[ids..].ptr, doc_count, buf.ptr);
+        segment.segment += c.compress_int_unpack_d1(self.segments[segment.segment..].ptr, self.index[selectors..].ptr, doc_count, buf.ptr);
+        segment.header = selectors + doc_count / 128;
 
-        return .{ ids + bytes_read, doc_count };
+        return doc_count;
     }
 
-    pub fn find(self: *const Self, key: []const u8) u64 {
+    // Returns start of segment header and start of segments
+    pub fn find(self: *const Self, key: []const u8) SegmentTuple {
         var i: u64 = Wyhash.hash(0, key) & self.dictionary.len - 1;
         while (true) {
             if (self.dictionary[i] == 0)
-                return 0;
+                return .{ .segment = 0, .header = 0 };
             const term = readStr(self.index, self.dictionary[i]);
-            if (std.mem.eql(u8, term, key))
-                return @truncate(self.dictionary[i] + @sizeOf(u16) + term.len);
+            if (std.mem.eql(u8, term, key)) {
+                const metadata_start = self.dictionary[i] + @sizeOf(u16) + term.len;
+                const segment_offset = read64(self.index, metadata_start);
+                return .{ .segment = segment_offset, .header = metadata_start + @sizeOf(u64) };
+            }
 
             i = i + 1 & self.dictionary.len - 1;
         }

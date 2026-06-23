@@ -62,6 +62,7 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
+    // This goes over the index multiple times to avoid allocating excessive memory
     pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary, stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
@@ -110,46 +111,83 @@ pub const CcmlSerialiser = struct {
             }
         }
 
-        const dictionary_offsets = try allocator.alloc(u64, dictionary.cap);
-        @memset(dictionary_offsets, 0);
+        // Write out the segments themselves
+        while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
+        const segments_start = self.writer.logicalPos();
 
-        // Postings
+        const segments_offsets = try allocator.alloc(u64, dictionary.cap);
+        @memset(segments_offsets, 0);
+
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
         for (&doc_ids) |*d| try d.resize(allocator, docs.items.len); // reserve so arena doesn't get trampled
 
-        var vbyte_buffer: [5]u8 = undefined;
         const compression_buffer = try allocator.alloc(u8, docs.items.len * @sizeOf(u32));
 
-        for (dictionary.store, 0..) |post, hi| {
-            if (post == null) continue;
+        for (dictionary.store, 0..) |postings, i| {
+            if (postings == null) continue;
 
             for (&doc_ids) |*d| d.clearRetainingCapacity();
 
-            try post.?.distribute(&doc_ids);
+            try postings.?.distribute(&doc_ids);
 
-            // Write postings
-            const term_offset = self.writer.logicalPos();
-            try self.writeStr(post.?.term);
+            segments_offsets[i] = self.writer.logicalPos() - segments_start;
 
-            // Write segments
-            var i: index.ImpactType = (1 << config.quantise_bits) - 1;
-            while (i > 0) : (i -= 1) {
-                if (doc_ids[i].items.len == 0)
+            // Write segments (these must be aligned)
+            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
+            while (impact > 0) : (impact -= 1) {
+                if (doc_ids[impact].items.len == 0)
                     continue;
 
-                const bytes_written = c.compress_int_pack(doc_ids[i].items.ptr, doc_ids[i].items.len, compression_buffer.ptr);
+                const bytes_written = c.compress_int_pack(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
+                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
+            }
+        }
 
-                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[i].items.len));
+        const segments_end = self.writer.logicalPos();
 
-                try self.writer.interface.writeInt(index.ImpactType, i, native_endian);
+        // Write out dictionary terms and segments metadata
+        const dictionary_offsets = try allocator.alloc(u64, dictionary.cap);
+        @memset(dictionary_offsets, 0);
+
+        for (dictionary.store, 0..) |postings, i| {
+            if (postings == null) continue;
+
+            for (&doc_ids) |*d| d.clearRetainingCapacity();
+
+            try postings.?.distribute(&doc_ids);
+
+            // Write postings
+            dictionary_offsets[i] = self.writer.logicalPos();
+            try self.writeStr(postings.?.term);
+
+            // Store the segment offset
+            try self.writer.interface.writeInt(u64, segments_offsets[i], native_endian);
+
+            // Write segments metadata
+            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
+            while (impact > 0) : (impact -= 1) {
+                if (doc_ids[impact].items.len == 0)
+                    continue;
+
+                // Store the segment metada
+                try self.writer.interface.writeInt(index.ImpactType, impact, native_endian);
+                // no. docs
+                var vbyte_buffer: [5]u8 = undefined;
+                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
                 try self.writer.interface.writeAll(vbyte_buffer[0..segment_len]);
+                // selectors
+                const bytes_written = c.compress_int_pack_selectors(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
                 try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
             }
             // Null terminate
             try self.writer.interface.writeInt(index.ImpactType, 0, native_endian);
-
-            dictionary_offsets[hi] = term_offset;
         }
+
+        // Dictionary
+        while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
+        const dictionary_offset = self.writer.logicalPos();
+        try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
+        try self.writer.interface.writeSliceEndian(u64, dictionary_offsets, native_endian);
 
         // Document ID strings
         var max_doc_length: u32 = 0;
@@ -168,19 +206,15 @@ pub const CcmlSerialiser = struct {
         for (docs.items) |d|
             try self.writer.interface.writeInt(u64, @intFromPtr(d.name.ptr), native_endian);
 
-        // Dictionary
-        while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
-        const dictionary_offset = self.writer.logicalPos();
-        try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
-        try self.writer.interface.writeSliceEndian(u64, dictionary_offsets, native_endian);
-
         // Header
         while (self.writer.logicalPos() % @alignOf(index.Header) != 0) try self.writer.interface.writeByte(0);
         try self.writer.interface.writeStruct(index.Header{
             .max_doc_length = max_doc_length,
             .snippets_offset = snippets_offset,
-            .docs_offset = docs_offset,
+            .segments_start = segments_start,
+            .segments_end = segments_end,
             .dictionary_offset = dictionary_offset,
+            .docs_offset = docs_offset,
             .stemmer = stemmer,
             .version = index.version,
         }, native_endian);

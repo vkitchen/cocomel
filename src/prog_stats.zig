@@ -33,7 +33,7 @@ pub fn main(init: std.process.Init) !void {
     var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
     defer res.deinit();
 
-    const index_file = try std.Io.Dir.cwd().readFileAlloc(init.io, config.index_name, init.arena.allocator(), std.Io.Limit.unlimited);
+    const index_file = try std.Io.Dir.cwd().readFileAllocOptions(init.io, config.index_name, init.arena.allocator(), std.Io.Limit.unlimited, .@"16", null);
     const index = try Index.init(index_file);
 
     var stdout_buffer: [1024]u8 = undefined;

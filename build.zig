@@ -92,6 +92,9 @@ pub fn build(b: *std.Build) !void {
             },
         }),
     });
+    search_cli.root_module.addImport("clap", clap_dep.module("clap"));
+    if (optimize == .ReleaseFast)
+        search_cli.lto = std.zig.LtoMode.full;
     b.installArtifact(search_cli);
 
     const search_trec = b.addExecutable(.{

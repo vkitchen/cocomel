@@ -41,16 +41,16 @@ static size_t compress_int_bp128_unpack(const uint8_t *in, size_t count, uint32_
 // len = num ints
 // return = num bytes
 static size_t compress_int_bp128_pack_d1(uint32_t *in, size_t len, uint8_t *out) {
-	uint32_t offset = 0;
+	uint32_t delta = 0;
 	uint8_t *p = out;
 
 	for (uint32_t *end = in + len; in < end; in += 128) {
-		const uint8_t b = simdmaxbitsd1(offset, in);
+		const uint8_t b = simdmaxbitsd1(delta, in);
 		*p++ = b;
 
-		simdpackwithoutmaskd1(offset, in, (__m128i *)p, b);
+		simdpackwithoutmaskd1(delta, in, (__m128i *)p, b);
 		p += b * sizeof(__m128i);
-		offset = in[127];
+		delta = in[127];
 	}
 
 	return p - out;
@@ -60,18 +60,18 @@ static size_t compress_int_bp128_pack_d1(uint32_t *in, size_t len, uint8_t *out)
 // count = num ints
 // return = num bytes
 static size_t compress_int_bp128_unpack_d1(const uint8_t *in, size_t count, uint32_t *out) {
-	uint32_t offset = 0;
+	uint32_t delta = 0;
 	const uint8_t *p = in;
 
 	while (count > 0) {
 		const uint8_t b = *p;
 		p++;
 
-		simdunpackd1(offset, p, out, b);
+		simdunpackd1(delta, p, out, b);
 		p += b * sizeof(__m128i);
 		out += 128;
 		count -= 128;
-		offset = *(out-1);
+		delta = *(out-1);
 	}
 
 	return p - in;

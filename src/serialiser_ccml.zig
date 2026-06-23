@@ -76,19 +76,21 @@ pub const CcmlSerialiser = struct {
                 try self.writer.interface.writeInt(u64, s, native_endian);
         }
 
-        // Find average document length
-        var average_doc_length: f64 = 0;
-
-        for (docs.items) |d|
-            average_doc_length += @floatFromInt(d.len);
-        average_doc_length /= @floatFromInt(docs.items.len);
-
-        var ranker = Ranker.init(@floatFromInt(docs.items.len), average_doc_length);
-
-        // Find minimum and maximum rsv
-        var min_score: f64 = std.math.floatMax(f64);
-        var max_score: f64 = 0;
+        // Quantise
         if (quantise) {
+            // Find average document length
+            var average_doc_length: f64 = 0;
+
+            for (docs.items) |d|
+                average_doc_length += @floatFromInt(d.len);
+            average_doc_length /= @floatFromInt(docs.items.len);
+
+            var ranker = Ranker.init(@floatFromInt(docs.items.len), average_doc_length);
+
+            // Find minimum and maximum rsv
+            var min_score: f64 = std.math.floatMax(f64);
+            var max_score: f64 = 0;
+
             for (dictionary.store) |post| {
                 if (post == null) continue;
 
@@ -97,16 +99,23 @@ pub const CcmlSerialiser = struct {
                 if (scores[0] < min_score) min_score = scores[0];
                 if (scores[1] > max_score) max_score = scores[1];
             }
+
+            // Actually quantise now
+            const quantiser = Quantiser.init(min_score, max_score);
+
+            for (dictionary.store) |post| {
+                if (post == null) continue;
+
+                try post.?.quantise(docs, &ranker, quantiser);
+            }
         }
 
         const dictionary_offsets = try allocator.alloc(u64, dictionary.cap);
         @memset(dictionary_offsets, 0);
 
-        // Quantise
+        // Postings
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
         for (&doc_ids) |*d| try d.resize(allocator, docs.items.len); // reserve so arena doesn't get trampled
-
-        const quantiser = Quantiser.init(min_score, max_score);
 
         var vbyte_buffer: [5]u8 = undefined;
         const compression_buffer = try allocator.alloc(u8, docs.items.len * @sizeOf(u32));
@@ -116,12 +125,7 @@ pub const CcmlSerialiser = struct {
 
             for (&doc_ids) |*d| d.clearRetainingCapacity();
 
-            // Processing pre-quantised CIFF?
-            if (quantise) {
-                try post.?.quantise(docs, &ranker, quantiser, &doc_ids);
-            } else {
-                try post.?.distribute(&doc_ids);
-            }
+            try post.?.distribute(&doc_ids);
 
             // Write postings
             const term_offset = self.writer.logicalPos();

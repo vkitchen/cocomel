@@ -80,9 +80,7 @@ pub const Postings = struct {
         return .{ min_score, max_score };
     }
 
-    pub fn quantise(self: *Self, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u32)) !void {
-        var last_ids = [_]u32{0} ** (1 << config.quantise_bits);
-
+    pub fn quantise(self: *Self, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser) !void {
         ranker.compIdf(@floatFromInt(self.df_t + 1));
 
         var ids_chunk = self.ids.first;
@@ -95,15 +93,15 @@ pub const Postings = struct {
             var doc_id: u32 = 0;
             ids_i += vbyte.read(ids_chunk.?.items[ids_i..], &doc_id);
             doc_id += last_id;
+
+            // quantise
             const doc_len = docs.items[doc_id].len;
             const doc_score = ranker.compScore(@floatFromInt(tfs_chunk.?.items[tfs_i]), @floatFromInt(doc_len));
             const rsv = quantiser.quantise(doc_score);
+            tfs_chunk.?.items[tfs_i] = rsv;
             tfs_i += 1;
 
-            // Store quantised value
-            doc_ids[rsv].appendAssumeCapacity(doc_id - last_ids[rsv]);
-            last_ids[rsv] = doc_id;
-
+            // next chunk?
             if (ids_i >= ids_chunk.?.items.len) {
                 ids_chunk = ids_chunk.?.next;
                 ids_i = 0;
@@ -119,7 +117,7 @@ pub const Postings = struct {
         const doc_len = docs.items[self.id].len;
         const doc_score = ranker.compScore(@floatFromInt(self.freq), @floatFromInt(doc_len));
         const rsv = quantiser.quantise(doc_score);
-        doc_ids[rsv].appendAssumeCapacity(self.id - last_ids[rsv]);
+        self.freq = rsv;
     }
 
     pub fn distribute(self: *Self, doc_ids: *[1 << config.quantise_bits]std.ArrayList(u32)) !void {
@@ -153,7 +151,7 @@ pub const Postings = struct {
             last_id = doc_id;
         }
 
-        // Quantise last
+        // Store last
         const rsv = self.freq;
         doc_ids[rsv].appendAssumeCapacity(self.id - last_ids[rsv]);
     }

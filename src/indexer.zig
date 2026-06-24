@@ -61,7 +61,7 @@ pub const Indexer = struct {
         self.has_prev = false;
         try self.serialiser.newDocId(allocator);
 
-        try self.doc_ids.append(allocator, .{ .name = try str.dup(allocator, doc_id) });
+        try self.doc_ids.append(allocator, .{ .name = try allocator.dupe(u8, doc_id) });
         if (self.doc_ids.items.len % 10000 == 0)
             std.debug.print("{d} Documents\n", .{self.doc_ids.items.len});
     }
@@ -69,7 +69,7 @@ pub const Indexer = struct {
     pub fn addTitle(self: *Self, allocator: std.mem.Allocator, title: []u8) !void {
         if (self.doc_ids.items[self.doc_ids.items.len - 1].title.len != 0)
             return;
-        self.doc_ids.items[self.doc_ids.items.len - 1].title = try str.dup(allocator, title);
+        self.doc_ids.items[self.doc_ids.items.len - 1].title = try allocator.dupe(u8, title);
     }
 
     pub fn write(self: *Self, allocator: std.mem.Allocator) !void {

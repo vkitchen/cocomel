@@ -36,7 +36,7 @@ pub const Tokenizer = struct {
                 while (self.index + i < self.end and self.snippets[self.index + i] != ' ')
                     i += 1;
 
-                var stemmed = try str.dup(allocator, self.snippets[self.index .. self.index + i]);
+                var stemmed = try allocator.dupe(u8, self.snippets[self.index .. self.index + i]);
                 stemmed = std.ascii.lowerString(stemmed, stemmed);
                 stemmed = str.stripPunct(stemmed, stemmed);
                 stemmed = self.stemmer.stem(stemmed);

@@ -6,8 +6,6 @@
 const std = @import("std");
 const Wyhash = std.hash.Wyhash;
 
-const str = @import("str.zig");
-const stem = @import("stem.zig").stem;
 const Postings = @import("postings.zig").Postings;
 
 pub const Dictionary = struct {
@@ -70,7 +68,7 @@ pub const Dictionary = struct {
         }
 
         const postings = try allocator.create(Postings);
-        postings.* = Postings.init(try str.dup(allocator, key), doc_id);
+        postings.* = Postings.init(try allocator.dupe(u8, key), doc_id);
 
         self.store[i] = postings;
 

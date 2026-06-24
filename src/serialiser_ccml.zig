@@ -54,7 +54,7 @@ pub const CcmlSerialiser = struct {
 
     pub fn newDocId(self: *Self, allocator: std.mem.Allocator) !void {
         if (!self.snippets) return;
-        try self.snippet_indices.append(allocator, @truncate(self.writer.logicalPos()));
+        try self.snippet_indices.append(allocator, @truncate(self.writer.logicalPos() - file_format.len));
     }
 
     fn writeStr(self: *Self, str: []u8) !void {
@@ -67,7 +67,7 @@ pub const CcmlSerialiser = struct {
         // Flush snippets
         try self.newDocId(allocator);
 
-        const snippets_start: u64 = 0; // TODO this shouldn't include the file opening remark
+        const snippets_start: u64 = file_format.len;
         const snippets_end: u64 = self.writer.logicalPos();
 
         // Quantise
@@ -211,9 +211,8 @@ pub const CcmlSerialiser = struct {
         // Snippets
         var snippets_offset: u64 = 0;
         if (self.snippets) {
-            snippets_offset = self.writer.logicalPos();
-
             while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
+            snippets_offset = self.writer.logicalPos();
             try self.writer.interface.writeInt(u64, self.snippet_indices.items.len, native_endian);
             // TODO this should be a u64 array
             for (self.snippet_indices.items) |s|

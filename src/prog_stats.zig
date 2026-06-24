@@ -23,6 +23,7 @@ pub fn main(init: std.process.Init) !void {
         \\--docids               Print docids.
         \\--titles               Print titles.
         \\--terms                Print terms.
+        \\--index <file>         Use a different index than default.
         \\
     );
 
@@ -30,10 +31,14 @@ pub fn main(init: std.process.Init) !void {
         .file = clap.parsers.string,
     };
 
-    var res = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
-    defer res.deinit();
+    var cli = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
+    defer cli.deinit();
 
-    const index_file = try std.Io.Dir.cwd().readFileAllocOptions(init.io, config.index_name, init.arena.allocator(), std.Io.Limit.unlimited, .@"16", null);
+    var index_name: []const u8 = config.index_name;
+    if (cli.args.index) |index|
+        index_name = index;
+
+    const index_file = try std.Io.Dir.cwd().readFileAllocOptions(init.io, index_name, init.arena.allocator(), std.Io.Limit.unlimited, .@"16", null);
     const index = try Index.init(index_file);
 
     var stdout_buffer: [1024]u8 = undefined;
@@ -41,19 +46,19 @@ pub fn main(init: std.process.Init) !void {
     const stdout = &stdout_writer.interface;
     defer stdout.flush() catch {};
 
-    if (res.args.help != 0) {
+    if (cli.args.help != 0) {
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
-    } else if (res.args.docids != 0 or res.args.titles != 0) {
+    } else if (cli.args.docids != 0 or cli.args.titles != 0) {
         for (0..index.docs.len) |id| {
             const doc_id = index.name(@truncate(id));
-            if (res.args.docids != 0)
+            if (cli.args.docids != 0)
                 try stdout.print("{s}\n", .{doc_id[0]});
-            if (res.args.titles != 0)
+            if (cli.args.titles != 0)
                 try stdout.print("{s}\n", .{doc_id[1]});
         }
 
         return;
-    } else if (res.args.terms != 0) {
+    } else if (cli.args.terms != 0) {
         for (index.vocab) |store| {
             if (store.term == 0)
                 continue;

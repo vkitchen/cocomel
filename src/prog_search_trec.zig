@@ -28,7 +28,7 @@ pub fn main(init: std.process.Init) !void {
         if (std.mem.findScalar(u8, query, ' ')) |space| {
             if (std.fmt.parseInt(usize, query[0..space], 10)) |num| {
                 query_id = num;
-                query = query[space+1..];
+                query = query[space + 1 ..];
             } else |_| {
                 query_id = 0;
             }

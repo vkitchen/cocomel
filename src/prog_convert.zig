@@ -131,6 +131,6 @@ pub fn main(init: std.process.Init) !void {
 
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);
-        _ = try serialiser.write(arena, &doc_ids, &dict, Stemmer.Alg.none, res.args.quantise != 0);
+        _ = try serialiser.write(init.io, arena, &doc_ids, &dict, Stemmer.Alg.none, res.args.quantise != 0);
     }
 }

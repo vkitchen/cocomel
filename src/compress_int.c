@@ -6,27 +6,15 @@
 
 // len = num ints
 // return = num bytes
-static size_t compress_int_bp128_pack(uint32_t *in, size_t len, uint8_t *out) {
+static size_t compress_int_bp128_pack(uint32_t *in, size_t len, uint8_t *out, uint8_t *metadata) {
 	uint8_t *p = out;
 
 	for (uint32_t *end = in + len; in < end; in += 128) {
 		const uint8_t b = maxbits(in);
+		*metadata++ = b;
 
 		simdpackwithoutmask(in, (__m128i *)p, b);
 		p += b * sizeof(__m128i);
-	}
-
-	return p - out;
-}
-
-// len = num ints
-// return = num bytes
-static size_t compress_int_bp128_pack_selectors(uint32_t *in, size_t len, uint8_t *out) {
-	uint8_t *p = out;
-
-	for (uint32_t *end = in + len; in < end; in += 128) {
-		const uint8_t b = maxbits(in);
-		*p++ = b;
 	}
 
 	return p - out;
@@ -42,7 +30,7 @@ static size_t compress_int_bp128_unpack_d1(const uint8_t *in, const uint8_t *sel
 		const uint8_t b = *selectors;
 		selectors++;
 
-		simdunpackd1(delta, p, out, b);
+		simdunpackd1(delta, (__m128i *)p, out, b);
 		p += b * sizeof(__m128i);
 		out += 128;
 		count -= 128;
@@ -54,11 +42,11 @@ static size_t compress_int_bp128_unpack_d1(const uint8_t *in, const uint8_t *sel
 
 // len = num ints
 // return = num bytes
-size_t compress_int_pack(uint32_t *in, size_t len, uint8_t *out) {
+struct pack_res compress_int_pack(uint32_t *in, size_t len, uint8_t *out, uint8_t *metadata) {
 	size_t bp128_compressed = (len / 128) * 128;
 	size_t group_varint_compressed = len - bp128_compressed;
 
-	size_t bytes_written = compress_int_bp128_pack(in, bp128_compressed, out);
+	size_t bytes_written = compress_int_bp128_pack(in, bp128_compressed, out, metadata);
 	bytes_written += streamvbyte_encode(&in[bp128_compressed], group_varint_compressed, &out[bytes_written]);
 
 	while (bytes_written % 16) {
@@ -66,16 +54,7 @@ size_t compress_int_pack(uint32_t *in, size_t len, uint8_t *out) {
 		bytes_written++;
 	}
 
-	return bytes_written;
-}
-
-// len = num ints
-// return = num bytes
-size_t compress_int_pack_selectors(uint32_t *in, size_t len, uint8_t *out) {
-	size_t bp128_compressed = (len / 128) * 128;
-
-	size_t bytes_written = compress_int_bp128_pack_selectors(in, bp128_compressed, out);
-	return bytes_written;
+	return (struct pack_res){ bytes_written, len / 128 };
 }
 
 // count = num ints

@@ -20,6 +20,7 @@ const c = @import("c");
 const file_format = std.fmt.comptimePrint("cocomel v{d}\n", .{index.version});
 
 var writer_buf: [config.io_buffer_size]u8 = undefined;
+var scratch_buf: [config.io_buffer_size]u8 = undefined;
 
 pub const CcmlSerialiser = struct {
     const Self = @This();
@@ -63,18 +64,20 @@ pub const CcmlSerialiser = struct {
     }
 
     // TODO get segment statistics to avoid overallocating buffers
-    fn writePostings(self: *Self, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, buf_size: usize) ![4]u64 {
-        // Write out the segments themselves
-        while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
-        const blocks_start = self.writer.logicalPos();
+    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, buf_size: usize) ![4]u64 {
+        var scratch_file = try std.Io.Dir.cwd().createFile(io, config.scratch_name, .{});
+        var scratch_writer = scratch_file.writer(io, &scratch_buf);
 
-        const segments_offsets = try allocator.alloc(config.FileOffsetType, dictionary.cap);
-        @memset(segments_offsets, 0);
-
+        // Buffers
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
         for (&doc_ids) |*d| try d.resize(allocator, buf_size); // reserve so arena doesn't get trampled
 
         const compression_buffer = try allocator.alloc(u8, buf_size * @sizeOf(u32));
+        const metadata_buffer = try allocator.alloc(u8, buf_size / 128);
+
+        // Write out the segments themselves
+        while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
+        const blocks_start = self.writer.logicalPos();
 
         for (dictionary.store, 0..) |pair, i| {
             if (pair.key == null) continue;
@@ -84,7 +87,14 @@ pub const CcmlSerialiser = struct {
 
             try postings.distribute(&doc_ids);
 
-            segments_offsets[i] = @truncate((self.writer.logicalPos() - blocks_start) / 16); // block id
+            vocab_offsets[i].postings = @truncate(scratch_writer.logicalPos());
+
+            const block_offset = (self.writer.logicalPos() - blocks_start) / 16; // block id
+
+            // Store the segment offset
+            var vbyte_buffer: [5]u8 = undefined;
+            const block_offset_len = vbyte.store(&vbyte_buffer, @truncate(block_offset)); // TODO this could be u64
+            try scratch_writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
 
             // Write segments (these must be aligned)
             var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
@@ -92,51 +102,37 @@ pub const CcmlSerialiser = struct {
                 if (doc_ids[impact].items.len == 0)
                     continue;
 
-                const bytes_written = c.compress_int_pack(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
-                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
+                const written = c.compress_int_pack(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr, metadata_buffer.ptr);
+                try self.writer.interface.writeAll(compression_buffer[0..written.bytes]);
+
+                // Store the segment metada
+                try scratch_writer.interface.writeInt(index.ImpactType, impact, native_endian);
+                // no. docs
+                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
+                try scratch_writer.interface.writeAll(vbyte_buffer[0..segment_len]);
+                // selectors
+                try scratch_writer.interface.writeAll(metadata_buffer[0..written.metadata]);
             }
+            // Null terminate
+            try scratch_writer.interface.writeInt(index.ImpactType, 0, native_endian);
         }
 
         const blocks_end = self.writer.logicalPos();
 
-        // Write out segments metadata
-
         const postings_start = self.writer.logicalPos();
 
-        for (dictionary.store, 0..) |pair, i| {
-            if (pair.key == null) continue;
-            const postings = pair.val.?;
+        // Include the scratch file into the index
+        try scratch_writer.flush();
 
-            for (&doc_ids) |*d| d.clearRetainingCapacity();
+        // TODO can this be done without closing and reopening the file?
+        scratch_file.close(io);
+        scratch_file = try std.Io.Dir.cwd().openFile(io, config.scratch_name, .{});
 
-            try postings.distribute(&doc_ids);
+        var scratch_reader = scratch_file.reader(io, &scratch_buf);
+        _ = try scratch_reader.interface.streamRemaining(&self.writer.interface);
 
-            // Write postings
-            vocab_offsets[i].postings = @truncate(self.writer.logicalPos() - postings_start);
-
-            // Store the segment offset
-            var vbyte_buffer: [5]u8 = undefined;
-            const block_offset_len = vbyte.store(&vbyte_buffer, segments_offsets[i]); // TODO this could be u64
-            try self.writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
-
-            // Write segments metadata
-            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
-            while (impact > 0) : (impact -= 1) {
-                if (doc_ids[impact].items.len == 0)
-                    continue;
-
-                // Store the segment metada
-                try self.writer.interface.writeInt(index.ImpactType, impact, native_endian);
-                // no. docs
-                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
-                try self.writer.interface.writeAll(vbyte_buffer[0..segment_len]);
-                // selectors
-                const bytes_written = c.compress_int_pack_selectors(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
-                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
-            }
-            // Null terminate
-            try self.writer.interface.writeInt(index.ImpactType, 0, native_endian);
-        }
+        scratch_file.close(io);
+        try std.Io.Dir.cwd().deleteFile(io, config.scratch_name);
 
         const postings_end = self.writer.logicalPos();
 
@@ -144,7 +140,7 @@ pub const CcmlSerialiser = struct {
     }
 
     // This goes over the index multiple times to avoid allocating excessive memory
-    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), stemmer: Stemmer.Alg, quantise: bool) !u64 {
+    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
 
@@ -191,7 +187,7 @@ pub const CcmlSerialiser = struct {
         const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
         @memset(vocab_offsets, .{ .term = 0, .postings = 0 });
 
-        const postings = try self.writePostings(allocator, dictionary, vocab_offsets, docs.items.len);
+        const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets, docs.items.len);
 
         // Write out the vocab
         const vocab_start = self.writer.logicalPos();

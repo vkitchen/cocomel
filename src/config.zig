@@ -6,6 +6,11 @@
 pub const index_name = "index.ccml";
 pub const socket_name = "/tmp/cocomel.sock";
 
+// Used for offsets into sections of the index
+// This may break things if set below u64
+// TODO detect breakage during serialisation
+pub const FileOffsetType = u32;
+
 // u16 may offer a slight increase in precision but slows indexing
 pub const TermFrequencyType = u8;
 

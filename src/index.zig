@@ -24,8 +24,8 @@ pub const Result = struct {
 };
 
 pub const VocabTuple = extern struct {
-    term: u64,
-    postings: u64,
+    term: config.FileOffsetType,
+    postings: config.FileOffsetType,
 };
 
 pub const SegmentTuple = struct {
@@ -53,10 +53,10 @@ fn readStr(buf: []const u8, offset: u64) []const u8 {
     return buf[start .. start + len];
 }
 
-fn readArray(buf: []const u8, offset: u64) []const u64 {
-    const len = read64(buf, offset);
+fn readArray(buf: []const u8, offset: u64) []const config.FileOffsetType {
+    const len = read64(buf, offset); // Always a u64
     const start = offset + @sizeOf(u64);
-    return @alignCast(std.mem.bytesAsSlice(u64, buf[start .. start + len * @sizeOf(u64)]));
+    return @alignCast(std.mem.bytesAsSlice(config.FileOffsetType, buf[start .. start + len * @sizeOf(config.FileOffsetType)]));
 }
 
 fn readVocabArray(buf: []const u8, offset: u64) []const VocabTuple {
@@ -104,9 +104,9 @@ pub const Index = struct {
     docs_store: []const u8,
 
     // structures
-    snippets: []const u64,
+    snippets: []const config.FileOffsetType,
     vocab: []const VocabTuple,
-    docs: []const u64,
+    docs: []const config.FileOffsetType,
 
     pub fn init(index: []align(16) const u8) !Self {
         const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));

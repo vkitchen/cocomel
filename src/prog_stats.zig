@@ -66,7 +66,7 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
 
-    const structures_size = (index.snippets.len + index.vocab.len * 2 + index.docs.len + 3) * @sizeOf(u64);
+    const structures_size = (index.snippets.len + index.vocab.len * 2 + index.docs.len + 3) * @sizeOf(config.FileOffsetType);
 
     // Count terms
     var term_count: usize = 0;

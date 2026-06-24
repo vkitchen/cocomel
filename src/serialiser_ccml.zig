@@ -108,6 +108,7 @@ pub const CcmlSerialiser = struct {
         while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
         const blocks_start = self.writer.logicalPos();
 
+        // Block storage is always large so use u64 here
         const segments_offsets = try allocator.alloc(u64, dictionary.cap);
         @memset(segments_offsets, 0);
 
@@ -152,7 +153,7 @@ pub const CcmlSerialiser = struct {
             try postings.?.distribute(&doc_ids);
 
             // Write postings
-            vocab_offsets[i].postings = self.writer.logicalPos() - postings_start;
+            vocab_offsets[i].postings = @truncate(self.writer.logicalPos() - postings_start);
 
             // Store the segment offset
             try self.writer.interface.writeInt(u64, segments_offsets[i], native_endian);
@@ -186,21 +187,21 @@ pub const CcmlSerialiser = struct {
             if (postings == null) continue;
 
             // Write postings
-            vocab_offsets[i].term = self.writer.logicalPos() - vocab_start;
+            vocab_offsets[i].term = @truncate(self.writer.logicalPos() - vocab_start);
             try self.writeStr(postings.?.term);
         }
 
         const vocab_end = self.writer.logicalPos();
 
         // Document ID strings
-        const docs_offsets = try allocator.alloc(u64, docs.items.len);
+        const docs_offsets = try allocator.alloc(config.FileOffsetType, docs.items.len);
 
         const docs_start = self.writer.logicalPos();
 
         var max_doc_length: u32 = 0;
         for (docs.items, 0..) |d, i| {
             if (d.len > max_doc_length) max_doc_length = d.len;
-            docs_offsets[i] = self.writer.logicalPos() - docs_start;
+            docs_offsets[i] = @truncate(self.writer.logicalPos() - docs_start);
             try self.writeStr(d.name);
             try self.writeStr(d.title);
         }
@@ -216,7 +217,7 @@ pub const CcmlSerialiser = struct {
             try self.writer.interface.writeInt(u64, self.snippet_indices.items.len, native_endian);
             // TODO this should be a u64 array
             for (self.snippet_indices.items) |s|
-                try self.writer.interface.writeInt(u64, s, native_endian);
+                try self.writer.interface.writeInt(config.FileOffsetType, s, native_endian);
         }
 
         // Vocab
@@ -229,7 +230,7 @@ pub const CcmlSerialiser = struct {
         while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
         const docs_offset = self.writer.logicalPos();
         try self.writer.interface.writeInt(u64, docs.items.len, native_endian);
-        try self.writer.interface.writeSliceEndian(u64, docs_offsets, native_endian);
+        try self.writer.interface.writeSliceEndian(config.FileOffsetType, docs_offsets, native_endian);
 
         // Header
         while (self.writer.logicalPos() % @alignOf(index.Header) != 0) try self.writer.interface.writeByte(0);

@@ -30,6 +30,7 @@ pub const Postings = struct {
 
         return .{
             .id = 0,
+            .ids = try ArrayChain(u8).initCapacity(allocator, cap * 3), // Estimated VByte size
             .tfs = try ArrayChain(config.TermFrequencyType).initCapacity(allocator, cap),
         };
     }

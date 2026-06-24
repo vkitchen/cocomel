@@ -173,9 +173,9 @@ pub const Index = struct {
                 return .{ .segment = 0, .header = 0 };
             const term = readStr(self.vocab_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
-                const blocks_start = read64(self.postings_store, self.vocab[i].postings);
-                const postings_start = self.vocab[i].postings + @sizeOf(u64);
-                return .{ .segment = blocks_start, .header = postings_start };
+                var blocks_start: u32 = 0;
+                const postings_start = self.vocab[i].postings + vbyte.read(self.postings_store[self.vocab[i].postings..], &blocks_start);
+                return .{ .segment = @as(u64, blocks_start) * 16, .header = postings_start };
             }
 
             i = i + 1 & self.vocab.len - 1;

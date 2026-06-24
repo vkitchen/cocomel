@@ -108,8 +108,7 @@ pub const CcmlSerialiser = struct {
         while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
         const blocks_start = self.writer.logicalPos();
 
-        // Block storage is always large so use u64 here
-        const segments_offsets = try allocator.alloc(u64, dictionary.cap);
+        const segments_offsets = try allocator.alloc(config.FileOffsetType, dictionary.cap);
         @memset(segments_offsets, 0);
 
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
@@ -124,7 +123,7 @@ pub const CcmlSerialiser = struct {
 
             try postings.?.distribute(&doc_ids);
 
-            segments_offsets[i] = self.writer.logicalPos() - blocks_start;
+            segments_offsets[i] = @truncate((self.writer.logicalPos() - blocks_start) / 16); // block id
 
             // Write segments (these must be aligned)
             var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
@@ -156,7 +155,9 @@ pub const CcmlSerialiser = struct {
             vocab_offsets[i].postings = @truncate(self.writer.logicalPos() - postings_start);
 
             // Store the segment offset
-            try self.writer.interface.writeInt(u64, segments_offsets[i], native_endian);
+            var vbyte_buffer: [5]u8 = undefined;
+            const block_offset_len = vbyte.store(&vbyte_buffer, segments_offsets[i]); // TODO this could be u64
+            try self.writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
 
             // Write segments metadata
             var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
@@ -167,7 +168,6 @@ pub const CcmlSerialiser = struct {
                 // Store the segment metada
                 try self.writer.interface.writeInt(index.ImpactType, impact, native_endian);
                 // no. docs
-                var vbyte_buffer: [5]u8 = undefined;
                 const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
                 try self.writer.interface.writeAll(vbyte_buffer[0..segment_len]);
                 // selectors

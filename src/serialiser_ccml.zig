@@ -62,6 +62,87 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
+    // TODO get segment statistics to avoid overallocating buffers
+    fn writePostings(self: *Self, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, buf_size: usize) ![4]u64 {
+        // Write out the segments themselves
+        while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
+        const blocks_start = self.writer.logicalPos();
+
+        const segments_offsets = try allocator.alloc(config.FileOffsetType, dictionary.cap);
+        @memset(segments_offsets, 0);
+
+        var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
+        for (&doc_ids) |*d| try d.resize(allocator, buf_size); // reserve so arena doesn't get trampled
+
+        const compression_buffer = try allocator.alloc(u8, buf_size * @sizeOf(u32));
+
+        for (dictionary.store, 0..) |pair, i| {
+            if (pair.key == null) continue;
+            const postings = pair.val.?;
+
+            for (&doc_ids) |*d| d.clearRetainingCapacity();
+
+            try postings.distribute(&doc_ids);
+
+            segments_offsets[i] = @truncate((self.writer.logicalPos() - blocks_start) / 16); // block id
+
+            // Write segments (these must be aligned)
+            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
+            while (impact > 0) : (impact -= 1) {
+                if (doc_ids[impact].items.len == 0)
+                    continue;
+
+                const bytes_written = c.compress_int_pack(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
+                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
+            }
+        }
+
+        const blocks_end = self.writer.logicalPos();
+
+        // Write out segments metadata
+
+        const postings_start = self.writer.logicalPos();
+
+        for (dictionary.store, 0..) |pair, i| {
+            if (pair.key == null) continue;
+            const postings = pair.val.?;
+
+            for (&doc_ids) |*d| d.clearRetainingCapacity();
+
+            try postings.distribute(&doc_ids);
+
+            // Write postings
+            vocab_offsets[i].postings = @truncate(self.writer.logicalPos() - postings_start);
+
+            // Store the segment offset
+            var vbyte_buffer: [5]u8 = undefined;
+            const block_offset_len = vbyte.store(&vbyte_buffer, segments_offsets[i]); // TODO this could be u64
+            try self.writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
+
+            // Write segments metadata
+            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
+            while (impact > 0) : (impact -= 1) {
+                if (doc_ids[impact].items.len == 0)
+                    continue;
+
+                // Store the segment metada
+                try self.writer.interface.writeInt(index.ImpactType, impact, native_endian);
+                // no. docs
+                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
+                try self.writer.interface.writeAll(vbyte_buffer[0..segment_len]);
+                // selectors
+                const bytes_written = c.compress_int_pack_selectors(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
+                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
+            }
+            // Null terminate
+            try self.writer.interface.writeInt(index.ImpactType, 0, native_endian);
+        }
+
+        const postings_end = self.writer.logicalPos();
+
+        return .{ blocks_start, blocks_end, postings_start, postings_end };
+    }
+
     // This goes over the index multiple times to avoid allocating excessive memory
     pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
@@ -106,83 +187,11 @@ pub const CcmlSerialiser = struct {
             }
         }
 
-        // Write out the segments themselves
-        while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
-        const blocks_start = self.writer.logicalPos();
-
-        const segments_offsets = try allocator.alloc(config.FileOffsetType, dictionary.cap);
-        @memset(segments_offsets, 0);
-
-        var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
-        for (&doc_ids) |*d| try d.resize(allocator, docs.items.len); // reserve so arena doesn't get trampled
-
-        const compression_buffer = try allocator.alloc(u8, docs.items.len * @sizeOf(u32));
-
-        for (dictionary.store, 0..) |pair, i| {
-            if (pair.key == null) continue;
-            const postings = pair.val.?;
-
-            for (&doc_ids) |*d| d.clearRetainingCapacity();
-
-            try postings.distribute(&doc_ids);
-
-            segments_offsets[i] = @truncate((self.writer.logicalPos() - blocks_start) / 16); // block id
-
-            // Write segments (these must be aligned)
-            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
-            while (impact > 0) : (impact -= 1) {
-                if (doc_ids[impact].items.len == 0)
-                    continue;
-
-                const bytes_written = c.compress_int_pack(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
-                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
-            }
-        }
-
-        const blocks_end = self.writer.logicalPos();
-
-        // Write out segments metadata
+        // Write postings
         const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
         @memset(vocab_offsets, .{ .term = 0, .postings = 0 });
 
-        const postings_start = self.writer.logicalPos();
-
-        for (dictionary.store, 0..) |pair, i| {
-            if (pair.key == null) continue;
-            const postings = pair.val.?;
-
-            for (&doc_ids) |*d| d.clearRetainingCapacity();
-
-            try postings.distribute(&doc_ids);
-
-            // Write postings
-            vocab_offsets[i].postings = @truncate(self.writer.logicalPos() - postings_start);
-
-            // Store the segment offset
-            var vbyte_buffer: [5]u8 = undefined;
-            const block_offset_len = vbyte.store(&vbyte_buffer, segments_offsets[i]); // TODO this could be u64
-            try self.writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
-
-            // Write segments metadata
-            var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
-            while (impact > 0) : (impact -= 1) {
-                if (doc_ids[impact].items.len == 0)
-                    continue;
-
-                // Store the segment metada
-                try self.writer.interface.writeInt(index.ImpactType, impact, native_endian);
-                // no. docs
-                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
-                try self.writer.interface.writeAll(vbyte_buffer[0..segment_len]);
-                // selectors
-                const bytes_written = c.compress_int_pack_selectors(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr);
-                try self.writer.interface.writeAll(compression_buffer[0..bytes_written]);
-            }
-            // Null terminate
-            try self.writer.interface.writeInt(index.ImpactType, 0, native_endian);
-        }
-
-        const postings_end = self.writer.logicalPos();
+        const postings = try self.writePostings(allocator, dictionary, vocab_offsets, docs.items.len);
 
         // Write out the vocab
         const vocab_start = self.writer.logicalPos();
@@ -243,8 +252,8 @@ pub const CcmlSerialiser = struct {
 
             // "sub-files"
             .snippets_store = .{ snippets_start, snippets_end },
-            .blocks_store = .{ blocks_start, blocks_end },
-            .postings_store = .{ postings_start, postings_end },
+            .blocks_store = .{ postings[0], postings[1] },
+            .postings_store = .{ postings[2], postings[3] },
             .vocab_store = .{ vocab_start, vocab_end },
             .docs_store = .{ docs_start, docs_end },
 

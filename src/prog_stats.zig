@@ -54,19 +54,38 @@ pub fn main(init: std.process.Init) !void {
 
         return;
     } else if (res.args.terms != 0) {
-        for (index.dictionary) |term_store| {
-            if (term_store == 0)
+        for (index.vocab) |store| {
+            if (store.term == 0)
                 continue;
-            const term_length = read16(index_file, term_store);
-            const term_start = term_store + @sizeOf(u16);
-            const term = index_file[term_start .. term_start + term_length];
+            const term_length = read16(index.vocab_store, store.term);
+            const term_start = store.term + @sizeOf(u16);
+            const term = index.vocab_store[term_start .. term_start + term_length];
             try stdout.print("{s}\n", .{term});
         }
 
         return;
     }
 
-    try stdout.print("Index size: {Bi:.2}\n", .{index_file.len});
-    try stdout.print("Docs: {d}\n", .{index.docs.len});
-    try stdout.print("Longest doc: {d}\n", .{index.header.max_doc_length});
+    const structures_size = (index.snippets.len + index.vocab.len * 2 + index.docs.len + 3) * @sizeOf(u64);
+
+    // Count terms
+    var term_count: usize = 0;
+    for (index.vocab) |store| {
+        if (store.term == 0)
+            continue;
+        term_count += 1;
+    }
+
+    try stdout.print("Index size:      {Bi:.2}\n", .{index_file.len});
+    try stdout.print("Snippets size:   {Bi:.2}\n", .{index.snippets_store.len});
+    try stdout.print("Blocks size:     {Bi:.2}\n", .{index.blocks_store.len});
+    try stdout.print("Postings size:   {Bi:.2}\n", .{index.postings_store.len});
+    try stdout.print("Vocab size:      {Bi:.2}\n", .{index.vocab_store.len});
+    try stdout.print("Docs size:       {Bi:.2}\n", .{index.docs_store.len});
+    try stdout.print("Structures size: {Bi:.2}\n", .{structures_size});
+    try stdout.print("\n", .{});
+
+    try stdout.print("No. terms:       {d}\n", .{term_count});
+    try stdout.print("No. docs:        {d}\n", .{index.docs.len});
+    try stdout.print("Longest doc:     {d}\n", .{index.header.max_doc_length});
 }

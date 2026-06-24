@@ -7,7 +7,6 @@ const std = @import("std");
 const Wyhash = std.hash.Wyhash;
 
 const config = @import("config.zig");
-const hash = @import("dictionary.zig").hash;
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 const TopK = @import("top_k_insert.zig").TopKInsert;
@@ -24,10 +23,17 @@ pub const Result = struct {
     score: u16,
 };
 
+pub const VocabTuple = extern struct {
+    term: u64,
+    postings: u64,
+};
+
 pub const SegmentTuple = struct {
     segment: u64,
     header: u64,
 };
+
+// Helpers for unaligned reads
 
 fn read16(buf: []const u8, offset: u64) u16 {
     return std.mem.bytesToValue(u16, buf[offset .. offset + @sizeOf(u16)][0..2]);
@@ -53,13 +59,33 @@ fn readArray(buf: []const u8, offset: u64) []const u64 {
     return @alignCast(std.mem.bytesAsSlice(u64, buf[start .. start + len * @sizeOf(u64)]));
 }
 
+fn readVocabArray(buf: []const u8, offset: u64) []const VocabTuple {
+    const len = read64(buf, offset);
+    const start = offset + @sizeOf(u64);
+    return @alignCast(std.mem.bytesAsSlice(VocabTuple, buf[start .. start + len * @sizeOf(VocabTuple)]));
+}
+
+// Index contains "sub-files"
+// Offsets in the structures are relative to the "sub-files"
+// Ordering of the index is not guaranteed
+// Though the header is always at the end
 pub const Header = extern struct {
+    // precomputed values
     max_doc_length: u64,
-    snippets_offset: u64,
-    segments_start: u64,
-    segments_end: u64,
-    dictionary_offset: u64,
-    docs_offset: u64,
+
+    // "sub-files"
+    snippets_store: [2]u64,
+    blocks_store: [2]u64,
+    postings_store: [2]u64,
+    vocab_store: [2]u64,
+    docs_store: [2]u64,
+
+    // structures
+    snippets: u64,
+    vocab: u64,
+    docs: u64,
+
+    // config
     stemmer: Stemmer.Alg,
     _reserved: [5]u8 = .{0} ** 5,
     version: u16,
@@ -68,12 +94,19 @@ pub const Header = extern struct {
 pub const Index = struct {
     const Self = @This();
 
-    index: []const u8,
     header: *const Header,
-    docs: []const u64,
-    dictionary: []const u64,
-    segments: []align(16) const u8,
+
+    // "sub-files"
+    snippets_store: []const u8,
+    blocks_store: []align(16) const u8,
+    postings_store: []const u8,
+    vocab_store: []const u8,
+    docs_store: []const u8,
+
+    // structures
     snippets: []const u64,
+    vocab: []const VocabTuple,
+    docs: []const u64,
 
     pub fn init(index: []align(16) const u8) !Self {
         const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));
@@ -84,26 +117,33 @@ pub const Index = struct {
         }
 
         return .{
-            .index = index,
             .header = header,
-            .docs = readArray(index, header.docs_offset),
-            .dictionary = readArray(index, header.dictionary_offset),
-            .segments = @alignCast(index[header.segments_start .. header.segments_end]),
-            .snippets = if (header.snippets_offset != 0) readArray(index, header.snippets_offset) else &.{},
+
+            // "sub-files"
+            .snippets_store = index[header.snippets_store[0]..header.snippets_store[1]],
+            .blocks_store = @alignCast(index[header.blocks_store[0]..header.blocks_store[1]]),
+            .postings_store = index[header.postings_store[0]..header.postings_store[1]],
+            .vocab_store = index[header.vocab_store[0]..header.vocab_store[1]],
+            .docs_store = index[header.docs_store[0]..header.docs_store[1]],
+
+            // structures
+            .snippets = if (header.snippets != 0) readArray(index, header.snippets) else &.{},
+            .vocab = readVocabArray(index, header.vocab),
+            .docs = readArray(index, header.docs),
         };
     }
 
     pub fn hasSnippets(self: *const Self) bool {
-        return self.header.snippets_offset != 0;
+        return self.header.snippets != 0;
     }
 
     // [   u16   ][ []u8 ][   u16   ][ []u8 ]
     // [ strlen  ][ str  ][ strlen  ][ str  ]
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const name_offset = self.docs[doc_id];
-        const doc_name = readStr(self.index, name_offset);
+        const doc_name = readStr(self.docs_store, name_offset);
         const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
-        const title = readStr(self.index, title_offset);
+        const title = readStr(self.docs_store, title_offset);
         return .{ doc_name, title };
     }
 
@@ -112,14 +152,14 @@ pub const Index = struct {
     }
 
     pub fn segmentScore(self: *const Self, offset: u64) ImpactType {
-        return if (ImpactType == u16) read16(self.index, offset) else self.index[offset];
+        return if (ImpactType == u16) read16(self.postings_store, offset) else self.postings_store[offset];
     }
 
     pub fn decompressSegment(self: *const Self, segment: *SegmentTuple, buf: []u32) u64 {
         var doc_count: u32 = 0;
-        const selectors = segment.header + @sizeOf(ImpactType) + vbyte.read(self.index[segment.header + @sizeOf(ImpactType) ..], &doc_count);
+        const selectors = segment.header + @sizeOf(ImpactType) + vbyte.read(self.postings_store[segment.header + @sizeOf(ImpactType) ..], &doc_count);
 
-        segment.segment += c.compress_int_unpack_d1(self.segments[segment.segment..].ptr, self.index[selectors..].ptr, doc_count, buf.ptr);
+        segment.segment += c.compress_int_unpack_d1(self.blocks_store[segment.segment..].ptr, self.postings_store[selectors..].ptr, doc_count, buf.ptr);
         segment.header = selectors + doc_count / 128;
 
         return doc_count;
@@ -127,18 +167,18 @@ pub const Index = struct {
 
     // Returns start of segment header and start of segments
     pub fn find(self: *const Self, key: []const u8) SegmentTuple {
-        var i: u64 = Wyhash.hash(0, key) & self.dictionary.len - 1;
+        var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
         while (true) {
-            if (self.dictionary[i] == 0)
+            if (self.vocab[i].term == 0)
                 return .{ .segment = 0, .header = 0 };
-            const term = readStr(self.index, self.dictionary[i]);
+            const term = readStr(self.vocab_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
-                const metadata_start = self.dictionary[i] + @sizeOf(u16) + term.len;
-                const segment_offset = read64(self.index, metadata_start);
-                return .{ .segment = segment_offset, .header = metadata_start + @sizeOf(u64) };
+                const blocks_start = read64(self.postings_store, self.vocab[i].postings);
+                const postings_start = self.vocab[i].postings + @sizeOf(u64);
+                return .{ .segment = blocks_start, .header = postings_start };
             }
 
-            i = i + 1 & self.dictionary.len - 1;
+            i = i + 1 & self.vocab.len - 1;
         }
     }
 };

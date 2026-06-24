@@ -67,15 +67,8 @@ pub const CcmlSerialiser = struct {
         // Flush snippets
         try self.newDocId(allocator);
 
-        // Snippets
-        var snippets_offset: u64 = 0;
-        if (self.snippets) {
-            while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
-            snippets_offset = self.writer.logicalPos();
-            try self.writer.interface.writeInt(u64, self.snippet_indices.items.len, native_endian);
-            for (self.snippet_indices.items) |s|
-                try self.writer.interface.writeInt(u64, s, native_endian);
-        }
+        const snippets_start: u64 = 0; // TODO this shouldn't include the file opening remark
+        const snippets_end: u64 = self.writer.logicalPos();
 
         // Quantise
         if (quantise) {
@@ -113,7 +106,7 @@ pub const CcmlSerialiser = struct {
 
         // Write out the segments themselves
         while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
-        const segments_start = self.writer.logicalPos();
+        const blocks_start = self.writer.logicalPos();
 
         const segments_offsets = try allocator.alloc(u64, dictionary.cap);
         @memset(segments_offsets, 0);
@@ -130,7 +123,7 @@ pub const CcmlSerialiser = struct {
 
             try postings.?.distribute(&doc_ids);
 
-            segments_offsets[i] = self.writer.logicalPos() - segments_start;
+            segments_offsets[i] = self.writer.logicalPos() - blocks_start;
 
             // Write segments (these must be aligned)
             var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
@@ -143,11 +136,13 @@ pub const CcmlSerialiser = struct {
             }
         }
 
-        const segments_end = self.writer.logicalPos();
+        const blocks_end = self.writer.logicalPos();
 
-        // Write out dictionary terms and segments metadata
-        const dictionary_offsets = try allocator.alloc(u64, dictionary.cap);
-        @memset(dictionary_offsets, 0);
+        // Write out segments metadata
+        const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
+        @memset(vocab_offsets, .{ .term = 0, .postings = 0 });
+
+        const postings_start = self.writer.logicalPos();
 
         for (dictionary.store, 0..) |postings, i| {
             if (postings == null) continue;
@@ -157,8 +152,7 @@ pub const CcmlSerialiser = struct {
             try postings.?.distribute(&doc_ids);
 
             // Write postings
-            dictionary_offsets[i] = self.writer.logicalPos();
-            try self.writeStr(postings.?.term);
+            vocab_offsets[i].postings = self.writer.logicalPos() - postings_start;
 
             // Store the segment offset
             try self.writer.interface.writeInt(u64, segments_offsets[i], native_endian);
@@ -183,38 +177,79 @@ pub const CcmlSerialiser = struct {
             try self.writer.interface.writeInt(index.ImpactType, 0, native_endian);
         }
 
-        // Dictionary
-        while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
-        const dictionary_offset = self.writer.logicalPos();
-        try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
-        try self.writer.interface.writeSliceEndian(u64, dictionary_offsets, native_endian);
+        const postings_end = self.writer.logicalPos();
+
+        // Write out the vocab
+        const vocab_start = self.writer.logicalPos();
+
+        for (dictionary.store, 0..) |postings, i| {
+            if (postings == null) continue;
+
+            // Write postings
+            vocab_offsets[i].term = self.writer.logicalPos() - vocab_start;
+            try self.writeStr(postings.?.term);
+        }
+
+        const vocab_end = self.writer.logicalPos();
 
         // Document ID strings
+        const docs_offsets = try allocator.alloc(u64, docs.items.len);
+
+        const docs_start = self.writer.logicalPos();
+
         var max_doc_length: u32 = 0;
         for (docs.items, 0..) |d, i| {
             if (d.len > max_doc_length) max_doc_length = d.len;
-            const name_offset = self.writer.logicalPos();
+            docs_offsets[i] = self.writer.logicalPos() - docs_start;
             try self.writeStr(d.name);
             try self.writeStr(d.title);
-            docs.items[i].name.ptr = @ptrFromInt(name_offset);
         }
+
+        const docs_end = self.writer.logicalPos();
+
+        // Snippets
+        var snippets_offset: u64 = 0;
+        if (self.snippets) {
+            snippets_offset = self.writer.logicalPos();
+
+            while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
+            try self.writer.interface.writeInt(u64, self.snippet_indices.items.len, native_endian);
+            // TODO this should be a u64 array
+            for (self.snippet_indices.items) |s|
+                try self.writer.interface.writeInt(u64, s, native_endian);
+        }
+
+        // Vocab
+        while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
+        const vocab_offset = self.writer.logicalPos();
+        try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
+        try self.writer.interface.writeSliceEndian(index.VocabTuple, vocab_offsets, native_endian);
 
         // Document IDs array
         while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
         const docs_offset = self.writer.logicalPos();
         try self.writer.interface.writeInt(u64, docs.items.len, native_endian);
-        for (docs.items) |d|
-            try self.writer.interface.writeInt(u64, @intFromPtr(d.name.ptr), native_endian);
+        try self.writer.interface.writeSliceEndian(u64, docs_offsets, native_endian);
 
         // Header
         while (self.writer.logicalPos() % @alignOf(index.Header) != 0) try self.writer.interface.writeByte(0);
         try self.writer.interface.writeStruct(index.Header{
+            // precomputed values
             .max_doc_length = max_doc_length,
-            .snippets_offset = snippets_offset,
-            .segments_start = segments_start,
-            .segments_end = segments_end,
-            .dictionary_offset = dictionary_offset,
-            .docs_offset = docs_offset,
+
+            // "sub-files"
+            .snippets_store = .{ snippets_start, snippets_end },
+            .blocks_store = .{ blocks_start, blocks_end },
+            .postings_store = .{ postings_start, postings_end },
+            .vocab_store = .{ vocab_start, vocab_end },
+            .docs_store = .{ docs_start, docs_end },
+
+            // structures
+            .snippets = snippets_offset,
+            .vocab = vocab_offset,
+            .docs = docs_offset,
+
+            // config
             .stemmer = stemmer,
             .version = index.version,
         }, native_endian);

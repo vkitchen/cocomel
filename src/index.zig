@@ -24,8 +24,8 @@ pub const Result = struct {
 };
 
 pub const VocabTuple = extern struct {
+    hash: config.FileOffsetType,
     term: config.FileOffsetType,
-    postings: config.FileOffsetType,
 };
 
 pub const SegmentTuple = struct {
@@ -168,13 +168,21 @@ pub const Index = struct {
     // Returns start of segment header and start of segments
     pub fn find(self: *const Self, key: []const u8) SegmentTuple {
         var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
+        const hash2: u32 = @truncate(Wyhash.hash(42, key) & std.math.maxInt(u32));
         while (true) {
             if (self.vocab[i].term == 0)
                 return .{ .segment = 0, .header = 0 };
+            if (self.vocab[i].hash != hash2) {
+                i = i + 1 & self.vocab.len - 1;
+                continue;
+            }
             const term = readStr(self.vocab_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
+                var postings_offset: u32 = 0;
+                _ = vbyte.read(self.vocab_store[self.vocab[i].term + @sizeOf(u16) + term.len..], &postings_offset);
+
                 var blocks_start: u32 = 0;
-                const postings_start = self.vocab[i].postings + vbyte.read(self.postings_store[self.vocab[i].postings..], &blocks_start);
+                const postings_start = postings_offset + vbyte.read(self.postings_store[postings_offset..], &blocks_start);
                 return .{ .segment = @as(u64, blocks_start) * 16, .header = postings_start };
             }
 

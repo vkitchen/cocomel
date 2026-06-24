@@ -4,6 +4,8 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const Wyhash = std.hash.Wyhash;
+
 const config = @import("config.zig");
 const index = @import("index.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
@@ -103,7 +105,7 @@ pub const CcmlSerialiser = struct {
 
             try postings.distribute(&doc_ids);
 
-            vocab_offsets[i].postings = @truncate(scratch_writer.logicalPos());
+            vocab_offsets[i].hash = @truncate(scratch_writer.logicalPos()); // sneak the value in
 
             const block_offset = (self.writer.logicalPos() - blocks_start) / 16; // block id
 
@@ -201,7 +203,7 @@ pub const CcmlSerialiser = struct {
 
         // Write postings
         const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
-        @memset(vocab_offsets, .{ .term = 0, .postings = 0 });
+        @memset(vocab_offsets, .{ .term = 0, .hash = 0 });
 
         const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets);
 
@@ -211,9 +213,17 @@ pub const CcmlSerialiser = struct {
         for (dictionary.store, 0..) |pair, i| {
             if (pair.key == null) continue;
 
-            // Write postings
             vocab_offsets[i].term = @truncate(self.writer.logicalPos() - vocab_start);
             try self.writeStr(pair.key.?);
+
+            // Write postings pointer
+            var vbyte_buffer: [5]u8 = undefined;
+            const postings_offset_len = vbyte.store(&vbyte_buffer, @truncate(vocab_offsets[i].hash)); // TODO this could be u64
+            try self.writer.interface.writeAll(vbyte_buffer[0..postings_offset_len]);
+
+            // Secondary hash for term
+            const hash2: u32 = @truncate(Wyhash.hash(42, pair.key.?) & std.math.maxInt(u32));
+            vocab_offsets[i].hash = hash2;
         }
 
         const vocab_end = self.writer.logicalPos();

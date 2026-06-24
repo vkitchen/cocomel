@@ -105,11 +105,19 @@ pub const CcmlSerialiser = struct {
 
             try postings.distribute(&doc_ids);
 
-            vocab_offsets[i].hash = @truncate(scratch_writer.logicalPos()); // sneak the value in
+            vocab_offsets[i].term = @truncate(scratch_writer.logicalPos());
+
+            // Write term
+            try scratch_writer.interface.writeInt(u16, @truncate(pair.key.?.len), native_endian);
+            try scratch_writer.interface.writeAll(pair.key.?);
+
+            // Secondary hash for term
+            const hash2: u32 = @truncate(Wyhash.hash(42, pair.key.?) & std.math.maxInt(u32));
+            vocab_offsets[i].hash = hash2;
 
             const block_offset = (self.writer.logicalPos() - blocks_start) / 16; // block id
 
-            // Store the segment offset
+            // Store the block offset
             var vbyte_buffer: [5]u8 = undefined;
             const block_offset_len = vbyte.store(&vbyte_buffer, @truncate(block_offset)); // TODO this could be u64
             try scratch_writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
@@ -207,27 +215,6 @@ pub const CcmlSerialiser = struct {
 
         const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets);
 
-        // Write out the vocab
-        const vocab_start = self.writer.logicalPos();
-
-        for (dictionary.store, 0..) |pair, i| {
-            if (pair.key == null) continue;
-
-            vocab_offsets[i].term = @truncate(self.writer.logicalPos() - vocab_start);
-            try self.writeStr(pair.key.?);
-
-            // Write postings pointer
-            var vbyte_buffer: [5]u8 = undefined;
-            const postings_offset_len = vbyte.store(&vbyte_buffer, @truncate(vocab_offsets[i].hash)); // TODO this could be u64
-            try self.writer.interface.writeAll(vbyte_buffer[0..postings_offset_len]);
-
-            // Secondary hash for term
-            const hash2: u32 = @truncate(Wyhash.hash(42, pair.key.?) & std.math.maxInt(u32));
-            vocab_offsets[i].hash = hash2;
-        }
-
-        const vocab_end = self.writer.logicalPos();
-
         // Document ID strings
         const docs_offsets = try allocator.alloc(config.FileOffsetType, docs.items.len);
 
@@ -276,7 +263,6 @@ pub const CcmlSerialiser = struct {
             .snippets_store = .{ snippets_start, snippets_end },
             .blocks_store = .{ postings[0], postings[1] },
             .postings_store = .{ postings[2], postings[3] },
-            .vocab_store = .{ vocab_start, vocab_end },
             .docs_store = .{ docs_start, docs_end },
 
             // structures

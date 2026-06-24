@@ -77,7 +77,6 @@ pub const Header = extern struct {
     snippets_store: [2]u64,
     blocks_store: [2]u64,
     postings_store: [2]u64,
-    vocab_store: [2]u64,
     docs_store: [2]u64,
 
     // structures
@@ -100,7 +99,6 @@ pub const Index = struct {
     snippets_store: []const u8,
     blocks_store: []align(16) const u8,
     postings_store: []const u8,
-    vocab_store: []const u8,
     docs_store: []const u8,
 
     // structures
@@ -123,7 +121,6 @@ pub const Index = struct {
             .snippets_store = index[header.snippets_store[0]..header.snippets_store[1]],
             .blocks_store = @alignCast(index[header.blocks_store[0]..header.blocks_store[1]]),
             .postings_store = index[header.postings_store[0]..header.postings_store[1]],
-            .vocab_store = index[header.vocab_store[0]..header.vocab_store[1]],
             .docs_store = index[header.docs_store[0]..header.docs_store[1]],
 
             // structures
@@ -176,13 +173,12 @@ pub const Index = struct {
                 i = i + 1 & self.vocab.len - 1;
                 continue;
             }
-            const term = readStr(self.vocab_store, self.vocab[i].term);
+            const term = readStr(self.postings_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
-                var postings_offset: u32 = 0;
-                _ = vbyte.read(self.vocab_store[self.vocab[i].term + @sizeOf(u16) + term.len..], &postings_offset);
+                var postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
 
                 var blocks_start: u32 = 0;
-                const postings_start = postings_offset + vbyte.read(self.postings_store[postings_offset..], &blocks_start);
+                postings_start += vbyte.read(self.postings_store[postings_start..], &blocks_start);
                 return .{ .segment = @as(u64, blocks_start) * 16, .header = postings_start };
             }
 

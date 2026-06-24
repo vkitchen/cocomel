@@ -62,9 +62,9 @@ pub fn main(init: std.process.Init) !void {
         for (index.vocab) |store| {
             if (store.term == 0)
                 continue;
-            const term_length = read16(index.vocab_store, store.term);
+            const term_length = read16(index.postings_store, store.term);
             const term_start = store.term + @sizeOf(u16);
-            const term = index.vocab_store[term_start .. term_start + term_length];
+            const term = index.postings_store[term_start .. term_start + term_length];
             try stdout.print("{s}\n", .{term});
         }
 
@@ -85,7 +85,6 @@ pub fn main(init: std.process.Init) !void {
     try stdout.print("Snippets size:   {Bi:.2}\n", .{index.snippets_store.len});
     try stdout.print("Blocks size:     {Bi:.2}\n", .{index.blocks_store.len});
     try stdout.print("Postings size:   {Bi:.2}\n", .{index.postings_store.len});
-    try stdout.print("Vocab size:      {Bi:.2}\n", .{index.vocab_store.len});
     try stdout.print("Docs size:       {Bi:.2}\n", .{index.docs_store.len});
     try stdout.print("Structures size: {Bi:.2}\n", .{structures_size});
     try stdout.print("\n", .{});

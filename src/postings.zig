@@ -25,6 +25,15 @@ pub const Postings = struct {
         return .{ .id = doc_id };
     }
 
+    pub fn initCapacity(allocator: std.mem.Allocator, cap: usize) !Self {
+        if (cap == 1) return .{ .id = 0 }; // Postings of length 1 don't have backing chains
+
+        return .{
+            .id = 0,
+            .tfs = try ArrayChain(config.TermFrequencyType).initCapacity(allocator, cap),
+        };
+    }
+
     pub fn flush(self: *Self, allocator: std.mem.Allocator) !void {
         try self.ids.ensureUnusedCapacity(allocator, 5);
         const chunk = self.ids.last.?;

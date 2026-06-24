@@ -20,6 +20,20 @@ pub fn ArrayChain(comptime T: type) type {
         first: ?*Chunk = null,
         last: ?*Chunk = null,
 
+        pub fn initCapacity(allocator: std.mem.Allocator, cap: usize) !Self {
+            const chunk = try allocator.create(Chunk);
+            chunk.items = try allocator.alloc(T, cap);
+            chunk.items.len = 0;
+            chunk.capacity = cap;
+            chunk.next = null;
+
+            var self: Self = .{};
+            self.first = chunk;
+            self.last = chunk;
+
+            return self;
+        }
+
         fn ensureChunk(self: *Self, allocator: std.mem.Allocator) !void {
             var chunk = self.last;
             if (chunk == null) {

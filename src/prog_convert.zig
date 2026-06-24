@@ -84,7 +84,8 @@ pub fn main(init: std.process.Init) !void {
 
                 if (postings.* == null) {
                     const post = try arena.create(Postings);
-                    post.* = Postings.init(docid);
+                    post.* = try Postings.initCapacity(arena, postings_list.postings.items.len);
+                    post.id = docid;
                     post.freq = tf;
                     postings.* = post;
 

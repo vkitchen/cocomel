@@ -64,9 +64,6 @@ pub const CcmlSerialiser = struct {
     }
 
     fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple) ![4]u64 {
-        var scratch_file = try std.Io.Dir.cwd().createFile(io, config.scratch_name, .{});
-        var scratch_writer = scratch_file.writer(io, &scratch_buf);
-
         // Get statistics
         var best = [_]u32{0} ** (1 << config.quantise_bits);
 
@@ -89,6 +86,10 @@ pub const CcmlSerialiser = struct {
 
         const compression_buffer = try allocator.alloc(u8, longest_segment * @sizeOf(u32));
         const metadata_buffer = try allocator.alloc(u8, longest_segment / 128); // currently only selectors compressed
+
+        // Scratch
+        var scratch_file = try std.Io.Dir.cwd().createFile(io, config.scratch_name, .{});
+        var scratch_writer = scratch_file.writer(io, &scratch_buf);
 
         // Write out the segments themselves
         while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);

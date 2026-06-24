@@ -63,17 +63,32 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
-    // TODO get segment statistics to avoid overallocating buffers
-    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, buf_size: usize) ![4]u64 {
+    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple) ![4]u64 {
         var scratch_file = try std.Io.Dir.cwd().createFile(io, config.scratch_name, .{});
         var scratch_writer = scratch_file.writer(io, &scratch_buf);
 
+        // Get statistics
+        var best = [_]u32{0} ** (1 << config.quantise_bits);
+
+        for (dictionary.store) |pair| {
+            if (pair.key == null) continue;
+            const postings = pair.val.?;
+
+            postings.statistics(&best);
+        }
+
+        var longest_segment: u32 = 0;
+        for (0..(1 << config.quantise_bits)) |i| {
+            if (best[i] > longest_segment)
+                longest_segment = best[i];
+        }
+
         // Buffers
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
-        for (&doc_ids) |*d| try d.resize(allocator, buf_size); // reserve so arena doesn't get trampled
+        for (&doc_ids, 0..) |*d, i| try d.resize(allocator, best[i]); // reserve so arena doesn't get trampled
 
-        const compression_buffer = try allocator.alloc(u8, buf_size * @sizeOf(u32));
-        const metadata_buffer = try allocator.alloc(u8, buf_size / 128);
+        const compression_buffer = try allocator.alloc(u8, longest_segment * @sizeOf(u32));
+        const metadata_buffer = try allocator.alloc(u8, longest_segment / 128); // currently only selectors compressed
 
         // Write out the segments themselves
         while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
@@ -187,7 +202,7 @@ pub const CcmlSerialiser = struct {
         const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
         @memset(vocab_offsets, .{ .term = 0, .postings = 0 });
 
-        const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets, docs.items.len);
+        const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets);
 
         // Write out the vocab
         const vocab_start = self.writer.logicalPos();

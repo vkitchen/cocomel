@@ -57,6 +57,30 @@ pub const Postings = struct {
         self.freq = 1;
     }
 
+    pub fn statistics(self: *Self, best: *[1 << config.quantise_bits]u32) void {
+        var my_best = [_]u32{0} ** (1 << config.quantise_bits);
+
+        var tfs_chunk = self.tfs.first;
+        var tfs_i: u32 = 0;
+        while (tfs_chunk != null) {
+            const rsv = tfs_chunk.?.items[tfs_i];
+            my_best[rsv] += 1;
+            tfs_i += 1;
+
+            if (tfs_i >= tfs_chunk.?.items.len) {
+                tfs_chunk = tfs_chunk.?.next;
+                tfs_i = 0;
+            }
+        }
+        // Last
+        my_best[self.freq] += 1;
+
+        for (0..(1 << config.quantise_bits)) |i| {
+            if (my_best[i] > best[i])
+                best[i] = my_best[i];
+        }
+    }
+
     pub fn score(self: *Self, docs: *std.ArrayList(Doc), ranker: *Ranker) [2]f64 {
         var min_score: f64 = std.math.floatMax(f64);
         var max_score: f64 = 0;

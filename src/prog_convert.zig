@@ -94,11 +94,11 @@ pub fn main(init: std.process.Init) !void {
             }
             postings.?.df_t = @intCast(postings_list.df);
 
-            if (i % 1_000_000 == 0)
-                std.debug.print("Processed {d}/{d} Postings Lists\n", .{ i, header.num_postings_lists });
+            if (i != 0 and i % 1_000_000 == 0)
+                std.debug.print("Read {d}/{d} postings\n", .{ i, header.num_postings_lists });
         }
 
-        std.debug.print("Processed {d}/{d} Postings Lists\n", .{ header.num_postings_lists, header.num_postings_lists });
+        std.debug.print("Read {d}/{d} postings\n", .{ header.num_postings_lists, header.num_postings_lists });
 
         for (0..@intCast(header.num_docs)) |i| {
             len = try takeVByte(&reader.interface);
@@ -114,11 +114,11 @@ pub fn main(init: std.process.Init) !void {
             }
             doc_ids.appendAssumeCapacity(.{ .name = try arena.dupe(u8, doc.collection_docid), .len = @intCast(doc.doclength) });
 
-            if (i % 1_000_000 == 0)
-                std.debug.print("Processed {d}/{d} Docs\n", .{ i, header.num_docs });
+            if (i != 0 and i % 1_000_000 == 0)
+                std.debug.print("Read {d}/{d} docs\n", .{ i, header.num_docs });
         }
 
-        std.debug.print("Processed {d}/{d} Docs\n", .{ header.num_docs, header.num_docs });
+        std.debug.print("Read {d}/{d} docs\n", .{ header.num_docs, header.num_docs });
 
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);

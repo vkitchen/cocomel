@@ -67,7 +67,7 @@ pub fn main(init: std.process.Init) !void {
         defer header.deinit(scratch);
 
         var doc_ids: std.ArrayList(Doc) = try std.ArrayList(Doc).initCapacity(arena, @intCast(header.num_docs));
-        var dict = try Dictionary.initCapacity(arena, @intCast(header.num_postings_lists));
+        var dict = try Dictionary(*Postings).initCapacity(arena, @intCast(header.num_postings_lists));
 
         for (0..@intCast(header.num_postings_lists)) |i| {
             len = try takeVByte(&reader.interface);
@@ -77,22 +77,30 @@ pub fn main(init: std.process.Init) !void {
             defer postings_list.deinit(scratch);
 
             var last_docid: u32 = 0;
-            var postings: ?*Postings = null;
+            const postings = try dict.emplace(arena, postings_list.term);
             for (postings_list.postings.items) |p| {
                 const docid = last_docid + @as(u32, @intCast(p.docid));
                 const tf: config.TermFrequencyType = @truncate(@as(u32, @intCast(std.math.clamp(p.tf, 0, std.math.maxInt(config.TermFrequencyType)))));
-                if (postings) |post| {
-                    try post.flush(arena);
-                    post.id = docid;
+
+                if (postings.* == null) {
+                    const post = try arena.create(Postings);
+                    post.* = Postings.init(docid);
                     post.freq = tf;
-                } else {
-                    var post = try dict.insert(arena, postings_list.term, docid);
-                    post.freq = tf;
-                    postings = post;
+                    postings.* = post;
+
+                    last_docid = docid;
+                    continue;
                 }
+
+                const post = postings.*.?;
+
+                try post.flush(arena);
+                post.id = docid;
+                post.freq = tf;
+
                 last_docid = docid;
             }
-            postings.?.df_t = @intCast(postings_list.df);
+            postings.*.?.df_t = @intCast(postings_list.df);
 
             if (i != 0 and i % 1_000_000 == 0)
                 std.debug.print("Read {d}/{d} postings\n", .{ i, header.num_postings_lists });

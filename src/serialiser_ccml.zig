@@ -9,7 +9,7 @@ const index = @import("index.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("doc.zig");
 const Stemmer = @import("stem.zig").Stemmer;
-const Posting = @import("dictionary.zig").Posting;
+const Postings = @import("postings.zig").Postings;
 const Ranker = @import("ranking_fn_bm25.zig").Ranker;
 const Quantiser = @import("quantiser.zig").Quantiser;
 const vbyte = @import("compress_int_vbyte.zig");
@@ -63,7 +63,7 @@ pub const CcmlSerialiser = struct {
     }
 
     // This goes over the index multiple times to avoid allocating excessive memory
-    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary, stemmer: Stemmer.Alg, quantise: bool) !u64 {
+    pub fn write(self: *Self, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
 
@@ -85,10 +85,11 @@ pub const CcmlSerialiser = struct {
             var min_score: f64 = std.math.floatMax(f64);
             var max_score: f64 = 0;
 
-            for (dictionary.store) |post| {
-                if (post == null) continue;
+            for (dictionary.store) |pair| {
+                if (pair.key == null) continue;
+                const post = pair.val.?;
 
-                const scores = post.?.score(docs, &ranker);
+                const scores = post.score(docs, &ranker);
 
                 if (scores[0] < min_score) min_score = scores[0];
                 if (scores[1] > max_score) max_score = scores[1];
@@ -97,10 +98,11 @@ pub const CcmlSerialiser = struct {
             // Actually quantise now
             const quantiser = Quantiser.init(min_score, max_score);
 
-            for (dictionary.store) |post| {
-                if (post == null) continue;
+            for (dictionary.store) |pair| {
+                if (pair.key == null) continue;
+                const post = pair.val.?;
 
-                try post.?.quantise(docs, &ranker, quantiser);
+                try post.quantise(docs, &ranker, quantiser);
             }
         }
 
@@ -116,12 +118,13 @@ pub const CcmlSerialiser = struct {
 
         const compression_buffer = try allocator.alloc(u8, docs.items.len * @sizeOf(u32));
 
-        for (dictionary.store, 0..) |postings, i| {
-            if (postings == null) continue;
+        for (dictionary.store, 0..) |pair, i| {
+            if (pair.key == null) continue;
+            const postings = pair.val.?;
 
             for (&doc_ids) |*d| d.clearRetainingCapacity();
 
-            try postings.?.distribute(&doc_ids);
+            try postings.distribute(&doc_ids);
 
             segments_offsets[i] = @truncate((self.writer.logicalPos() - blocks_start) / 16); // block id
 
@@ -144,12 +147,13 @@ pub const CcmlSerialiser = struct {
 
         const postings_start = self.writer.logicalPos();
 
-        for (dictionary.store, 0..) |postings, i| {
-            if (postings == null) continue;
+        for (dictionary.store, 0..) |pair, i| {
+            if (pair.key == null) continue;
+            const postings = pair.val.?;
 
             for (&doc_ids) |*d| d.clearRetainingCapacity();
 
-            try postings.?.distribute(&doc_ids);
+            try postings.distribute(&doc_ids);
 
             // Write postings
             vocab_offsets[i].postings = @truncate(self.writer.logicalPos() - postings_start);
@@ -183,12 +187,12 @@ pub const CcmlSerialiser = struct {
         // Write out the vocab
         const vocab_start = self.writer.logicalPos();
 
-        for (dictionary.store, 0..) |postings, i| {
-            if (postings == null) continue;
+        for (dictionary.store, 0..) |pair, i| {
+            if (pair.key == null) continue;
 
             // Write postings
             vocab_offsets[i].term = @truncate(self.writer.logicalPos() - vocab_start);
-            try self.writeStr(postings.?.term);
+            try self.writeStr(pair.key.?);
         }
 
         const vocab_end = self.writer.logicalPos();

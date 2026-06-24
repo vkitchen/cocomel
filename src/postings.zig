@@ -14,7 +14,6 @@ const vbyte = @import("compress_int_vbyte.zig");
 pub const Postings = struct {
     const Self = @This();
 
-    term: []u8,
     df_t: u32 = 0,
     id: u32,
     last_id: u32 = 0,
@@ -22,8 +21,8 @@ pub const Postings = struct {
     ids: ArrayChain(u8) = .{},
     tfs: ArrayChain(config.TermFrequencyType) = .{},
 
-    pub fn init(term: []u8, id: u32) Self {
-        return .{ .term = term, .id = id };
+    pub fn init(doc_id: u32) Self {
+        return .{ .id = doc_id };
     }
 
     pub fn flush(self: *Self, allocator: std.mem.Allocator) !void {
@@ -34,7 +33,17 @@ pub const Postings = struct {
         chunk.items.len -= 5 - vbyte.store(chunk.items[last..], self.id - self.last_id);
         try self.tfs.append(allocator, self.freq);
         self.last_id = self.id;
-        self.df_t += 1;
+        self.df_t += 1; // TODO move this to append and fix score function
+    }
+
+    pub fn append(self: *Self, allocator: std.mem.Allocator, doc_id: u32) !void {
+        if (self.id == doc_id) {
+            self.freq +|= 1;
+            return;
+        }
+
+        try self.flush(allocator);
+        self.id = doc_id;
         self.freq = 1;
     }
 

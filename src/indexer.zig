@@ -6,6 +6,7 @@
 const std = @import("std");
 const config = @import("config.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
+const Postings = @import("postings.zig").Postings;
 const Doc = @import("doc.zig");
 const Stemmer = @import("stem.zig").Stemmer;
 const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
@@ -18,7 +19,7 @@ pub const Indexer = struct {
     serialiser: *CcmlSerialiser,
     buffer: [config.max_term_length]u8 = undefined,
     doc_ids: std.ArrayList(Doc),
-    dict: Dictionary,
+    dict: Dictionary(*Postings),
     bigrams: bool,
     prev_buffer: [config.max_term_length * 2 + 1]u8 = undefined,
     prev_len: usize = 0,
@@ -29,7 +30,7 @@ pub const Indexer = struct {
             .stemmer = stemmer,
             .serialiser = serialiser,
             .doc_ids = .empty,
-            .dict = try Dictionary.init(allocator),
+            .dict = try Dictionary(*Postings).init(allocator),
             .bigrams = bigrams,
         };
     }
@@ -43,12 +44,33 @@ pub const Indexer = struct {
 
         if (term_.len == 0) return;
 
-        _ = try self.dict.insert(allocator, term_, @truncate(self.doc_ids.items.len - 1));
+        const doc_id: u32 = @truncate(self.doc_ids.items.len - 1);
+
+        var postings = try self.dict.emplace(allocator, term_);
+        if (postings.* == null) {
+            const post = try allocator.create(Postings);
+            post.* = Postings.init(doc_id);
+            postings.* = post;
+        } else {
+            const post = postings.*.?;
+            try post.append(allocator, doc_id);
+        }
+
         if (self.bigrams) {
             if (self.has_prev) {
                 self.prev_buffer[self.prev_len] = ' ';
                 @memcpy(self.prev_buffer[self.prev_len + 1 .. self.prev_len + 1 + term_.len], term_);
-                _ = try self.dict.insert(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len], @truncate(self.doc_ids.items.len - 1));
+
+                // TODO don't shadow
+                postings = try self.dict.emplace(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len]);
+                if (postings.* == null) {
+                    const post = try allocator.create(Postings);
+                    post.* = Postings.init(doc_id);
+                    postings.* = post;
+                } else {
+                    const post = postings.*.?;
+                    try post.append(allocator, doc_id);
+                }
             }
             @memcpy(self.prev_buffer[0..term_.len], term_);
             self.prev_len = term_.len;

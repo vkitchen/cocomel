@@ -33,7 +33,7 @@ pub const Search = struct {
     postings: std.ArrayList(SegmentTuple),
     topk: TopK = .{},
     accumulators: []align(32) u16,
-    segment_buffer: []u32,
+    segment_buffer: []align(16) u32,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
@@ -67,7 +67,7 @@ pub const Search = struct {
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(SegmentTuple).initCapacity(allocator, config.max_query_terms),
             .accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len),
-            .segment_buffer = try allocator.alloc(u32, index.docs.len), // TODO this only needs to be max_segment_len
+            .segment_buffer = try allocator.alignedAlloc(u32, .@"16", index.docs.len), // TODO this only needs to be max_segment_len
         };
     }
 

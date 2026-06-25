@@ -97,7 +97,7 @@ pub const Index = struct {
 
     // "sub-files"
     snippets_store: []const u8,
-    blocks_store: []align(16) const u8,
+    blocks_store: []const u128,
     postings_store: []const u8,
     docs_store: []const u8,
 
@@ -119,7 +119,7 @@ pub const Index = struct {
 
             // "sub-files"
             .snippets_store = index[header.snippets_store[0]..header.snippets_store[1]],
-            .blocks_store = @alignCast(index[header.blocks_store[0]..header.blocks_store[1]]),
+            .blocks_store = @ptrCast(@alignCast(index[header.blocks_store[0]..header.blocks_store[1]])),
             .postings_store = index[header.postings_store[0]..header.postings_store[1]],
             .docs_store = index[header.docs_store[0]..header.docs_store[1]],
 
@@ -156,7 +156,8 @@ pub const Index = struct {
         var doc_count: u32 = 0;
         const selectors = segment.header + @sizeOf(ImpactType) + vbyte.read(self.postings_store[segment.header + @sizeOf(ImpactType) ..], &doc_count);
 
-        segment.segment += c.compress_int_unpack_d1(self.blocks_store[segment.segment..].ptr, self.postings_store[selectors..].ptr, doc_count, buf.ptr);
+        const block = segment.segment / 16;
+        segment.segment += c.compress_int_unpack_d1(@ptrCast(buf.ptr), @ptrCast(self.blocks_store[block..].ptr), self.postings_store[selectors..].ptr, doc_count);
         segment.header = selectors + doc_count / 128;
 
         return doc_count;

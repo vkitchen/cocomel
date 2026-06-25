@@ -86,7 +86,7 @@ pub const CcmlSerialiser = struct {
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
         for (&doc_ids, 0..) |*d, i| try d.resize(allocator, best[i]); // reserve so arena doesn't get trampled
 
-        const compression_buffer = try allocator.alloc(u8, longest_segment * @sizeOf(u32));
+        const compression_buffer: []align(16) u8 = try allocator.alignedAlloc(u8, .@"16", longest_segment * @sizeOf(u32));
         const metadata_buffer = try allocator.alloc(u8, longest_segment / 128); // currently only selectors compressed
 
         // Scratch
@@ -128,7 +128,7 @@ pub const CcmlSerialiser = struct {
                 if (doc_ids[impact].items.len == 0)
                     continue;
 
-                const written = c.compress_int_pack(doc_ids[impact].items.ptr, doc_ids[impact].items.len, compression_buffer.ptr, metadata_buffer.ptr);
+                const written = c.compress_int_pack(@ptrCast(compression_buffer.ptr), doc_ids[impact].items.ptr, metadata_buffer.ptr, doc_ids[impact].items.len);
                 try self.writer.interface.writeAll(compression_buffer[0..written.bytes]);
 
                 // Store the segment metada

@@ -3,13 +3,14 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <immintrin.h>
 
 struct pack_res {
 	size_t bytes;
 	size_t metadata;
 };
 
-struct pack_res compress_int_pack(uint32_t *in, size_t len, uint8_t *out, uint8_t *metadata);
-size_t compress_int_unpack_d1(const uint8_t *in, const uint8_t *selectors, size_t count, uint32_t *out);
+struct pack_res compress_int_pack(__m128i *out, const uint32_t *in, uint8_t *metadata, size_t len);
+size_t compress_int_unpack_d1(uint32_t *out, const __m128i *in, const uint8_t *metadata, size_t len);
 
 #endif

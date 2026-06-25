@@ -14,22 +14,21 @@ const vbyte = @import("compress_int_vbyte.zig");
 pub const Postings = struct {
     const Self = @This();
 
-    df_t: u32 = 0,
-    id: u32,
+    len: u32 = 0,
+    id: u32 = 0,
     last_id: u32 = 0,
-    freq: config.TermFrequencyType = 1,
+    freq: config.TermFrequencyType = 0,
     ids: ArrayChain(u8) = .{},
     tfs: ArrayChain(config.TermFrequencyType) = .{},
 
-    pub fn init(doc_id: u32) Self {
-        return .{ .id = doc_id };
+    pub fn init(docid: u32) Self {
+        return .{ .id = docid, .freq = 1, .len = 1 };
     }
 
     pub fn initCapacity(allocator: std.mem.Allocator, cap: usize) !Self {
-        if (cap == 1) return .{ .id = 0 }; // Postings of length 1 don't have backing chains
+        if (cap == 1) return .{}; // Postings of length 1 don't have backing chains
 
         return .{
-            .id = 0,
             .ids = try ArrayChain(u8).initCapacity(allocator, cap * 3), // Estimated VByte size
             .tfs = try ArrayChain(config.TermFrequencyType).initCapacity(allocator, cap),
         };
@@ -43,18 +42,18 @@ pub const Postings = struct {
         chunk.items.len -= 5 - vbyte.store(chunk.items[last..], self.id - self.last_id);
         try self.tfs.append(allocator, self.freq);
         self.last_id = self.id;
-        self.df_t += 1; // TODO move this to append and fix score function
     }
 
-    pub fn append(self: *Self, allocator: std.mem.Allocator, doc_id: u32) !void {
-        if (self.id == doc_id) {
+    pub fn append(self: *Self, allocator: std.mem.Allocator, docid: u32) !void {
+        if (self.id == docid) {
             self.freq +|= 1;
             return;
         }
 
         try self.flush(allocator);
-        self.id = doc_id;
+        self.id = docid;
         self.freq = 1;
+        self.len += 1;
     }
 
     pub fn statistics(self: *Self, best: *[1 << config.quantise_bits]u32) void {
@@ -85,7 +84,7 @@ pub const Postings = struct {
         var min_score: f64 = std.math.floatMax(f64);
         var max_score: f64 = 0;
 
-        ranker.compIdf(@floatFromInt(self.df_t + 1));
+        ranker.compIdf(@floatFromInt(self.len));
 
         var ids_chunk = self.ids.first;
         var tfs_chunk = self.tfs.first;
@@ -124,7 +123,7 @@ pub const Postings = struct {
     }
 
     pub fn quantise(self: *Self, docs: *std.ArrayList(Doc), ranker: *Ranker, quantiser: Quantiser) !void {
-        ranker.compIdf(@floatFromInt(self.df_t + 1));
+        ranker.compIdf(@floatFromInt(self.len));
 
         var ids_chunk = self.ids.first;
         var tfs_chunk = self.tfs.first;

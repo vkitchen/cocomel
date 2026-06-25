@@ -101,7 +101,7 @@ pub fn main(init: std.process.Init) !void {
 
                 last_docid = docid;
             }
-            postings.*.?.df_t = @intCast(postings_list.df);
+            postings.*.?.len = @intCast(postings_list.df);
 
             if (i != 0 and i % 1_000_000 == 0)
                 std.debug.print("Read {d}/{d} postings\n", .{ i, header.num_postings_lists });

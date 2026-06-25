@@ -8,8 +8,6 @@ const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const heap = @import("heap.zig");
 
-var store: [config.max_top_k]Result = undefined;
-
 fn cmpResults(_: void, a: Result, b: Result) bool {
     // Score descending
     if (a.score != b.score)
@@ -22,9 +20,14 @@ fn cmpResults(_: void, a: Result, b: Result) bool {
 pub const TopKHeap = struct {
     const Self = @This();
 
+    store: []Result,
     cap: u32 = config.max_top_k,
     len: u32 = 0,
     saturated: bool = false,
+
+    pub fn init(store: []Result) Self {
+        return .{ .store = store };
+    }
 
     pub fn clearRetainingCapacity(self: *Self) void {
         self.len = 0;
@@ -96,14 +99,14 @@ pub const TopKHeap = struct {
 
     pub fn results(self: *Self) []Result {
         for (0..self.len) |i|
-            store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
-        return store[0..self.len];
+            self.store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
+        return self.store[0..self.len];
     }
 
     pub fn sorted(self: *Self) []Result {
         for (0..self.len) |i|
-            store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
-        std.sort.pdq(Result, store[0..self.len], {}, cmpResults);
-        return store[0..self.len];
+            self.store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
+        std.sort.pdq(Result, self.store[0..self.len], {}, cmpResults);
+        return self.store[0..self.len];
     }
 };

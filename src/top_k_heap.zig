@@ -98,15 +98,10 @@ pub const TopKHeap = struct {
     }
 
     pub fn results(self: *Self) []Result {
+        self.store.len = self.len;
         for (0..self.len) |i|
             self.store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
-        return self.store[0..self.len];
-    }
-
-    pub fn sorted(self: *Self) []Result {
-        for (0..self.len) |i|
-            self.store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
-        std.sort.pdq(Result, self.store[0..self.len], {}, cmpResults);
-        return self.store[0..self.len];
+        std.sort.pdq(Result, self.store, {}, cmpResults);
+        return self.store;
     }
 };

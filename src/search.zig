@@ -95,21 +95,24 @@ pub const Search = struct {
         }
 
         // Special case for single term query skipping accumulator reset
+        self.results.len = 0;
         if (self.postings.items.len == 1) {
             while (true) {
                 // Read segment
                 const score = self.index.segmentScore(self.postings.items[0].header);
                 const len = self.index.decompressSegment(&self.postings.items[0], self.segment_buffer);
 
-                // Accumulate segment
-                for (0..@min(self.topk.cap - self.topk.len, len)) |i|
-                    self.topk.saturate(.{ .docid = self.segment_buffer[i], .score = score });
-                // Successfully filled topk
-                if (self.topk.cap == self.topk.len) break;
+                // Store segment
+                for (0..@min(config.max_top_k - self.results.len, len)) |i| {
+                    self.results.len += 1;
+                    self.results[self.results.len - 1] = .{ .docid = self.segment_buffer[i], .score = score };
+                }
+                // Successfully found topk
+                if (self.results.len == config.max_top_k) break;
                 // Term exhausted
                 if (self.index.segmentScore(self.postings.items[0].header) == 0) break;
             }
-            return self.topk.results();
+            return self.results;
         }
 
         memset(std.mem.sliceAsBytes(self.accumulators));
@@ -164,7 +167,7 @@ pub const Search = struct {
             }
         }
 
-        return self.topk.sorted();
+        return self.topk.results();
     }
 
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

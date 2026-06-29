@@ -72,7 +72,7 @@ pub const Search = struct {
             .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
             .topk = TopK.init(results, accumulators.ptr),
             .accumulators = accumulators,
-            .segment_buffer = try allocator.alignedAlloc(u32, .@"16", index.docs.len), // TODO this only needs to be max_segment_len
+            .segment_buffer = try allocator.alignedAlloc(u32, .@"16", 128),
             .results = results,
         };
     }

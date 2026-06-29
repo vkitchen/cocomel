@@ -28,8 +28,8 @@ pub const VocabTuple = extern struct {
     term: config.FileOffsetType,
 };
 
-pub const SegmentTuple = struct {
-    segment: u64,
+pub const PostingsHeader = struct {
+    block: u64,
     header: u64,
 };
 
@@ -152,24 +152,24 @@ pub const Index = struct {
         return if (ImpactType == u16) read16(self.postings_store, offset) else self.postings_store[offset];
     }
 
-    pub fn decompressSegment(self: *const Self, segment: *SegmentTuple, buf: []u32) u64 {
+    pub fn decompressSegment(self: *const Self, segment: *PostingsHeader, buf: []u32) u64 {
         var doc_count: u32 = 0;
         const selectors = segment.header + @sizeOf(ImpactType) + vbyte.read(self.postings_store[segment.header + @sizeOf(ImpactType) ..], &doc_count);
 
-        const block = segment.segment / 16;
-        segment.segment += c.compress_int_unpack_d1(@ptrCast(buf.ptr), @ptrCast(self.blocks_store[block..].ptr), self.postings_store[selectors..].ptr, doc_count);
+        const block = segment.block / 16;
+        segment.block += c.compress_int_unpack_d1(@ptrCast(buf.ptr), @ptrCast(self.blocks_store[block..].ptr), self.postings_store[selectors..].ptr, doc_count);
         segment.header = selectors + doc_count / 128;
 
         return doc_count;
     }
 
     // Returns start of segment header and start of segments
-    pub fn find(self: *const Self, key: []const u8) SegmentTuple {
+    pub fn find(self: *const Self, key: []const u8) PostingsHeader {
         var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
         const hash2: u32 = @truncate(Wyhash.hash(42, key) & std.math.maxInt(u32));
         while (true) {
             if (self.vocab[i].term == 0)
-                return .{ .segment = 0, .header = 0 };
+                return .{ .block = 0, .header = 0 };
             if (self.vocab[i].hash != hash2) {
                 i = i + 1 & self.vocab.len - 1;
                 continue;
@@ -180,7 +180,7 @@ pub const Index = struct {
 
                 var blocks_start: u32 = 0;
                 postings_start += vbyte.read(self.postings_store[postings_start..], &blocks_start);
-                return .{ .segment = @as(u64, blocks_start) * 16, .header = postings_start };
+                return .{ .block = @as(u64, blocks_start) * 16, .header = postings_start };
             }
 
             i = i + 1 & self.vocab.len - 1;

@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const Index = @import("index.zig").Index;
-const SegmentTuple = @import("index.zig").SegmentTuple;
+const PostingsHeader = @import("index.zig").PostingsHeader;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
@@ -30,7 +30,7 @@ pub const Search = struct {
     snippets: bool,
     snippeter: Snippeter,
     query: std.ArrayListUnmanaged(query.Term),
-    postings: std.ArrayList(SegmentTuple),
+    postings: std.ArrayList(PostingsHeader),
     topk: TopK,
     accumulators: []align(32) u16,
     segment_buffer: []align(16) u32,
@@ -69,7 +69,7 @@ pub const Search = struct {
             .snippets = index.hasSnippets(),
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
-            .postings = try std.ArrayList(SegmentTuple).initCapacity(allocator, config.max_query_terms),
+            .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
             .topk = TopK.init(results, accumulators.ptr),
             .accumulators = accumulators,
             .segment_buffer = try allocator.alignedAlloc(u32, .@"16", index.docs.len), // TODO this only needs to be max_segment_len

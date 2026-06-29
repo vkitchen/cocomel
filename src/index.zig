@@ -29,8 +29,10 @@ pub const VocabTuple = extern struct {
 };
 
 pub const PostingsHeader = struct {
-    block: u64,
-    header: u64,
+    blocks: u32,
+    postings: u64,
+    score: ImpactType = 0,
+    len: u32 = 0,
 };
 
 // Helpers for unaligned reads
@@ -148,19 +150,32 @@ pub const Index = struct {
         return [2]u64{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    pub fn segmentScore(self: *const Self, offset: u64) ImpactType {
+    pub fn decompressBlock(self: *const Self, segment: *PostingsHeader, buf: []u32, last_id: u32) usize {
+        const doc_count = @min(128, segment.len);
+        const res = c.compress_int_unpack_d1_128(@ptrCast(buf.ptr), @ptrCast(self.blocks_store[segment.blocks..].ptr), self.postings_store[segment.postings..].ptr, doc_count, last_id);
+        segment.len -= doc_count;
+        segment.blocks += res.blocks;
+        segment.postings += res.bytes;
+        return doc_count;
+    }
+
+    fn segmentScore(self: *const Self, offset: u64) ImpactType {
         return if (ImpactType == u16) read16(self.postings_store, offset) else self.postings_store[offset];
     }
 
-    pub fn decompressSegment(self: *const Self, segment: *PostingsHeader, buf: []u32) u64 {
-        var doc_count: u32 = 0;
-        const selectors = segment.header + @sizeOf(ImpactType) + vbyte.read(self.postings_store[segment.header + @sizeOf(ImpactType) ..], &doc_count);
+    pub fn nextSegment(self: *const Self, segment: *PostingsHeader) void {
+        segment.score = self.segmentScore(segment.postings);
+        if (segment.score == 0)
+            return;
 
-        const block = segment.block / 16;
-        segment.block += c.compress_int_unpack_d1(@ptrCast(buf.ptr), @ptrCast(self.blocks_store[block..].ptr), self.postings_store[selectors..].ptr, doc_count);
-        segment.header = selectors + doc_count / 128;
+        const selectors = segment.postings + @sizeOf(ImpactType) + vbyte.read(self.postings_store[segment.postings + @sizeOf(ImpactType) ..], &segment.len);
+        segment.postings = selectors;
+    }
 
-        return doc_count;
+    fn readPostingsHeader(self: *const Self, offset: u64) PostingsHeader {
+        var blocks_start: u32 = 0;
+        const postings_start = offset + vbyte.read(self.postings_store[offset..], &blocks_start);
+        return .{ .blocks = blocks_start, .postings = postings_start };
     }
 
     // Returns start of segment header and start of segments
@@ -169,18 +184,17 @@ pub const Index = struct {
         const hash2: u32 = @truncate(Wyhash.hash(42, key) & std.math.maxInt(u32));
         while (true) {
             if (self.vocab[i].term == 0)
-                return .{ .block = 0, .header = 0 };
+                return .{ .blocks = 0, .postings = 0 };
             if (self.vocab[i].hash != hash2) {
                 i = i + 1 & self.vocab.len - 1;
                 continue;
             }
             const term = readStr(self.postings_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
-                var postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
-
-                var blocks_start: u32 = 0;
-                postings_start += vbyte.read(self.postings_store[postings_start..], &blocks_start);
-                return .{ .block = @as(u64, blocks_start) * 16, .header = postings_start };
+                const postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
+                var header = self.readPostingsHeader(postings_start);
+                self.nextSegment(&header);
+                return header;
             }
 
             i = i + 1 & self.vocab.len - 1;

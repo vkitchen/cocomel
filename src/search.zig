@@ -91,27 +91,36 @@ pub const Search = struct {
 
         // TODO fix term negation
         for (self.query.items) |term| {
-            const pair = self.index.find(term.term);
-            if (pair.header != 0) self.postings.appendAssumeCapacity(pair);
+            const res = self.index.find(term.term);
+            if (res.postings != 0) self.postings.appendAssumeCapacity(res);
         }
 
         // Special case for single term query skipping accumulator reset
         self.results.len = 0;
         if (self.postings.items.len == 1) {
+            var postings = self.postings.items[0];
             while (true) {
-                // Read segment
-                const score = self.index.segmentScore(self.postings.items[0].header);
-                const len = self.index.decompressSegment(&self.postings.items[0], self.segment_buffer);
+                var last_id: u32 = 0;
+                while (postings.len > 0) {
+                    // Read block
+                    const len = self.index.decompressBlock(&postings, self.segment_buffer, last_id);
 
-                // Store segment
-                for (0..@min(config.max_top_k - self.results.len, len)) |i| {
-                    self.results.len += 1;
-                    self.results[self.results.len - 1] = .{ .docid = self.segment_buffer[i], .score = score };
+                    // Store block
+                    for (0..@min(config.max_top_k - self.results.len, len)) |i| {
+                        self.results.len += 1;
+                        self.results[self.results.len - 1] = .{ .docid = self.segment_buffer[i], .score = postings.score };
+                    }
+                    // Successfully found topk
+                    if (self.results.len == config.max_top_k) return self.results;
+
+                    last_id = self.segment_buffer[len - 1];
                 }
-                // Successfully found topk
-                if (self.results.len == config.max_top_k) break;
+
+                // Next segment
+                self.index.nextSegment(&postings);
+
                 // Term exhausted
-                if (self.index.segmentScore(self.postings.items[0].header) == 0) break;
+                if (postings.score == 0) break;
             }
             return self.results;
         }
@@ -120,26 +129,34 @@ pub const Search = struct {
 
         // Now process normally
         while (true) {
-            var max_impact: u16 = 0;
             var max_i: usize = 0;
-            for (self.postings.items, 0..) |pair, i| {
-                if (self.index.segmentScore(pair.header) > max_impact) {
-                    max_impact = self.index.segmentScore(pair.header);
+            var max: PostingsHeader = self.postings.items[0];
+            for (1..self.postings.items.len) |i| {
+                if (self.postings.items[i].score > max.score) {
+                    max = self.postings.items[i];
                     max_i = i;
                 }
             }
 
-            if (max_impact == 0) break;
-            // Read segment
-            const len = self.index.decompressSegment(&self.postings.items[max_i], self.segment_buffer);
+            if (max.score == 0) break;
 
-            // Accumulate segment
-            for (0..len) |i| {
-                const doc_id = self.segment_buffer[i];
-                const saved = self.accumulators[doc_id];
-                self.accumulators[doc_id] += max_impact;
-                self.topk.insert(doc_id, self.accumulators[doc_id], saved);
+            var last_id: u32 = 0;
+            while (max.len > 0) {
+                // Read block
+                const len = self.index.decompressBlock(&max, self.segment_buffer, last_id);
+
+                // Accumulate block
+                for (0..len) |i| {
+                    const doc_id = self.segment_buffer[i];
+                    const saved = self.accumulators[doc_id];
+                    self.accumulators[doc_id] += max.score;
+                    self.topk.insert(doc_id, self.accumulators[doc_id], saved);
+                }
+
+                last_id = self.segment_buffer[len - 1];
             }
+            self.index.nextSegment(&max);
+            self.postings.items[max_i] = max;
         }
 
         return self.topk.results();

@@ -76,3 +76,16 @@ size_t compress_int_unpack_d1(uint32_t *out, const __m128i *in, const uint8_t *m
 
 	return (bytes_read + 15) / 16 * 16;
 }
+
+// count = num ints
+// return = num bytes
+struct compress_res compress_int_unpack_d1_128(uint32_t *out, const __m128i *in, const uint8_t *metadata, size_t len, uint32_t delta) {
+	if (len == 128) {
+		const uint8_t b = *metadata;
+		simdunpackd1(delta, in, out, b);
+		return (struct compress_res){ b, 1 };
+	} else {
+		size_t bytes_read = streamvbyte_delta_decode(in, out, len, delta);
+		return (struct compress_res){ (bytes_read + 15) / 16, 0 };
+	}
+}

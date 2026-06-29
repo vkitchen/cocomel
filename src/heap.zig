@@ -40,12 +40,12 @@ fn lt(a: usize, b: usize) bool {
     return scores[a] < scores[b] or (scores[a] == scores[b] and docids[a] > docids[b]);
 }
 
-fn lteq(a: Result, b: usize) bool {
-    return a.score < scores[b] or (a.score == scores[b] and a.docid >= docids[b]);
+fn lteq(docid: u32, score: u16, cmp: usize) bool {
+    return score < scores[cmp] or (score == scores[cmp] and docid >= docids[cmp]);
 }
 
-fn gt(a: Result, b: usize) bool {
-    return a.score > scores[b] or (a.score == scores[b] and a.docid < docids[b]);
+fn gt(docid: u32, score: u16, cmp: usize) bool {
+    return score > scores[cmp] or (score == scores[cmp] and docid < docids[cmp]);
 }
 
 fn heapify(position: usize) void {
@@ -69,7 +69,7 @@ fn heapify(position: usize) void {
     }
 }
 
-fn insert_from(key: Result, index: usize) void {
+fn insert_from(docid: u32, score: u16, index: usize) void {
     var position = index;
 
     while (position < config.max_top_k) {
@@ -78,7 +78,7 @@ fn insert_from(key: Result, index: usize) void {
 
         // check store out of bound, it's also the stopping condition
         if (left < config.max_top_k and right < config.max_top_k) {
-            if (lteq(key, left) and lteq(key, right)) {
+            if (lteq(docid, score, left) and lteq(docid, score, right)) {
                 break; // we're smaller then the left and the right so we're done
             } else if (lt(left, right)) {
                 docids[position] = docids[left];
@@ -90,7 +90,7 @@ fn insert_from(key: Result, index: usize) void {
                 position = right;
             }
         } else if (left < config.max_top_k) { // and right > size (because this is an else)
-            if (gt(key, left)) {
+            if (gt(docid, score, left)) {
                 docids[position] = docids[left];
                 scores[position] = scores[left];
                 position = left;
@@ -102,8 +102,8 @@ fn insert_from(key: Result, index: usize) void {
         }
     }
 
-    docids[position] = key.docid;
-    scores[position] = key.score;
+    docids[position] = docid;
+    scores[position] = score;
 }
 
 pub fn make_heap() void {
@@ -114,25 +114,22 @@ pub fn make_heap() void {
     }
 }
 
-pub fn push_back(key: Result) void {
-    insert_from(key, 0);
+pub fn push_back(docid: u32, score: u16) void {
+    insert_from(docid, score, 0);
 }
 
-pub fn find(key: Result) i64 {
+pub fn find(docid: u32) u64 {
     const Vec = @Vector(top_k_rounded, u32);
 
     const haystack: Vec = docids;
-    const needle: Vec = @splat(key.docid);
+    const needle: Vec = @splat(docid);
 
     const mask = haystack == needle;
     const bits: KMask = @bitCast(mask);
 
-    if (bits != 0)
-        return @ctz(bits);
-
-    return -1;
+    return @ctz(bits);
 }
 
-pub fn promote(key: Result, position: usize) void {
-    insert_from(key, position);
+pub fn promote(docid: u32, score: u16, position: usize) void {
+    insert_from(docid, score, position);
 }

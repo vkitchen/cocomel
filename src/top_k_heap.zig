@@ -8,6 +8,8 @@ const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const heap = @import("heap.zig");
 
+var cache: [config.max_top_k]*u16 = undefined;
+
 fn cmpResults(_: void, a: Result, b: Result) bool {
     // Score descending
     if (a.score != b.score)
@@ -20,60 +22,34 @@ fn cmpResults(_: void, a: Result, b: Result) bool {
 pub const TopKHeap = struct {
     const Self = @This();
 
+    accumulators: [*]u16,
     store: []Result,
     cap: u32 = config.max_top_k,
     len: u32 = 0,
     saturated: bool = false,
 
-    pub fn init(store: []Result) Self {
-        return .{ .store = store };
+    pub fn init(store: []Result, accumulators: [*]u16) Self {
+        return .{ .store = store, .accumulators = accumulators };
     }
 
     pub fn clearRetainingCapacity(self: *Self) void {
         self.len = 0;
         self.saturated = false;
-        @memset(heap.docids[0..heap.top_k_rounded], 0);
     }
 
-    pub fn saturate(self: *Self, key: Result) void {
-        if (self.saturated) return;
-
-        heap.docids[self.len] = key.docid;
-        heap.scores[self.len] = key.score;
-        self.len += 1;
-
-        if (self.len == self.cap) {
-            heap.make_heap();
-            self.saturated = true;
-        }
-    }
-
-    pub fn insert(self: *Self, key: Result, diff: u32) void {
+    pub fn insert(self: *Self, docid: u32, is: u16, was: u16) void {
         // Heap requires more elements
         if (!self.saturated) {
-            // First time this doc has been accumulated
-            if (key.score - diff == 0) {
-                heap.docids[self.len] = key.docid;
-                heap.scores[self.len] = key.score;
+            // First time this doc has been accumulated (new heap entry)
+            if (was == 0) {
+                cache[self.len] = &self.accumulators[docid];
                 self.len += 1;
 
                 if (self.len == self.cap) {
-                    heap.make_heap();
-                    self.saturated = true;
-                }
-                return;
-            }
-
-            // Was in the heap? Promote
-            const where = heap.find(key);
-            if (where != -1) {
-                heap.scores[@intCast(where)] = key.score;
-            } else {
-                heap.docids[self.len] = key.docid;
-                heap.scores[self.len] = key.score;
-                self.len += 1;
-
-                if (self.len == self.cap) {
+                    for (0..self.len) |i| {
+                        heap.docids[i] = @intCast(cache[i] - self.accumulators);
+                        heap.scores[i] = cache[i].*;
+                    }
                     heap.make_heap();
                     self.saturated = true;
                 }
@@ -83,18 +59,18 @@ pub const TopKHeap = struct {
         }
 
         // Can't enter heap
-        if (key.score < heap.scores[0] or (key.score == heap.scores[0] and key.docid > heap.docids[0]))
+        if (is < heap.scores[0] or (is == heap.scores[0] and docid > heap.docids[0]))
             return;
 
         // Previously didn't enter heap. Insert
-        if (key.score - diff < heap.scores[0] or (key.score - diff == heap.scores[0] and key.docid > heap.docids[0])) {
-            heap.push_back(key);
+        if (was < heap.scores[0] or (was == heap.scores[0] and docid > heap.docids[0])) {
+            heap.push_back(docid, is);
             return;
         }
 
         // Was in the heap. Promote
-        const where = heap.find(key);
-        heap.promote(key, @intCast(where));
+        const where = heap.find(docid);
+        heap.promote(docid, is, where);
     }
 
     pub fn results(self: *Self) []Result {

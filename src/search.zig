@@ -62,6 +62,7 @@ pub const Search = struct {
         };
 
         const results = try allocator.alloc(Result, index.docs.len);
+        const accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len); 
 
         return .{
             .index = index,
@@ -69,8 +70,8 @@ pub const Search = struct {
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(SegmentTuple).initCapacity(allocator, config.max_query_terms),
-            .topk = TopK.init(results),
-            .accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len),
+            .topk = TopK.init(results, accumulators.ptr),
+            .accumulators = accumulators,
             .segment_buffer = try allocator.alignedAlloc(u32, .@"16", index.docs.len), // TODO this only needs to be max_segment_len
             .results = results,
         };
@@ -117,37 +118,10 @@ pub const Search = struct {
 
         memset(std.mem.sliceAsBytes(self.accumulators));
 
-        var max_impact: u16 = 0;
-        var max_i: usize = 0;
-
-        // Saturate top-k with highest scoring term
-        for (self.postings.items, 0..) |pair, i| {
-            if (self.index.segmentScore(pair.header) > max_impact) {
-                max_impact = self.index.segmentScore(pair.header);
-                max_i = i;
-            }
-        }
-
-        while (true) {
-            // Read segment
-            const score = self.index.segmentScore(self.postings.items[max_i].header);
-            const len = self.index.decompressSegment(&self.postings.items[max_i], self.segment_buffer);
-
-            // Accumulate segment
-            for (0..len) |i| {
-                const doc_id = self.segment_buffer[i];
-                self.topk.saturate(.{ .docid = doc_id, .score = score });
-                self.accumulators[doc_id] = score;
-            }
-            // Successfully filled topk
-            if (self.topk.cap == self.topk.len) break;
-            // Term exhausted
-            if (self.index.segmentScore(self.postings.items[max_i].header) == 0) break;
-        }
-
         // Now process normally
         while (true) {
-            max_impact = 0;
+            var max_impact: u16 = 0;
+            var max_i: usize = 0;
             for (self.postings.items, 0..) |pair, i| {
                 if (self.index.segmentScore(pair.header) > max_impact) {
                     max_impact = self.index.segmentScore(pair.header);
@@ -162,8 +136,9 @@ pub const Search = struct {
             // Accumulate segment
             for (0..len) |i| {
                 const doc_id = self.segment_buffer[i];
+                const saved = self.accumulators[doc_id];
                 self.accumulators[doc_id] += max_impact;
-                self.topk.insert(.{ .docid = doc_id, .score = self.accumulators[doc_id] }, max_impact);
+                self.topk.insert(doc_id, self.accumulators[doc_id], saved);
             }
         }
 

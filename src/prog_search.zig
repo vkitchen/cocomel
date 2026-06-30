@@ -24,7 +24,6 @@ pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
         \\-k <int>               Print k results.
-        \\--trec                 Print results in trec format.
         \\--index <file>         Search a different index than default.
         \\
     );
@@ -50,37 +49,28 @@ pub fn main(init: std.process.Init) !void {
     stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
     stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
+    std.debug.print("Reading index...\n", .{});
+
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
     var searcher = try Search.init(init.io, init.arena.allocator(), std.Io.Dir.cwd(), index_name);
 
     const read_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-    std.debug.print("Ready...\n", .{});
+    std.debug.print("Index read took: {d:.3}s\n", .{@as(f64, @floatFromInt(read_time - start_time)) / 1e9});
+    std.debug.print("Query> ", .{});
 
-    if (cli.args.trec != 0) {
-        try search_trec(init.io, &searcher, num_results);
-    } else {
-        try search(init.io, &searcher, num_results);
-    }
-
-    const total_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
-
-    std.debug.print("Index read time: {d:.3}s\n", .{@as(f64, @floatFromInt(read_time - start_time)) / 1e9});
-    std.debug.print("Search time:     {d:.3}s\n", .{@as(f64, @floatFromInt(total_search_time)) / 1e9});
-    std.debug.print("Total time:      {d:.3}s\n", .{@as(f64, @floatFromInt(total_time - start_time)) / 1e9});
-}
-
-fn search(io: std.Io, searcher: *Search, k: usize) !void {
     while (try stdin.interface.takeDelimiter('\n')) |query| {
-        const start_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
+        const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
         const results = try searcher.search(&results_buffer, query);
 
-        const end_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
+        const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;
 
-        for (0..@min(results.len, k)) |i| {
+        std.debug.print("Search took: {d:.3}s\n", .{@as(f64, @floatFromInt(end_search_time - start_search_time)) / 1e9});
+
+        for (0..@min(results.len, num_results)) |i| {
             const doc_id = searcher.name(results[i].docid);
 
             try stdout.interface.print("{d} {s}\n", .{ results[i].score, doc_id[0] });
@@ -102,35 +92,9 @@ fn search(io: std.Io, searcher: *Search, k: usize) !void {
         }
 
         try stdout.flush();
+
+        std.debug.print("Query> ", .{});
     }
-}
 
-fn search_trec(io: std.Io, searcher: *Search, k: usize) !void {
-    while (try stdin.interface.takeDelimiter('\n')) |query_raw| {
-        var query = query_raw;
-        var query_id: usize = 0;
-        if (std.mem.findScalar(u8, query, ' ')) |space| {
-            if (std.fmt.parseInt(usize, query[0..space], 10)) |num| {
-                query_id = num;
-                query = query[space + 1 ..];
-            } else |_| {
-                query_id = 0;
-            }
-        }
-
-        const start_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
-
-        const results = try searcher.search(&results_buffer, query);
-
-        const end_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
-        total_search_time += end_search_time - start_search_time;
-
-        for (0..@min(results.len, k)) |i| {
-            const doc_id = searcher.name(results[i].docid);
-
-            try stdout.interface.print("{d} Q0 {s} {d} {d} cocomel\n", .{ query_id, doc_id[0], i + 1, results[i].score });
-        }
-
-        try stdout.flush();
-    }
+    std.debug.print("\nTotal search time: {d:.3}s\n", .{@as(f64, @floatFromInt(total_search_time)) / 1e9});
 }

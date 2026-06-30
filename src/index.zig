@@ -34,6 +34,7 @@ pub const SegmentHeader = struct {
 };
 
 pub const PostingsHeader = struct {
+    len: usize, // total docs
     segments: []SegmentHeader,
     blocks: u64,
     postings: u64,
@@ -227,6 +228,7 @@ pub const Index = struct {
         var index = offset;
         const num_segments = self.readImpact(index);
         index += @sizeOf(ImpactType);
+        var total_docs: usize = 0;
         var segments = try self.allocator.allocator().alloc(SegmentHeader, num_segments);
         for (0..num_segments) |i| {
             const impact = self.readImpact(index);
@@ -234,10 +236,11 @@ pub const Index = struct {
             var num_docs: u32 = undefined;
             index += vbyte.read(self.postings_store[index..], &num_docs);
             segments[i] = .{ .impact = impact, .len = num_docs };
+            total_docs += num_docs;
         }
         var blocks_start: u32 = undefined;
         index += vbyte.read(self.postings_store[index..], &blocks_start);
-        return .{ .segments = segments, .blocks = blocks_start, .postings = index };
+        return .{ .len = total_docs, .segments = segments, .blocks = blocks_start, .postings = index };
     }
 
     // Returns start of segment header and start of segments

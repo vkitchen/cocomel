@@ -23,6 +23,10 @@ fn memset(dest: []align(32) u8) void {
     c.memset_avx2(dest.ptr, dest.len);
 }
 
+fn cmpPostings(_: void, a: PostingsHeader, b: PostingsHeader) bool {
+    return a.len > b.len;
+}
+
 pub const Search = struct {
     const Self = @This();
 
@@ -100,6 +104,8 @@ pub const Search = struct {
         // Special case for single term query skipping accumulator reset
         if (self.postings.items.len == 1)
             return self.index.readPostings(&self.postings.items[0], results);
+
+        std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
 
         memset(std.mem.sliceAsBytes(self.accumulators));
 

@@ -81,15 +81,15 @@ pub const Search = struct {
         };
     }
 
-    fn prunePostings(self: *Self, postings: []PostingsHeader) void {
+    fn prunePostings(self: *Self) void {
         const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) / 10);
         var total: usize = 0;
-        for (postings) |post|
+        for (self.postings.items) |post|
             total += post.len;
 
         var impact: usize = 1;
         while (total > budget) {
-            for (postings) |*post| {
+            for (self.postings.items) |*post| {
                 if (post.segments.len == 0)
                     continue;
 
@@ -101,6 +101,13 @@ pub const Search = struct {
                 }
             }
             impact += 1;
+        }
+
+        // Remove any postings that got emptied
+        var i = self.postings.items.len;
+        while (i > 0) : (i -= 1) {
+            if (self.postings.items[i-1].len == 0)
+                _ = self.postings.swapRemove(i-1);
         }
     }
 
@@ -128,8 +135,9 @@ pub const Search = struct {
         if (self.postings.items.len == 1)
             return self.index.readPostings(&self.postings.items[0], results);
 
+        // It's unlikely we'll prune down to a single postings and pruning takes time
         if (prune)
-            self.prunePostings(self.postings.items);
+            self.prunePostings();
 
         std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
 

@@ -111,6 +111,7 @@ pub fn build(b: *std.Build) !void {
             },
         }),
     });
+    benchmark_search.root_module.addImport("clap", clap_dep.module("clap"));
     if (optimize == .ReleaseFast)
         benchmark_search.lto = std.zig.LtoMode.full;
     b.installArtifact(benchmark_search);

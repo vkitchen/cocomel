@@ -4,6 +4,8 @@
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
 const std = @import("std");
+const clap = @import("clap");
+
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const Search = @import("search.zig").Search;
@@ -20,9 +22,28 @@ pub fn main(init: std.process.Init) !void {
     stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
     stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
+    const params = comptime clap.parseParamsComptime(
+        \\-h, --help             Display this help and exit.
+        \\--index <file>         Search a different index than default.
+        \\
+    );
+
+    const cli_parsers = comptime .{
+        .file = clap.parsers.string,
+    };
+
+    const cli = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = arena });
+
+    if (cli.args.help != 0)
+        return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
+
+    var index_name: []const u8 = config.index_name;
+    if (cli.args.index) |index|
+        index_name = index;
+
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-    var searcher = try Search.init(init.io, arena, std.Io.Dir.cwd(), config.index_name);
+    var searcher = try Search.init(init.io, arena, std.Io.Dir.cwd(), index_name);
 
     const read_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

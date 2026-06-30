@@ -39,7 +39,7 @@ pub fn main(init: std.process.Init) !void {
         index_name = index;
 
     const index_file = try std.Io.Dir.cwd().readFileAllocOptions(init.io, index_name, init.arena.allocator(), std.Io.Limit.unlimited, .@"16", null);
-    const index = try Index.init(index_file);
+    const index = try Index.init(index_file, &.{}, &.{});
 
     var stdout_buffer: [1024]u8 = undefined;
     var stdout_writer = std.Io.File.stdout().writer(init.io, &stdout_buffer);

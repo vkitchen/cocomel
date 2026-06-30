@@ -66,6 +66,8 @@ pub const CcmlSerialiser = struct {
     }
 
     fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple) ![4]u64 {
+        var vbyte_buffer: [5]u8 = undefined;
+
         // Get statistics
         var best = [_]u32{0} ** (1 << config.quantise_bits);
 
@@ -115,32 +117,48 @@ pub const CcmlSerialiser = struct {
             const hash2: u32 = @truncate(Wyhash.hash(42, pair.key.?) & std.math.maxInt(u32));
             vocab_offsets[i].hash = hash2;
 
-            const block_offset = (self.writer.logicalPos() - blocks_start) / 16; // block id
+            // Count the segments
+            var num_segments: index.ImpactType = 0;
+            for (doc_ids) |d| {
+                if (d.items.len != 0)
+                    num_segments += 1;
+            }
 
-            // Store the block offset
-            var vbyte_buffer: [5]u8 = undefined;
-            const block_offset_len = vbyte.store(&vbyte_buffer, @truncate(block_offset)); // TODO this could be u64
-            try scratch_writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
+            // Store segment count
+            try scratch_writer.interface.writeInt(index.ImpactType, num_segments, native_endian);
 
-            // Write segments (these must be aligned)
+            // Store segment headers
             var impact: index.ImpactType = (1 << config.quantise_bits) - 1;
             while (impact > 0) : (impact -= 1) {
                 if (doc_ids[impact].items.len == 0)
                     continue;
 
+                // Impact
+                try scratch_writer.interface.writeInt(index.ImpactType, impact, native_endian);
+                // No. docs
+                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
+                try scratch_writer.interface.writeAll(vbyte_buffer[0..segment_len]);
+            }
+
+            // Store the block offset
+            const block_offset = (self.writer.logicalPos() - blocks_start) / 16; // block id
+
+            const block_offset_len = vbyte.store(&vbyte_buffer, @truncate(block_offset)); // TODO this could be u64
+            try scratch_writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
+
+            // Write blocks and segment metadata
+            impact = (1 << config.quantise_bits) - 1;
+            while (impact > 0) : (impact -= 1) {
+                if (doc_ids[impact].items.len == 0)
+                    continue;
+
+                // Blocks
                 const written = c.compress_int_pack(@ptrCast(compression_buffer.ptr), doc_ids[impact].items.ptr, metadata_buffer.ptr, doc_ids[impact].items.len);
                 try self.writer.interface.writeAll(compression_buffer[0..written.bytes]);
 
-                // Store the segment metada
-                try scratch_writer.interface.writeInt(index.ImpactType, impact, native_endian);
-                // no. docs
-                const segment_len = vbyte.store(&vbyte_buffer, @truncate(doc_ids[impact].items.len));
-                try scratch_writer.interface.writeAll(vbyte_buffer[0..segment_len]);
-                // selectors
+                // Metadata
                 try scratch_writer.interface.writeAll(metadata_buffer[0..written.metadata]);
             }
-            // Null terminate
-            try scratch_writer.interface.writeInt(index.ImpactType, 0, native_endian);
         }
 
         const blocks_end = self.writer.logicalPos();

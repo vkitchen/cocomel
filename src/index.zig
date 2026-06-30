@@ -9,7 +9,7 @@ const Wyhash = std.hash.Wyhash;
 const config = @import("config.zig");
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
-const TopK = @import("top_k_insert.zig").TopKInsert;
+const TopK = @import("top_k_heap.zig").TopKHeap;
 const Stemmer = @import("stem.zig").Stemmer;
 
 const c = @import("c");
@@ -28,11 +28,15 @@ pub const VocabTuple = extern struct {
     term: config.FileOffsetType,
 };
 
+pub const SegmentHeader = struct {
+    impact: ImpactType,
+    len: u32,
+};
+
 pub const PostingsHeader = struct {
-    blocks: u32,
+    segments: []SegmentHeader,
+    blocks: u64,
     postings: u64,
-    score: ImpactType = 0,
-    len: u32 = 0,
 };
 
 // Helpers for unaligned reads
@@ -96,6 +100,8 @@ pub const Index = struct {
     const Self = @This();
 
     header: *const Header,
+    allocator: std.heap.FixedBufferAllocator,
+    compression_buf: []align(16) u32,
 
     // "sub-files"
     snippets_store: []const u8,
@@ -108,7 +114,7 @@ pub const Index = struct {
     vocab: []const VocabTuple,
     docs: []const config.FileOffsetType,
 
-    pub fn init(index: []align(16) const u8) !Self {
+    pub fn init(index: []align(16) const u8, postings_buf: []u8, compression_buf: []align(16) u32) !Self {
         const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));
 
         if (header.version != version) {
@@ -118,6 +124,8 @@ pub const Index = struct {
 
         return .{
             .header = header,
+            .allocator = std.heap.FixedBufferAllocator.init(postings_buf),
+            .compression_buf = compression_buf,
 
             // "sub-files"
             .snippets_store = index[header.snippets_store[0]..header.snippets_store[1]],
@@ -130,6 +138,10 @@ pub const Index = struct {
             .vocab = readVocabArray(index, header.vocab),
             .docs = readArray(index, header.docs),
         };
+    }
+
+    pub fn reset(self: *Self) void {
+        self.allocator.reset();
     }
 
     pub fn hasSnippets(self: *const Self) bool {
@@ -150,41 +162,91 @@ pub const Index = struct {
         return [2]u64{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    pub fn decompressBlock(self: *const Self, segment: *PostingsHeader, buf: []u32, last_id: u32) usize {
-        const doc_count = @min(128, segment.len);
-        const res = c.compress_int_unpack_d1_128(@ptrCast(buf.ptr), @ptrCast(self.blocks_store[segment.blocks..].ptr), self.postings_store[segment.postings..].ptr, doc_count, last_id);
-        segment.len -= doc_count;
-        segment.blocks += res.blocks;
-        segment.postings += res.bytes;
-        return doc_count;
+    inline fn decompressBlock(self: *const Self, blocks: *u64, postings: *u64, len: u32, last_id: u32) []u32 {
+        const doc_count = @min(128, len);
+        const res = c.compress_int_unpack_d1_128(@ptrCast(self.compression_buf.ptr), @ptrCast(self.blocks_store[blocks.* ..].ptr), self.postings_store[postings.* ..].ptr, doc_count, last_id);
+        blocks.* += res.blocks;
+        postings.* += res.bytes;
+        return self.compression_buf[0..doc_count];
     }
 
-    fn segmentScore(self: *const Self, offset: u64) ImpactType {
+    pub fn readPostings(self: *const Self, header: *const PostingsHeader, results: []Result) []Result {
+        var out = results;
+        out.len = 0;
+
+        var blocks = header.blocks;
+        var postings = header.postings;
+
+        for (0..header.segments.len) |i| {
+            var segment = header.segments[i];
+            var last_id: u32 = 0;
+
+            while (segment.len > 0) {
+                const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
+                for (docids) |doc| {
+                    out.len += 1;
+                    out[out.len - 1] = .{ .docid = doc, .score = segment.impact };
+
+                    if (out.len == results.len)
+                        return out;
+                }
+                last_id = self.compression_buf[docids.len - 1];
+                segment.len -= @truncate(docids.len);
+            }
+        }
+
+        return out;
+    }
+
+    pub fn accumulatePostings(self: *const Self, header: *const PostingsHeader, topk: *TopK, accumulators: []u16) void {
+        var blocks = header.blocks;
+        var postings = header.postings;
+
+        for (0..header.segments.len) |i| {
+            var segment = header.segments[i];
+            var last_id: u32 = 0;
+
+            while (segment.len > 0) {
+                const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
+                for (docids) |doc| {
+                    const saved = accumulators[doc];
+                    accumulators[doc] += segment.impact;
+                    topk.insert(doc, accumulators[doc], saved);
+                }
+                last_id = self.compression_buf[docids.len - 1];
+                segment.len -= @truncate(docids.len);
+            }
+        }
+    }
+
+    fn readImpact(self: *const Self, offset: u64) ImpactType {
         return if (ImpactType == u16) read16(self.postings_store, offset) else self.postings_store[offset];
     }
 
-    pub fn nextSegment(self: *const Self, segment: *PostingsHeader) void {
-        segment.score = self.segmentScore(segment.postings);
-        if (segment.score == 0)
-            return;
-
-        const selectors = segment.postings + @sizeOf(ImpactType) + vbyte.read(self.postings_store[segment.postings + @sizeOf(ImpactType) ..], &segment.len);
-        segment.postings = selectors;
-    }
-
-    fn readPostingsHeader(self: *const Self, offset: u64) PostingsHeader {
-        var blocks_start: u32 = 0;
-        const postings_start = offset + vbyte.read(self.postings_store[offset..], &blocks_start);
-        return .{ .blocks = blocks_start, .postings = postings_start };
+    fn readPostingsHeader(self: *Self, offset: u64) !PostingsHeader {
+        var index = offset;
+        const num_segments = self.readImpact(index);
+        index += @sizeOf(ImpactType);
+        var segments = try self.allocator.allocator().alloc(SegmentHeader, num_segments);
+        for (0..num_segments) |i| {
+            const impact = self.readImpact(index);
+            index += @sizeOf(ImpactType);
+            var num_docs: u32 = undefined;
+            index += vbyte.read(self.postings_store[index..], &num_docs);
+            segments[i] = .{ .impact = impact, .len = num_docs };
+        }
+        var blocks_start: u32 = undefined;
+        index += vbyte.read(self.postings_store[index..], &blocks_start);
+        return .{ .segments = segments, .blocks = blocks_start, .postings = index };
     }
 
     // Returns start of segment header and start of segments
-    pub fn find(self: *const Self, key: []const u8) PostingsHeader {
+    pub fn find(self: *Self, key: []const u8) !?PostingsHeader {
         var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
         const hash2: u32 = @truncate(Wyhash.hash(42, key) & std.math.maxInt(u32));
         while (true) {
             if (self.vocab[i].term == 0)
-                return .{ .blocks = 0, .postings = 0 };
+                return null;
             if (self.vocab[i].hash != hash2) {
                 i = i + 1 & self.vocab.len - 1;
                 continue;
@@ -192,9 +254,7 @@ pub const Index = struct {
             const term = readStr(self.postings_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
                 const postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
-                var header = self.readPostingsHeader(postings_start);
-                self.nextSegment(&header);
-                return header;
+                return try self.readPostingsHeader(postings_start);
             }
 
             i = i + 1 & self.vocab.len - 1;

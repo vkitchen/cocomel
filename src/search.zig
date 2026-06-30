@@ -33,12 +33,16 @@ pub const Search = struct {
     postings: std.ArrayList(PostingsHeader),
     topk: TopK,
     accumulators: []align(32) u16,
-    segment_buffer: []align(16) u32,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
 
-        const index = try Index.init(index_file);
+        const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
+        const postings_buf = try allocator.alloc(u8, max_segments * @sizeOf(u32) * 2);
+
+        const compression_buf = try allocator.alignedAlloc(u32, .@"16", 128);
+
+        const index = try Index.init(index_file, postings_buf, compression_buf);
 
         const snippeter = blk: {
             if (index.hasSnippets()) {
@@ -70,11 +74,11 @@ pub const Search = struct {
             .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
             .topk = TopK.init(accumulators.ptr),
             .accumulators = accumulators,
-            .segment_buffer = try allocator.alignedAlloc(u32, .@"16", 128),
         };
     }
 
     pub fn search(self: *Self, results: []Result, query_raw: []u8) ![]Result {
+        self.index.reset();
         self.query.clearRetainingCapacity();
 
         var tok = query.Parser.init(Stemmer.init(self.index.header.stemmer), &self.query, query_raw);
@@ -88,65 +92,20 @@ pub const Search = struct {
 
         // TODO fix term negation
         for (self.query.items) |term| {
-            const res = self.index.find(term.term);
-            if (res.postings != 0) self.postings.appendAssumeCapacity(res);
+            const res = try self.index.find(term.term);
+            if (res) |postings|
+                self.postings.appendAssumeCapacity(postings);
         }
 
         // Special case for single term query skipping accumulator reset
-        var results_len: usize = 0;
-        if (self.postings.items.len == 1) {
-            var postings = self.postings.items[0];
-            while (true) {
-                var last_id: u32 = 0;
-                while (postings.len > 0) {
-                    // Read block
-                    const len = self.index.decompressBlock(&postings, self.segment_buffer, last_id);
-
-                    // Store block
-                    for (0..@min(config.max_top_k - results_len, len)) |i| {
-                        results_len += 1;
-                        results[results_len - 1] = .{ .docid = self.segment_buffer[i], .score = postings.score };
-                    }
-                    // Successfully found topk
-                    if (results_len == config.max_top_k) return results[0..results_len];
-
-                    last_id = self.segment_buffer[len - 1];
-                }
-
-                // Next segment
-                self.index.nextSegment(&postings);
-
-                // Term exhausted
-                if (postings.score == 0) break;
-            }
-            return results[0..results_len];
-        }
+        if (self.postings.items.len == 1)
+            return self.index.readPostings(&self.postings.items[0], results);
 
         memset(std.mem.sliceAsBytes(self.accumulators));
 
         // Now process normally
-        for (0..self.postings.items.len) |pi| {
-            var postings: PostingsHeader = self.postings.items[pi];
-
-            while (postings.score != 0) {
-                var last_id: u32 = 0;
-                while (postings.len > 0) {
-                    // Read block
-                    const len = self.index.decompressBlock(&postings, self.segment_buffer, last_id);
-
-                    // Accumulate block
-                    for (0..len) |i| {
-                        const doc_id = self.segment_buffer[i];
-                        const saved = self.accumulators[doc_id];
-                        self.accumulators[doc_id] += postings.score;
-                        self.topk.insert(doc_id, self.accumulators[doc_id], saved);
-                    }
-
-                    last_id = self.segment_buffer[len - 1];
-                }
-                self.index.nextSegment(&postings);
-            }
-        }
+        for (self.postings.items) |postings|
+            self.index.accumulatePostings(&postings, &self.topk, self.accumulators);
 
         return self.topk.results(results);
     }

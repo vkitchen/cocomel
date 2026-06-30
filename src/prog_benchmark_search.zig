@@ -14,8 +14,6 @@ var stdout_buffer: [1024]u8 = undefined;
 var stdin: std.Io.File.Reader = undefined;
 var stdout: std.Io.File.Writer = undefined;
 
-var results_buffer: [1000]Result = undefined;
-
 pub fn main(init: std.process.Init) !void {
     var arena = init.arena.allocator();
 

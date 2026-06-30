@@ -34,7 +34,6 @@ pub const Search = struct {
     topk: TopK,
     accumulators: []align(32) u16,
     segment_buffer: []align(16) u32,
-    results: []Result,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
@@ -61,7 +60,6 @@ pub const Search = struct {
             }
         };
 
-        const results = try allocator.alloc(Result, index.docs.len);
         const accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len); 
 
         return .{
@@ -70,14 +68,13 @@ pub const Search = struct {
             .snippeter = snippeter,
             .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
             .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
-            .topk = TopK.init(results, accumulators.ptr),
+            .topk = TopK.init(accumulators.ptr),
             .accumulators = accumulators,
             .segment_buffer = try allocator.alignedAlloc(u32, .@"16", 128),
-            .results = results,
         };
     }
 
-    pub fn search(self: *Self, query_raw: []u8) ![]Result {
+    pub fn search(self: *Self, results: []Result, query_raw: []u8) ![]Result {
         self.query.clearRetainingCapacity();
 
         var tok = query.Parser.init(Stemmer.init(self.index.header.stemmer), &self.query, query_raw);
@@ -96,7 +93,7 @@ pub const Search = struct {
         }
 
         // Special case for single term query skipping accumulator reset
-        self.results.len = 0;
+        var results_len: usize = 0;
         if (self.postings.items.len == 1) {
             var postings = self.postings.items[0];
             while (true) {
@@ -106,12 +103,12 @@ pub const Search = struct {
                     const len = self.index.decompressBlock(&postings, self.segment_buffer, last_id);
 
                     // Store block
-                    for (0..@min(config.max_top_k - self.results.len, len)) |i| {
-                        self.results.len += 1;
-                        self.results[self.results.len - 1] = .{ .docid = self.segment_buffer[i], .score = postings.score };
+                    for (0..@min(config.max_top_k - results_len, len)) |i| {
+                        results_len += 1;
+                        results[results_len - 1] = .{ .docid = self.segment_buffer[i], .score = postings.score };
                     }
                     // Successfully found topk
-                    if (self.results.len == config.max_top_k) return self.results;
+                    if (results_len == config.max_top_k) return results[0..results_len];
 
                     last_id = self.segment_buffer[len - 1];
                 }
@@ -122,7 +119,7 @@ pub const Search = struct {
                 // Term exhausted
                 if (postings.score == 0) break;
             }
-            return self.results;
+            return results[0..results_len];
         }
 
         memset(std.mem.sliceAsBytes(self.accumulators));
@@ -159,7 +156,7 @@ pub const Search = struct {
             self.postings.items[max_i] = max;
         }
 
-        return self.topk.results();
+        return self.topk.results(results);
     }
 
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

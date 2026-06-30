@@ -23,13 +23,12 @@ pub const TopKHeap = struct {
     const Self = @This();
 
     accumulators: [*]u16,
-    store: []Result,
     cap: u32 = config.max_top_k,
     len: u32 = 0,
     saturated: bool = false,
 
-    pub fn init(store: []Result, accumulators: [*]u16) Self {
-        return .{ .store = store, .accumulators = accumulators };
+    pub fn init(accumulators: [*]u16) Self {
+        return .{ .accumulators = accumulators };
     }
 
     pub fn clearRetainingCapacity(self: *Self) void {
@@ -73,11 +72,10 @@ pub const TopKHeap = struct {
         heap.promote(docid, is, where);
     }
 
-    pub fn results(self: *Self) []Result {
-        self.store.len = self.len;
+    pub fn results(self: *Self, buf: []Result) []Result {
         for (0..self.len) |i|
-            self.store[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
-        std.sort.pdq(Result, self.store, {}, cmpResults);
-        return self.store;
+            buf[i] = .{ .docid = heap.docids[i], .score = heap.scores[i] };
+        std.sort.pdq(Result, buf[0..self.len], {}, cmpResults);
+        return buf[0..self.len];
     }
 };

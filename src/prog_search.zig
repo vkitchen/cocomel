@@ -7,6 +7,7 @@ const std = @import("std");
 const clap = @import("clap");
 
 const config = @import("config.zig");
+const Result = @import("index.zig").Result;
 const Search = @import("search.zig").Search;
 
 var stdin_buffer: [1024]u8 = undefined;
@@ -14,6 +15,8 @@ var stdout_buffer: [1024]u8 = undefined;
 
 var stdin: std.Io.File.Reader = undefined;
 var stdout: std.Io.File.Writer = undefined;
+
+var results_buffer: [1000]Result = undefined;
 
 var total_search_time: i96 = 0;
 
@@ -72,7 +75,7 @@ fn search(io: std.Io, searcher: *Search, k: usize) !void {
     while (try stdin.interface.takeDelimiter('\n')) |query| {
         const start_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
 
-        const results = try searcher.search(query);
+        const results = try searcher.search(&results_buffer, query);
 
         const end_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;
@@ -117,7 +120,7 @@ fn search_trec(io: std.Io, searcher: *Search, k: usize) !void {
 
         const start_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
 
-        const results = try searcher.search(query);
+        const results = try searcher.search(&results_buffer, query);
 
         const end_search_time = std.Io.Clock.now(.real, io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;

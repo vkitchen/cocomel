@@ -5,8 +5,11 @@
 
 const std = @import("std");
 const config = @import("config.zig");
+const Result = @import("index.zig").Result;
 const Search = @import("search.zig").Search;
 const native_endian = @import("builtin").target.cpu.arch.endian();
+
+var results_buffer: [1000]Result = undefined;
 
 const header = packed struct {
     version: u8,
@@ -49,7 +52,7 @@ pub fn main(init: std.process.Init) !void {
             continue;
         }
 
-        const results = try searcher.search(query);
+        const results = try searcher.search(&results_buffer, query);
 
         try writer.interface.writeInt(u8, 0, native_endian); // protocol version
         try writer.interface.writeInt(u8, 1, native_endian); // protocol method

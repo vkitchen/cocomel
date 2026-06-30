@@ -5,7 +5,10 @@
 
 const std = @import("std");
 const config = @import("config.zig");
+const Result = @import("index.zig").Result;
 const Search = @import("search.zig").Search;
+
+var results_buffer: [1000]Result = undefined;
 
 pub fn main(init: std.process.Init) !void {
     var stdin_buffer: [1024]u8 = undefined;
@@ -36,7 +39,7 @@ pub fn main(init: std.process.Init) !void {
 
         const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-        const results = try searcher.search(query);
+        const results = try searcher.search(&results_buffer, query);
 
         const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;

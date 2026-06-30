@@ -90,8 +90,12 @@ pub const Search = struct {
         var impact: usize = 1;
         while (total > budget) {
             for (postings) |*post| {
+                if (post.segments.len == 0)
+                    continue;
+
                 const last = post.segments[post.segments.len - 1];
                 if (last.impact == impact) {
+                    post.len -= last.len;
                     total -= last.len;
                     post.segments.len -= 1;
                 }

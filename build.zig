@@ -97,10 +97,10 @@ pub fn build(b: *std.Build) !void {
         search_cli.lto = std.zig.LtoMode.full;
     b.installArtifact(search_cli);
 
-    const search_trec = b.addExecutable(.{
-        .name = "search-trec",
+    const benchmark_search = b.addExecutable(.{
+        .name = "benchmark-search",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/prog_search_trec.zig"),
+            .root_source_file = b.path("src/prog_benchmark_search.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
@@ -112,8 +112,8 @@ pub fn build(b: *std.Build) !void {
         }),
     });
     if (optimize == .ReleaseFast)
-        search_trec.lto = std.zig.LtoMode.full;
-    b.installArtifact(search_trec);
+        benchmark_search.lto = std.zig.LtoMode.full;
+    b.installArtifact(benchmark_search);
 
     const stats = b.addExecutable(.{
         .name = "stats",

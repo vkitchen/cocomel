@@ -81,7 +81,26 @@ pub const Search = struct {
         };
     }
 
-    pub fn search(self: *Self, results: []Result, query_raw: []u8) ![]Result {
+    fn prunePostings(self: *Self, postings: []PostingsHeader) void {
+        const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) / 10);
+        var total: usize = 0;
+        for (postings) |post|
+            total += post.len;
+
+        var impact: usize = 1;
+        while (total > budget) {
+            for (postings) |*post| {
+                const last = post.segments[post.segments.len - 1];
+                if (last.impact == impact) {
+                    total -= last.len;
+                    post.segments.len -= 1;
+                }
+            }
+            impact += 1;
+        }
+    }
+
+    pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]Result {
         self.index.reset();
         self.query.clearRetainingCapacity();
 
@@ -104,6 +123,9 @@ pub const Search = struct {
         // Special case for single term query skipping accumulator reset
         if (self.postings.items.len == 1)
             return self.index.readPostings(&self.postings.items[0], results);
+
+        if (prune)
+            self.prunePostings(self.postings.items);
 
         std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
 

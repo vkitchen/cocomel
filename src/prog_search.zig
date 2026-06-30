@@ -63,7 +63,7 @@ pub fn main(init: std.process.Init) !void {
     while (try stdin.interface.takeDelimiter('\n')) |query| {
         const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-        const results = try searcher.search(&results_buffer, query);
+        const results = try searcher.search(&results_buffer, query, false);
 
         const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;

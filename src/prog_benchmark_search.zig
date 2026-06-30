@@ -1,5 +1,5 @@
-// PROG_SEARCH_TREC.ZIG
-// --------------------
+// PROG_BENCHMARK_SEARCH.ZIG
+// -------------------------
 // Copyright (c) Vaughan Kitchen
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 
@@ -8,16 +8,19 @@ const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const Search = @import("search.zig").Search;
 
+var stdin_buffer: [1024]u8 = undefined;
+var stdout_buffer: [1024]u8 = undefined;
+
+var stdin: std.Io.File.Reader = undefined;
+var stdout: std.Io.File.Writer = undefined;
+
 var results_buffer: [1000]Result = undefined;
 
 pub fn main(init: std.process.Init) !void {
     var arena = init.arena.allocator();
 
-    var stdin_buffer: [1024]u8 = undefined;
-    var stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
-
-    var stdout_buffer: [1024]u8 = undefined;
-    var stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
+    stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
+    stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

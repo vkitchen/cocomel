@@ -82,7 +82,7 @@ pub const Search = struct {
     }
 
     fn prunePostings(self: *Self) void {
-        const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) / 10);
+        const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) * config.SearchProportion);
         var total: usize = 0;
         for (self.postings.items) |post|
             total += post.len;

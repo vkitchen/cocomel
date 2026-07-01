@@ -35,3 +35,8 @@ Cocomel can index either the wsj collection or a folder of html files.
 Usage can be found with `./zig-out/bin/index --help`.
 Searching is performed with `./zig-out/bin/search`.
 There is also a daemon `./zig-out/bin/cocomel` and client `./zig-out/bin/client`.
+
+## Acknowledgments
+
+* [Andrew Trotman](https://andrewtrotman.github.io/) For teaching me most of what I know about search engines
+* [Katelyn Harlan](https://github.com/Axiomatic314) For her insights into search engine performance

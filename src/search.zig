@@ -36,7 +36,7 @@ pub const Search = struct {
     query: std.ArrayListUnmanaged(query.Term),
     postings: std.ArrayList(PostingsHeader),
     topk: TopK,
-    accumulators: []align(32) u16,
+    accumulators: []align(32) config.AccumulatorType,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
@@ -68,7 +68,7 @@ pub const Search = struct {
             }
         };
 
-        const accumulators = try allocator.alignedAlloc(u16, std.mem.Alignment.fromByteUnits(32), index.docs.len); 
+        const accumulators = try allocator.alignedAlloc(config.AccumulatorType, .@"32", index.docs.len);
 
         return .{
             .index = index,
@@ -111,6 +111,36 @@ pub const Search = struct {
         }
     }
 
+    // Maps [@min(impact), @max(impact)] to [1, @intMax(AccumulatorType)]
+    // Using the formula:
+    //
+    //            (x - @min) * (@intMax - 1)
+    // f(x) = 1 + --------------------------
+    //                 (@max - @min)
+    //
+    fn scalePostings(self: *Self) void {
+        const accumulator_max: usize = std.math.maxInt(config.AccumulatorType) / self.postings.items.len - 1;
+
+        var max_impact: usize = 0;
+        var min_impact: usize = std.math.maxInt(config.AccumulatorType);
+        for (self.postings.items) |post| {
+            if (post.segments[0].impact > max_impact) max_impact = post.segments[0].impact;
+            if (post.segments[post.segments.len - 1].impact < min_impact) min_impact = post.segments[post.segments.len - 1].impact;
+        }
+
+        if (max_impact < accumulator_max)
+            return;
+
+        const scale_factor: f64 = @as(f64, @floatFromInt(accumulator_max)) / @as(f64, @floatFromInt(max_impact - min_impact));
+
+        for (self.postings.items) |post| {
+            for (post.segments) |*segment| {
+                const impact: f64 = segment.impact;
+                segment.impact = @intFromFloat(1 + (impact - @as(f64, @floatFromInt(min_impact))) * scale_factor);
+            }
+        }
+    }
+
     pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]Result {
         self.index.reset();
         self.query.clearRetainingCapacity();
@@ -138,6 +168,8 @@ pub const Search = struct {
         // It's unlikely we'll prune down to a single postings and pruning takes time
         if (prune)
             self.prunePostings();
+
+        self.scalePostings();
 
         std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
 

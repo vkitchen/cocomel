@@ -8,7 +8,7 @@ const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const heap = @import("heap.zig");
 
-var cache: [config.max_top_k]*u16 = undefined;
+var cache: [config.max_top_k]*config.AccumulatorType = undefined;
 
 fn cmpResults(_: void, a: Result, b: Result) bool {
     // Score descending
@@ -22,12 +22,12 @@ fn cmpResults(_: void, a: Result, b: Result) bool {
 pub const TopKHeap = struct {
     const Self = @This();
 
-    accumulators: [*]u16,
+    accumulators: [*]config.AccumulatorType,
     cap: u32 = config.max_top_k,
     len: u32 = 0,
     saturated: bool = false,
 
-    pub fn init(accumulators: [*]u16) Self {
+    pub fn init(accumulators: [*]config.AccumulatorType) Self {
         return .{ .accumulators = accumulators };
     }
 
@@ -36,7 +36,7 @@ pub const TopKHeap = struct {
         self.saturated = false;
     }
 
-    pub fn insert(self: *Self, docid: u32, is: u16, was: u16) void {
+    pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.AccumulatorType) void {
         // Heap requires more elements
         if (!self.saturated) {
             // First time this doc has been accumulated (new heap entry)

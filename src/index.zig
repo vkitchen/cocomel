@@ -199,7 +199,7 @@ pub const Index = struct {
         return out;
     }
 
-    pub fn accumulatePostings(self: *const Self, header: *const PostingsHeader, topk: *TopK, accumulators: []u16) void {
+    pub fn accumulatePostings(self: *const Self, header: *const PostingsHeader, topk: *TopK, accumulators: []config.AccumulatorType) void {
         var blocks = header.blocks;
         var postings = header.postings;
 

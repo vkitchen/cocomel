@@ -14,7 +14,7 @@ pub const top_k_rounded = (config.max_top_k + 7) / 8 * 8;
 const KMask = @Int(.unsigned, top_k_rounded);
 
 pub var docids: [top_k_rounded]u32 = [_]u32{0} ** top_k_rounded; // Rounded for SIMD
-pub var scores: [config.max_top_k]u16 = undefined;
+pub var scores: [config.max_top_k]config.AccumulatorType = undefined;
 
 fn swap(left: usize, right: usize) void {
     const tmp_docid = docids[left];
@@ -69,7 +69,7 @@ fn heapify(position: usize) void {
     }
 }
 
-fn insert_from(docid: u32, score: u16, index: usize) void {
+fn insert_from(docid: u32, score: config.AccumulatorType, index: usize) void {
     var position = index;
 
     while (position < config.max_top_k) {
@@ -114,7 +114,7 @@ pub fn make_heap() void {
     }
 }
 
-pub fn push_back(docid: u32, score: u16) void {
+pub fn push_back(docid: u32, score: config.AccumulatorType) void {
     insert_from(docid, score, 0);
 }
 
@@ -130,6 +130,6 @@ pub fn find(docid: u32) u64 {
     return @ctz(bits);
 }
 
-pub fn promote(docid: u32, score: u16, position: usize) void {
+pub fn promote(docid: u32, score: config.AccumulatorType, position: usize) void {
     insert_from(docid, score, position);
 }

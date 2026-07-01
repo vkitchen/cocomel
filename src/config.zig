@@ -7,6 +7,9 @@ pub const index_name = "index.ccml";
 pub const socket_name = "/tmp/cocomel.sock";
 pub const scratch_name = "scratch.ccml"; // used briefly during index serialisation
 
+// Used for search. If you regularly have queries above 8 terms I recommend u16
+pub const AccumulatorType = u8;
+
 // Used for offsets into sections of the index
 // This may break things if set below u64
 // TODO detect breakage during serialisation

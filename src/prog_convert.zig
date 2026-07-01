@@ -10,6 +10,7 @@ const ciff = @import("proto/io/osirrc/ciff.pb.zig");
 const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Postings = @import("postings.zig").Postings;
+const compress = @import("compress_int.zig");
 const Stemmer = @import("stem.zig").Stemmer;
 const config = @import("config.zig");
 const Doc = @import("doc.zig");
@@ -40,10 +41,14 @@ pub fn main(init: std.process.Init) !void {
         \\-h, --help             Display this help and exit.
         \\--ciff <file>          Convert from ciff index.
         \\--quantise             Ciff needs quantising?
+        \\--compress <name>      Compressor to use:
+        \\                         * bp128 Packs 128 integers at a time into blocks (default, fast)
+        \\                         * vbyte Packs integers into variable number of bytes (slow, space efficient)
         \\
     );
 
     const cli_parsers = comptime .{
+        .name = clap.parsers.string,
         .file = clap.parsers.string,
     };
 
@@ -52,6 +57,15 @@ pub fn main(init: std.process.Init) !void {
 
     if (res.args.help != 0) {
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
+    }
+
+    var compressor = compress.default;
+    if (res.args.compress) |alg| {
+        compressor = compress.fromName(alg);
+        if (compressor == .failed) {
+            std.debug.print("Unknown compressor {s}\n", .{alg});
+            std.process.exit(1);
+        }
     }
 
     if (res.args.ciff) |filename| {
@@ -131,6 +145,6 @@ pub fn main(init: std.process.Init) !void {
 
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);
-        _ = try serialiser.write(init.io, arena, &doc_ids, &dict, Stemmer.Alg.none, res.args.quantise != 0);
+        _ = try serialiser.write(init.io, arena, &doc_ids, &dict, compressor, Stemmer.Alg.none, res.args.quantise != 0);
     }
 }

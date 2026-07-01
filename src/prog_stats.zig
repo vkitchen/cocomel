@@ -83,7 +83,7 @@ pub fn main(init: std.process.Init) !void {
 
     try stdout.print("Index size:      {Bi:.2}\n", .{index_file.len});
     try stdout.print("Snippets size:   {Bi:.2}\n", .{index.snippets_store.len});
-    try stdout.print("Blocks size:     {Bi:.2}\n", .{index.blocks_store.len});
+    try stdout.print("Blocks size:     {Bi:.2}\n", .{index.blocks_store.len * @sizeOf(u128)});
     try stdout.print("Postings size:   {Bi:.2}\n", .{index.postings_store.len});
     try stdout.print("Docs size:       {Bi:.2}\n", .{index.docs_store.len});
     try stdout.print("Structures size: {Bi:.2}\n", .{structures_size});

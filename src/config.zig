@@ -7,6 +7,8 @@ pub const index_name = "index.ccml";
 pub const socket_name = "/tmp/cocomel.sock";
 pub const scratch_name = "scratch.ccml"; // used briefly during index serialisation
 
+pub const default_compressor = "bp128";
+
 // Maximum amount of the collection to examine before giving up on a query
 pub const SearchProportion = 0.1;
 

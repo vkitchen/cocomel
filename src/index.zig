@@ -7,6 +7,7 @@ const std = @import("std");
 const Wyhash = std.hash.Wyhash;
 
 const config = @import("config.zig");
+const compress = @import("compress_int.zig");
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 const TopK = @import("top_k_heap.zig").TopKHeap;
@@ -24,8 +25,8 @@ pub const Result = struct {
 };
 
 pub const VocabTuple = extern struct {
-    hash: config.FileOffsetType,
-    term: config.FileOffsetType,
+    hash: u64,
+    term: u64,
 };
 
 pub const SegmentHeader = struct {
@@ -92,8 +93,9 @@ pub const Header = extern struct {
     docs: u64,
 
     // config
+    compressor: compress.Compressor,
     stemmer: Stemmer.Alg,
-    _reserved: [5]u8 = .{0} ** 5,
+    _reserved: [4]u8 = .{0} ** 4,
     version: u16,
 };
 
@@ -165,7 +167,7 @@ pub const Index = struct {
 
     inline fn decompressBlock(self: *const Self, blocks: *u64, postings: *u64, len: u32, last_id: u32) []u32 {
         const doc_count = @min(128, len);
-        const res = c.compress_int_unpack_d1_128(@ptrCast(self.compression_buf.ptr), @ptrCast(self.blocks_store[blocks.* ..].ptr), self.postings_store[postings.* ..].ptr, doc_count, last_id);
+        const res = compress.unpack_block_d1(self.header.compressor, self.blocks_store[blocks.* ..], self.postings_store[postings.* ..], self.compression_buf, doc_count, last_id);
         blocks.* += res.blocks;
         postings.* += res.bytes;
         return self.compression_buf[0..doc_count];
@@ -246,7 +248,7 @@ pub const Index = struct {
     // Returns start of segment header and start of segments
     pub fn find(self: *Self, key: []const u8) !?PostingsHeader {
         var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
-        const hash2: u32 = @truncate(Wyhash.hash(42, key) & std.math.maxInt(u32));
+        const hash2 = Wyhash.hash(42, key);
         while (true) {
             if (self.vocab[i].term == 0)
                 return null;

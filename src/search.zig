@@ -161,6 +161,10 @@ pub const Search = struct {
                 self.postings.appendAssumeCapacity(postings);
         }
 
+        // No results found
+        if (self.postings.items.len == 0)
+            return &.{};
+
         // Special case for single term query skipping accumulator reset
         if (self.postings.items.len == 1)
             return self.index.readPostings(&self.postings.items[0], results);

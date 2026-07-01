@@ -20,10 +20,13 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     const c_mod = translate_c.createModule();
+    c_mod.addIncludePath(b.path("vendor/MaskedVByte/include"));
     c_mod.addIncludePath(b.path("vendor/simdcomp/include"));
     c_mod.addIncludePath(b.path("vendor/streamvbyte/include"));
     c_mod.addCSourceFiles(.{
         .files = &.{
+            "vendor/MaskedVByte/src/varintencode.c",
+            "vendor/MaskedVByte/src/varintdecode.c",
             "vendor/simdcomp/src/simdcomputil.c",
             "vendor/simdcomp/src/simdbitpacking.c",
             "vendor/simdcomp/src/simdpackedselect.c",
@@ -31,7 +34,8 @@ pub fn build(b: *std.Build) !void {
             "vendor/streamvbyte/src/streamvbyte_encode.c",
             "vendor/streamvbyte/src/streamvbytedelta_decode.c",
             "src/memset_avx2.c",
-            "src/compress_int.c",
+            "src/compress_int_vbyte.c",
+            "src/compress_int_bp128.c",
         },
     });
 

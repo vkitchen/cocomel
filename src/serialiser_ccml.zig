@@ -10,6 +10,7 @@ const config = @import("config.zig");
 const index = @import("index.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Doc = @import("doc.zig");
+const compress = @import("compress_int.zig");
 const Stemmer = @import("stem.zig").Stemmer;
 const Postings = @import("postings.zig").Postings;
 const Ranker = @import("ranking_fn_bm25.zig").Ranker;
@@ -65,7 +66,7 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
-    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple) ![4]u64 {
+    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, compressor: compress.Compressor) ![4]u64 {
         var vbyte_buffer: [5]u8 = undefined;
 
         // Get statistics
@@ -88,8 +89,8 @@ pub const CcmlSerialiser = struct {
         var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
         for (&doc_ids, 0..) |*d, i| try d.resize(allocator, best[i]); // reserve so arena doesn't get trampled
 
-        const compression_buffer: []align(16) u8 = try allocator.alignedAlloc(u8, .@"16", longest_segment * @sizeOf(u32));
-        const metadata_buffer = try allocator.alloc(u8, longest_segment / 128); // currently only selectors compressed
+        const blocks_buffer = try allocator.alloc(u128, longest_segment / 4);
+        const bytes_buffer = try allocator.alloc(u8, longest_segment * @sizeOf(u32));
 
         // Scratch
         var scratch_file = try std.Io.Dir.cwd().createFile(io, config.scratch_name, .{});
@@ -107,14 +108,14 @@ pub const CcmlSerialiser = struct {
 
             try postings.distribute(&doc_ids);
 
-            vocab_offsets[i].term = @truncate(scratch_writer.logicalPos());
+            vocab_offsets[i].term = scratch_writer.logicalPos();
 
             // Write term
             try scratch_writer.interface.writeInt(u16, @truncate(pair.key.?.len), native_endian);
             try scratch_writer.interface.writeAll(pair.key.?);
 
             // Secondary hash for term
-            const hash2: u32 = @truncate(Wyhash.hash(42, pair.key.?) & std.math.maxInt(u32));
+            const hash2 = Wyhash.hash(42, pair.key.?);
             vocab_offsets[i].hash = hash2;
 
             // Count the segments
@@ -153,11 +154,11 @@ pub const CcmlSerialiser = struct {
                     continue;
 
                 // Blocks
-                const written = c.compress_int_pack(@ptrCast(compression_buffer.ptr), doc_ids[impact].items.ptr, metadata_buffer.ptr, doc_ids[impact].items.len);
-                try self.writer.interface.writeAll(compression_buffer[0..written.bytes]);
+                const written = compress.pack_stream(compressor, blocks_buffer, bytes_buffer, doc_ids[impact].items);
+                try self.writer.interface.writeAll(std.mem.sliceAsBytes(blocks_buffer[0..written.blocks]));
 
                 // Metadata
-                try scratch_writer.interface.writeAll(metadata_buffer[0..written.metadata]);
+                try scratch_writer.interface.writeAll(bytes_buffer[0..written.bytes]);
             }
         }
 
@@ -184,7 +185,7 @@ pub const CcmlSerialiser = struct {
     }
 
     // This goes over the index multiple times to avoid allocating excessive memory
-    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), stemmer: Stemmer.Alg, quantise: bool) !u64 {
+    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), compressor: compress.Compressor, stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
 
@@ -231,7 +232,7 @@ pub const CcmlSerialiser = struct {
         const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
         @memset(vocab_offsets, .{ .term = 0, .hash = 0 });
 
-        const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets);
+        const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets, compressor);
 
         // Document ID strings
         const docs_offsets = try allocator.alloc(config.FileOffsetType, docs.items.len);
@@ -289,6 +290,7 @@ pub const CcmlSerialiser = struct {
             .docs = docs_offset,
 
             // config
+            .compressor = compressor,
             .stemmer = stemmer,
             .version = index.version,
         }, native_endian);

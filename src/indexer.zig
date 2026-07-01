@@ -8,6 +8,7 @@ const config = @import("config.zig");
 const Dictionary = @import("dictionary.zig").Dictionary;
 const Postings = @import("postings.zig").Postings;
 const Doc = @import("doc.zig");
+const Compressor = @import("compress_int.zig").Compressor;
 const Stemmer = @import("stem.zig").Stemmer;
 const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
 const str = @import("str.zig");
@@ -94,10 +95,10 @@ pub const Indexer = struct {
         self.doc_ids.items[self.doc_ids.items.len - 1].title = try allocator.dupe(u8, title);
     }
 
-    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator) !void {
+    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, compressor: Compressor) !void {
         std.debug.print("{s}\n", .{"Writing index..."});
 
-        const bytes_written = try self.serialiser.write(io, allocator, &self.doc_ids, &self.dict, self.stemmer.algorithm, true);
+        const bytes_written = try self.serialiser.write(io, allocator, &self.doc_ids, &self.dict, compressor, self.stemmer.algorithm, true);
 
         std.debug.print("Index size {Bi:.2}\n", .{bytes_written});
     }

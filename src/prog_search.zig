@@ -25,6 +25,7 @@ pub fn main(init: std.process.Init) !void {
         \\-h, --help             Display this help and exit.
         \\-k <int>               Print k results.
         \\--index <file>         Search a different index than default.
+        \\--exhaustive           Search to completion (don't terminate early).
         \\
     );
 
@@ -46,6 +47,8 @@ pub fn main(init: std.process.Init) !void {
     if (cli.args.index) |index|
         index_name = index;
 
+    const prune = cli.args.exhaustive == 0;
+
     stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
     stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
@@ -63,7 +66,7 @@ pub fn main(init: std.process.Init) !void {
     while (try stdin.interface.takeDelimiter('\n')) |query| {
         const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-        const results = try searcher.search(&results_buffer, query, false);
+        const results = try searcher.search(&results_buffer, query, prune);
 
         const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;

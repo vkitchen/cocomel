@@ -52,7 +52,7 @@ pub fn main(init: std.process.Init) !void {
             continue;
         }
 
-        const results = try searcher.search(&results_buffer, query, false);
+        const results = try searcher.search(&results_buffer, query, true);
 
         try writer.interface.writeInt(u8, 0, native_endian); // protocol version
         try writer.interface.writeInt(u8, 1, native_endian); // protocol method

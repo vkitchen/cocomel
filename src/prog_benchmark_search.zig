@@ -25,7 +25,7 @@ pub fn main(init: std.process.Init) !void {
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
         \\--index <file>         Search a different index than default.
-        \\--approx               Approximate results (prunes query depth).
+        \\--exhaustive           Search to completion (don't terminate early).
         \\
     );
 
@@ -42,7 +42,7 @@ pub fn main(init: std.process.Init) !void {
     if (cli.args.index) |index|
         index_name = index;
 
-    const prune = cli.args.approx != 0;
+    const prune = cli.args.exhaustive == 0;
 
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

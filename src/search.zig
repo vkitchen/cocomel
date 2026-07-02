@@ -106,8 +106,8 @@ pub const Search = struct {
         // Remove any postings that got emptied
         var i = self.postings.items.len;
         while (i > 0) : (i -= 1) {
-            if (self.postings.items[i-1].len == 0)
-                _ = self.postings.swapRemove(i-1);
+            if (self.postings.items[i - 1].len == 0)
+                _ = self.postings.swapRemove(i - 1);
         }
     }
 

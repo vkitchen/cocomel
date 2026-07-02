@@ -171,7 +171,7 @@ pub const Index = struct {
 
     inline fn decompressBlock(self: *const Self, blocks: *u64, postings: *u64, len: u32, last_id: u32) []u32 {
         const doc_count = @min(128, len);
-        const res = compress.unpack_block_d1(self.header.compressor, self.blocks_store[blocks.* ..], self.postings_store[postings.* ..], self.compression_buf, doc_count, last_id);
+        const res = compress.unpack_block_d1(self.header.compressor, self.blocks_store[blocks.*..], self.postings_store[postings.*..], self.compression_buf, doc_count, last_id);
         blocks.* += res.blocks;
         postings.* += res.bytes;
         return self.compression_buf[0..doc_count];

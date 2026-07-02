@@ -239,12 +239,20 @@ pub const CcmlSerialiser = struct {
 
         const docs_start = self.writer.logicalPos();
 
+        // TODO the indexer should probably know this already
+        var has_titles: bool = false;
+        for (docs.items) |d| {
+            if (d.title.len > 0)
+                has_titles = true;
+        }
+
         var max_doc_length: u32 = 0;
         for (docs.items, 0..) |d, i| {
             if (d.len > max_doc_length) max_doc_length = d.len;
             docs_offsets[i] = @truncate(self.writer.logicalPos() - docs_start);
             try self.writeStr(d.name);
-            try self.writeStr(d.title);
+            if (has_titles)
+                try self.writeStr(d.title);
         }
 
         const docs_end = self.writer.logicalPos();
@@ -292,6 +300,7 @@ pub const CcmlSerialiser = struct {
             // config
             .compressor = compressor,
             .stemmer = stemmer,
+            .doc_fields = if (has_titles) 2 else 1,
             .version = index.version,
         }, native_endian);
 

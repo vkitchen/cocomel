@@ -95,7 +95,8 @@ pub const Header = extern struct {
     // config
     compressor: compress.Compressor,
     stemmer: Stemmer.Alg,
-    _reserved: [4]u8 = .{0} ** 4,
+    doc_fields: u8,
+    _reserved: [3]u8 = .{0} ** 3,
     version: u16,
 };
 
@@ -156,8 +157,11 @@ pub const Index = struct {
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const name_offset = self.docs[doc_id];
         const doc_name = readStr(self.docs_store, name_offset);
-        const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
-        const title = readStr(self.docs_store, title_offset);
+        var title: []const u8 = "";
+        if (self.header.doc_fields > 1) {
+            const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
+            title = readStr(self.docs_store, title_offset);
+        }
         return .{ doc_name, title };
     }
 

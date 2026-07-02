@@ -26,6 +26,7 @@ pub const TopKHeap = struct {
     cap: u32 = config.max_top_k,
     len: u32 = 0,
     saturated: bool = false,
+    top_k_lower_bound: config.AccumulatorType = undefined, // cache the lower bound for performance
 
     pub fn init(accumulators: [*]config.AccumulatorType) Self {
         return .{ .accumulators = accumulators };
@@ -50,6 +51,7 @@ pub const TopKHeap = struct {
                         heap.scores[i] = cache[i].*;
                     }
                     heap.make_heap();
+                    self.top_k_lower_bound = heap.scores[0];
                     self.saturated = true;
                 }
             }
@@ -58,18 +60,20 @@ pub const TopKHeap = struct {
         }
 
         // Can't enter heap
-        if (is < heap.scores[0] or (is == heap.scores[0] and docid > heap.docids[0]))
+        if (is < self.top_k_lower_bound or (is == self.top_k_lower_bound and docid > heap.docids[0]))
             return;
 
         // Previously didn't enter heap. Insert
-        if (was < heap.scores[0] or (was == heap.scores[0] and docid > heap.docids[0])) {
+        if (was < self.top_k_lower_bound or (was == self.top_k_lower_bound and docid > heap.docids[0])) {
             heap.push_back(docid, is);
+            self.top_k_lower_bound = heap.scores[0];
             return;
         }
 
         // Was in the heap. Promote
         const where = heap.find(docid);
         heap.promote(docid, is, where);
+        self.top_k_lower_bound = heap.scores[0];
     }
 
     pub fn results(self: *Self, buf: []Result) []Result {

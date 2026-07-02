@@ -62,8 +62,8 @@ pub const CcmlSerialiser = struct {
     }
 
     fn writeStr(self: *Self, str: []u8) !void {
-        try self.writer.interface.writeInt(u16, @truncate(str.len), native_endian);
         try self.writer.interface.writeAll(str);
+        try self.writer.interface.writeByte(0);
     }
 
     fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, compressor: compress.Compressor) ![4]u64 {
@@ -111,8 +111,8 @@ pub const CcmlSerialiser = struct {
             vocab_offsets[i].term = scratch_writer.logicalPos();
 
             // Write term
-            try scratch_writer.interface.writeInt(u16, @truncate(pair.key.?.len), native_endian);
             try scratch_writer.interface.writeAll(pair.key.?);
+            try scratch_writer.interface.writeByte(0); // null terminate
 
             // Secondary hash for term
             const hash2 = Wyhash.hash(42, pair.key.?);

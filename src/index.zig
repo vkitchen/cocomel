@@ -55,12 +55,6 @@ fn read64(buf: []const u8, offset: u64) u64 {
     return std.mem.bytesToValue(u64, buf[offset .. offset + @sizeOf(u64)][0..8]);
 }
 
-fn readStr(buf: []const u8, offset: u64) []const u8 {
-    const len = read16(buf, offset);
-    const start = offset + @sizeOf(u16);
-    return buf[start .. start + len];
-}
-
 fn readArray(buf: []const u8, offset: u64) []const config.FileOffsetType {
     const len = read64(buf, offset); // Always a u64
     const start = offset + @sizeOf(u64);
@@ -156,11 +150,11 @@ pub const Index = struct {
     // [ strlen  ][ str  ][ strlen  ][ str  ]
     pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
         const name_offset = self.docs[doc_id];
-        const doc_name = readStr(self.docs_store, name_offset);
+        const doc_name = std.mem.span(self.docs_store[name_offset.. :0].ptr);
         var title: []const u8 = "";
         if (self.header.doc_fields > 1) {
-            const title_offset = name_offset + @sizeOf(u16) + doc_name.len;
-            title = readStr(self.docs_store, title_offset);
+            const title_offset = name_offset + doc_name.len + 1; // null byte
+            title = std.mem.span(self.docs_store[title_offset.. :0].ptr);
         }
         return .{ doc_name, title };
     }
@@ -260,9 +254,9 @@ pub const Index = struct {
                 i = i + 1 & self.vocab.len - 1;
                 continue;
             }
-            const term = readStr(self.postings_store, self.vocab[i].term);
+            const term = std.mem.span(self.postings_store[self.vocab[i].term.. :0].ptr);
             if (std.mem.eql(u8, term, key)) {
-                const postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
+                const postings_start = self.vocab[i].term + term.len + 1; // null byte
                 return try self.readPostingsHeader(postings_start);
             }
 

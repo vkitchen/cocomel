@@ -42,8 +42,8 @@ pub fn main(init: std.process.Init) !void {
         \\--ciff <file>          Convert from ciff index.
         \\--quantise             Ciff needs quantising?
         \\--compress <name>      Compressor to use:
-        \\                         * bp128 Packs 128 integers at a time into blocks (default, fast)
-        \\                         * vbyte Packs integers into variable number of bytes (slow, space efficient)
+        \\                         * bp128 Packs 128 integers at a time into blocks (fast, default)
+        \\                         * vbyte Packs integers into variable number of bytes (slow)
         \\
     );
 

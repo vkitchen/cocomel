@@ -10,7 +10,7 @@ const config = @import("config.zig");
 const compress = @import("compress_int.zig");
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
-const TopK = @import("top_k_heap.zig").TopKHeap;
+const TopK = @import("top_k_tournament.zig").TopKTournament;
 const Stemmer = @import("stem.zig").Stemmer;
 
 const c = @import("c");

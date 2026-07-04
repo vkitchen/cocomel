@@ -63,8 +63,8 @@ pub const TopKHeap = struct {
         if (is < self.top_k_lower_bound or (is == self.top_k_lower_bound and docid > heap.docids[0]))
             return;
 
-        // Previously didn't enter heap. Insert
-        if (was < self.top_k_lower_bound or (was == self.top_k_lower_bound and docid > heap.docids[0])) {
+        // Previously didn't enter heap, or at bottom. Insert
+        if (was < self.top_k_lower_bound or (was == self.top_k_lower_bound and docid >= heap.docids[0])) {
             heap.push_back(docid, is);
             self.top_k_lower_bound = heap.scores[0];
             return;

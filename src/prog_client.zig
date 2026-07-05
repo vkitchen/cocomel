@@ -19,8 +19,8 @@ pub fn main(init: std.process.Init) !void {
 
     var buf: [1000]u8 = undefined;
     const query = try stdin.interface.takeDelimiter('\n');
-    buf[0] = 0; // Version
-    buf[1] = 1; // Command (Query)
+    buf[0] = 1; // Version
+    buf[1] = 3; // Command (Query)
     // No. results
     buf[2] = 5; // Little endian
     buf[3] = 0;

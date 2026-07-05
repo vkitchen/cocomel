@@ -11,9 +11,12 @@ const native_endian = @import("builtin").target.cpu.arch.endian();
 
 var results_buffer: [1000]Result = undefined;
 
-const header = packed struct {
+const Header = extern struct {
     version: u8,
     method: u8,
+};
+
+const SearchReq = extern struct {
     no_results: u16,
     offset: u16,
     query_len: u16,
@@ -43,19 +46,37 @@ pub fn main(init: std.process.Init) !void {
         var writer_buf: [1024]u8 = undefined;
         var writer = conn.writer(init.io, &writer_buf);
 
-        const query_header = try reader.interface.takeStruct(header, native_endian);
+        const header = try reader.interface.takeStruct(Header, native_endian);
+        // TODO proper handling
+        if (header.version != 1) {
+            conn.close(init.io);
+            continue;
+        }
+
+        // Info
+        if (header.method == 2) {
+            try writer.interface.writeInt(u8, 1, native_endian); // protocol version
+            try writer.interface.writeInt(u8, 2, native_endian); // protocol method
+            try writer.interface.writeInt(u32, @truncate(searcher.index.docs.len), native_endian);
+            try writer.interface.flush();
+
+            conn.close(init.io);
+            continue;
+        }
+
+        const query_header = try reader.interface.takeStruct(SearchReq, native_endian);
         const query = try reader.interface.take(query_header.query_len);
 
         // TODO proper handling
-        if (query_header.version != 0 or query_header.method != 1) {
+        if (header.method != 3) {
             conn.close(init.io);
             continue;
         }
 
         const results = try searcher.search(&results_buffer, query, true);
 
-        try writer.interface.writeInt(u8, 0, native_endian); // protocol version
-        try writer.interface.writeInt(u8, 1, native_endian); // protocol method
+        try writer.interface.writeInt(u8, 1, native_endian); // protocol version
+        try writer.interface.writeInt(u8, 3, native_endian); // protocol method
         try writer.interface.writeInt(u16, @truncate(results.len), native_endian);
         if (query_header.offset > results.len) {
             try writer.interface.writeInt(u16, 0, native_endian);

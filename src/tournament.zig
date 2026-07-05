@@ -97,14 +97,16 @@ pub fn promote(pos: u64, score: config.AccumulatorType) void {
 
     var p = parent(pos + cap);
     while (p != 0) {
-        const winner, const loser = match(tree[leftOf(p)].winner, tree[rightOf(p)].winner);
+        if (tree[p].loser == pos + cap) {
+            tree[p].loser = new.loser;
+            break;
+        }
+        const winner, const loser = match(new.winner, tree[p].loser);
         new = tree[winner];
         tree[p] = .{ .winner = winner, .loser = loser };
 
         p = parent(p);
     }
-    // Store the new root
-    tree[0].winner = new.winner;
 }
 
 pub fn bottomDoc() u32 {

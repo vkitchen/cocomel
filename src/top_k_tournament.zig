@@ -75,8 +75,12 @@ pub const TopKTournament = struct {
     }
 
     pub fn results(self: *Self, buf: []Result) []Result {
-        for (0..self.len) |i| {
-            buf[i] = .{ .docid = tournament.docids[i], .score = tournament.tree[i + tournament.cap].score };
+        if (self.saturated) {
+            for (0..self.len) |i|
+                buf[i] = .{ .docid = tournament.docids[i], .score = tournament.tree[i + tournament.cap].score };
+        } else {
+            for (0..self.len) |i|
+                buf[i] = .{ .docid = @intCast(cache[i] - self.accumulators), .score = cache[i].* };
         }
         std.sort.pdq(Result, buf[0..self.len], {}, cmpResults);
         return buf[0..self.len];

@@ -50,7 +50,7 @@ pub const TopKTournament = struct {
                     for (0..self.len) |i|
                         tournament.append(@intCast(cache[i] - self.accumulators), cache[i].*);
                     tournament.make();
-                    self.top_k_lower_bound = tournament.tree[tournament.tree[0].winner].score;
+                    self.top_k_lower_bound = tournament.tree[0].score;
                     self.saturated = true;
                 }
             }
@@ -65,11 +65,11 @@ pub const TopKTournament = struct {
         // Previously didn't enter tree. Or is bottom of tree. Insert
         if (was < self.top_k_lower_bound or (was == self.top_k_lower_bound and docid >= tournament.bottomDoc())) {
             tournament.replace(docid, is);
-            self.top_k_lower_bound = tournament.tree[tournament.tree[0].winner].score;
+            self.top_k_lower_bound = tournament.tree[0].score;
             return;
         }
 
-        // Was in the tree. Promote
+        // Was in the tree. Promote (can't affect root)
         const where = tournament.find(docid);
         tournament.promote(where, is);
     }

@@ -7,10 +7,9 @@ It's a simple search engine designed to be fast on a single node without any sca
 
 Cocomel performs disjunctive (OR) search unlike more common conjunctive (AND) search engines.
 This puts it in the same family as [ATIRE](https://github.com/andrewtrotman/ATIRE/), [IOQP](https://github.com/JMMackenzie/IOQP/), [JASS](https://github.com/lintool/JASS), and [JASSv2](https://github.com/andrewtrotman/JASSv2/).
-The advantage of disjunctive search is to easily [cap execution time](https://andrewtrotman.github.io/papers/2015-2.pdf) ensuring that no one query takes over the full compute resources.
+The key advantage of disjunctive search is the ability to [cap execution time](https://andrewtrotman.github.io/papers/2015-2.pdf) with a tailorable tradeoff between compute usage and results quality. The disadvantage is that additional query terms increases the results set rather than restricts it. This is mostly nullified by [BM25](https://en.wikipedia.org/wiki/Okapi_BM25) ranking.
 
 Currently I'm using cocomel for recipe search at [potatocastles.com](https://potatocastles.com).
-The website itself is [vkitchen/potatoes](https://github.com/vkitchen/potatoes) and the crawler is [vkitchen/crawler](https://github.com/vkitchen/crawler).
 
 ## Features
 

@@ -22,22 +22,20 @@ const config = @import("config.zig");
 //
 // N.B. The k_3 component is not used as it is assumed each term only occurs in the query only once
 
-pub const Ranker = struct {
-    const Self = @This();
+const Self = @This();
 
-    no_docs: f64 = 0,
-    idf: f64 = 0, // log(N/df_t)
-    avg_len: f64 = 0,
+no_docs: f64 = 0,
+idf: f64 = 0, // log(N/df_t)
+avg_len: f64 = 0,
 
-    pub fn init(no_docs: f64, avg_len: f64) Self {
-        return .{ .no_docs = no_docs, .avg_len = avg_len };
-    }
+pub fn init(no_docs: f64, avg_len: f64) Self {
+    return .{ .no_docs = no_docs, .avg_len = avg_len };
+}
 
-    pub fn compIdf(r: *Self, df: f64) void {
-        r.idf = @log(r.no_docs / df);
-    }
+pub fn compIdf(r: *Self, df: f64) void {
+    r.idf = @log(r.no_docs / df);
+}
 
-    pub fn compScore(r: *Self, tf: f64, doc_len: f64) f64 {
-        return r.idf * (config.bm25_k1 + 1) * tf / (config.bm25_k1 * (1 - config.bm25_b + config.bm25_b * (doc_len / r.avg_len)) + tf);
-    }
-};
+pub fn compScore(r: *Self, tf: f64, doc_len: f64) f64 {
+    return r.idf * (config.bm25_k1 + 1) * tf / (config.bm25_k1 * (1 - config.bm25_b + config.bm25_b * (doc_len / r.avg_len)) + tf);
+}

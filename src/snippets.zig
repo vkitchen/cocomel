@@ -9,67 +9,65 @@ const query = @import("tokenizer_query.zig");
 
 const window_size = 100;
 
-pub const Snippeter = struct {
-    const Self = @This();
+const Self = @This();
 
-    allocator: std.heap.FixedBufferAllocator,
-    stemmer: Stemmer,
-    snippets: []const u8,
-    terms: std.ArrayListUnmanaged(Term),
+allocator: std.heap.FixedBufferAllocator,
+stemmer: Stemmer,
+snippets: []const u8,
+terms: std.ArrayListUnmanaged(Term),
 
-    pub fn init(allocator: std.heap.FixedBufferAllocator, stemmer: Stemmer, snippets: []const u8, terms: std.ArrayListUnmanaged(Term)) !Self {
-        return .{
-            .allocator = allocator,
-            .stemmer = stemmer,
-            .snippets = snippets,
-            .terms = terms,
-        };
-    }
+pub fn init(allocator: std.heap.FixedBufferAllocator, stemmer: Stemmer, snippets: []const u8, terms: std.ArrayListUnmanaged(Term)) !Self {
+    return .{
+        .allocator = allocator,
+        .stemmer = stemmer,
+        .snippets = snippets,
+        .terms = terms,
+    };
+}
 
-    pub fn snippet(self: *Self, query_: []query.Term, start: usize, end: usize) ![]Term {
-        self.terms.clearRetainingCapacity();
-        self.allocator.reset();
+pub fn snippet(self: *Self, query_: []query.Term, start: usize, end: usize) ![]Term {
+    self.terms.clearRetainingCapacity();
+    self.allocator.reset();
 
-        var toker = Tokenizer.init(self.stemmer, self.snippets, start, end);
-        try toker.tokenize(self.allocator.allocator(), &self.terms);
+    var toker = Tokenizer.init(self.stemmer, self.snippets, start, end);
+    try toker.tokenize(self.allocator.allocator(), &self.terms);
 
-        var hits: usize = 0;
-        var max_hits: usize = 0;
-        var max_hits_i: usize = 0;
-        var i: usize = 0;
-        while (i < self.terms.items.len) : (i += 1) {
-            for (query_) |q| {
-                if (std.mem.eql(u8, q.term, self.terms.items[i].stemmed)) {
-                    self.terms.items[i].hit = true;
-                    if (i < window_size)
-                        hits += 1;
-                    break;
-                }
+    var hits: usize = 0;
+    var max_hits: usize = 0;
+    var max_hits_i: usize = 0;
+    var i: usize = 0;
+    while (i < self.terms.items.len) : (i += 1) {
+        for (query_) |q| {
+            if (std.mem.eql(u8, q.term, self.terms.items[i].stemmed)) {
+                self.terms.items[i].hit = true;
+                if (i < window_size)
+                    hits += 1;
+                break;
             }
         }
-        max_hits = hits;
-
-        if (self.terms.items.len < window_size)
-            return self.terms.items;
-
-        i = window_size;
-        while (i < self.terms.items.len) : (i += 1) {
-            if (self.terms.items[i].hit)
-                hits += 1;
-            // TODO check the math
-            if (self.terms.items[i - window_size].hit)
-                hits -= 1;
-            if (hits > max_hits) {
-                max_hits = hits;
-                max_hits_i = i;
-            }
-        }
-
-        // Wind back to find the nearest sentence boundary
-        while (max_hits_i > 1 and self.terms.items[max_hits_i - 1].original[self.terms.items[max_hits_i - 1].original.len - 1] != '.') : (max_hits_i -= 1) {}
-
-        const end_hit = @min(max_hits_i + window_size, self.terms.items.len);
-
-        return self.terms.items[max_hits_i..end_hit];
     }
-};
+    max_hits = hits;
+
+    if (self.terms.items.len < window_size)
+        return self.terms.items;
+
+    i = window_size;
+    while (i < self.terms.items.len) : (i += 1) {
+        if (self.terms.items[i].hit)
+            hits += 1;
+        // TODO check the math
+        if (self.terms.items[i - window_size].hit)
+            hits -= 1;
+        if (hits > max_hits) {
+            max_hits = hits;
+            max_hits_i = i;
+        }
+    }
+
+    // Wind back to find the nearest sentence boundary
+    while (max_hits_i > 1 and self.terms.items[max_hits_i - 1].original[self.terms.items[max_hits_i - 1].original.len - 1] != '.') : (max_hits_i -= 1) {}
+
+    const end_hit = @min(max_hits_i + window_size, self.terms.items.len);
+
+    return self.terms.items[max_hits_i..end_hit];
+}

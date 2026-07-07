@@ -6,7 +6,7 @@
 const std = @import("std");
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
-const Search = @import("search.zig").Search;
+const Search = @import("search.zig");
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
 var results_buffer: [1000]Result = undefined;

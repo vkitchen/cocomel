@@ -8,7 +8,7 @@ const clap = @import("clap");
 
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
-const Search = @import("search.zig").Search;
+const Search = @import("search.zig");
 
 var stdin_buffer: [1024]u8 = undefined;
 var stdout_buffer: [1024]u8 = undefined;

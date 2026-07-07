@@ -5,13 +5,13 @@ const std = @import("std");
 const clap = @import("clap");
 
 const config = @import("config.zig");
-const HtmlTokenizer = @import("tokenizer_html.zig").HtmlTokenizer;
-const WsjTokenizer = @import("tokenizer_wsj.zig").WsjTokenizer;
+const HtmlTokenizer = @import("tokenizer_html.zig");
+const WsjTokenizer = @import("tokenizer_wsj.zig");
 const TarTokenizer = @import("tokenizer_tar.zig").TarTokenizer;
 const Stemmer = @import("stem.zig").Stemmer;
 const compress = @import("compress_int.zig");
-const Indexer = @import("indexer.zig").Indexer;
-const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
+const Indexer = @import("indexer.zig");
+const CcmlSerialiser = @import("serialiser_ccml.zig");
 
 var reader_buf: [config.io_buffer_size]u8 = undefined;
 var filename_buf: [1000]u8 = undefined;

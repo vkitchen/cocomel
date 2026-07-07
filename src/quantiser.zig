@@ -19,19 +19,17 @@ const index = @import("index.zig");
 // U the upper limit of impact scores
 // L the lower limit of impact scores
 
-pub const Quantiser = struct {
-    const Self = @This();
+const Self = @This();
 
-    min_rsv: f64,
-    max_rsv: f64,
+min_rsv: f64,
+max_rsv: f64,
 
-    pub fn init(min_rsv: f64, max_rsv: f64) Self {
-        return .{ .min_rsv = min_rsv, .max_rsv = max_rsv };
-    }
+pub fn init(min_rsv: f64, max_rsv: f64) Self {
+    return .{ .min_rsv = min_rsv, .max_rsv = max_rsv };
+}
 
-    pub fn quantise(self: *const Self, score: f64) index.ImpactType {
-        const scale = (1 << config.quantise_bits) - 2;
-        const res: index.ImpactType = @intFromFloat((score - self.min_rsv) / (self.max_rsv - self.min_rsv) * scale);
-        return res + 1;
-    }
-};
+pub fn quantise(self: *const Self, score: f64) index.ImpactType {
+    const scale = (1 << config.quantise_bits) - 2;
+    const res: index.ImpactType = @intFromFloat((score - self.min_rsv) / (self.max_rsv - self.min_rsv) * scale);
+    return res + 1;
+}

@@ -7,10 +7,11 @@ const PostingsHeader = @import("index.zig").PostingsHeader;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
-const TopK = @import("top_k_tournament.zig").TopKTournament;
-const query = @import("tokenizer_query.zig");
+const TopK = @import("top_k_tournament.zig");
+const QueryTerm = @import("tokenizer_query.zig").Term;
+const QueryParser = @import("tokenizer_query.zig").Parser;
 const Stemmer = @import("stem.zig").Stemmer;
-const Snippeter = @import("snippets.zig").Snippeter;
+const Snippeter = @import("snippets.zig");
 const stem = @import("stem.zig").stem;
 const expandQuery = @import("query_expansion.zig").expandQuery;
 const config = @import("config.zig");
@@ -25,173 +26,171 @@ fn cmpPostings(_: void, a: PostingsHeader, b: PostingsHeader) bool {
     return a.len > b.len;
 }
 
-pub const Search = struct {
-    const Self = @This();
+const Self = @This();
 
-    index: Index,
-    snippets: bool,
-    snippeter: Snippeter,
-    query: std.ArrayListUnmanaged(query.Term),
-    postings: std.ArrayList(PostingsHeader),
-    topk: TopK,
-    accumulators: []align(32) config.AccumulatorType,
-    postings_allocator: std.heap.FixedBufferAllocator,
+index: Index,
+snippets: bool,
+snippeter: Snippeter,
+query: std.ArrayListUnmanaged(QueryTerm),
+postings: std.ArrayList(PostingsHeader),
+topk: TopK,
+accumulators: []align(32) config.AccumulatorType,
+postings_allocator: std.heap.FixedBufferAllocator,
 
-    pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
-        const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
+pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
+    const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
 
-        const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
-        const postings_buf = try allocator.alloc(u8, max_segments * @sizeOf(u32) * 2);
+    const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
+    const postings_buf = try allocator.alloc(u8, max_segments * @sizeOf(u32) * 2);
 
-        const index = try Index.init(index_file);
+    const index = try Index.init(index_file);
 
-        const snippeter = blk: {
-            if (index.hasSnippets()) {
-                var max_snippet: u64 = 0;
-                var doc_id: u32 = 0;
-                while (doc_id < index.docs.len) : (doc_id += 1) {
-                    const range = index.snippet(doc_id);
-                    const snippet_length = range[1] - range[0];
-                    if (snippet_length > max_snippet)
-                        max_snippet = snippet_length;
-                }
-
-                const snippets_buf = try allocator.alloc(u8, max_snippet);
-                const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
-                const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.header.max_doc_length);
-                break :blk try Snippeter.init(snippets_allocator, Stemmer.init(index.header.stemmer), index_file, snippets_terms);
-            } else {
-                break :blk undefined;
+    const snippeter = blk: {
+        if (index.hasSnippets()) {
+            var max_snippet: u64 = 0;
+            var doc_id: u32 = 0;
+            while (doc_id < index.docs.len) : (doc_id += 1) {
+                const range = index.snippet(doc_id);
+                const snippet_length = range[1] - range[0];
+                if (snippet_length > max_snippet)
+                    max_snippet = snippet_length;
             }
-        };
 
-        const accumulators = try allocator.alignedAlloc(config.AccumulatorType, .@"32", index.docs.len);
-
-        return .{
-            .index = index,
-            .snippets = index.hasSnippets(),
-            .snippeter = snippeter,
-            .query = try std.ArrayListUnmanaged(query.Term).initCapacity(allocator, config.max_query_terms),
-            .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
-            .topk = TopK.init(accumulators.ptr),
-            .accumulators = accumulators,
-            .postings_allocator = std.heap.FixedBufferAllocator.init(postings_buf),
-        };
-    }
-
-    fn prunePostings(self: *Self) void {
-        const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) * config.SearchProportion);
-        var total: usize = 0;
-        for (self.postings.items) |post|
-            total += post.len;
-
-        var impact: usize = 1;
-        while (total > budget) {
-            for (self.postings.items) |*post| {
-                if (post.segments.len == 0)
-                    continue;
-
-                const last = post.segments[post.segments.len - 1];
-                if (last.impact == impact) {
-                    post.len -= last.len;
-                    total -= last.len;
-                    post.segments.len -= 1;
-                }
-            }
-            impact += 1;
+            const snippets_buf = try allocator.alloc(u8, max_snippet);
+            const snippets_allocator = std.heap.FixedBufferAllocator.init(snippets_buf);
+            const snippets_terms = try std.ArrayListUnmanaged(Term).initCapacity(allocator, index.header.max_doc_length);
+            break :blk try Snippeter.init(snippets_allocator, Stemmer.init(index.header.stemmer), index_file, snippets_terms);
+        } else {
+            break :blk undefined;
         }
+    };
 
-        // Remove any postings that got emptied
-        var i = self.postings.items.len;
-        while (i > 0) : (i -= 1) {
-            if (self.postings.items[i - 1].len == 0)
-                _ = self.postings.swapRemove(i - 1);
-        }
-    }
+    const accumulators = try allocator.alignedAlloc(config.AccumulatorType, .@"32", index.docs.len);
 
-    // Maps [@min(impact), @max(impact)] to [1, @intMax(AccumulatorType)]
-    // Using the formula:
-    //
-    //            (x - @min) * (@intMax - 1)
-    // f(x) = 1 + --------------------------
-    //                 (@max - @min)
-    //
-    fn scalePostings(self: *Self) void {
-        const accumulator_max: usize = std.math.maxInt(config.AccumulatorType) / self.postings.items.len - 1;
+    return .{
+        .index = index,
+        .snippets = index.hasSnippets(),
+        .snippeter = snippeter,
+        .query = try std.ArrayListUnmanaged(QueryTerm).initCapacity(allocator, config.max_query_terms),
+        .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
+        .topk = TopK.init(accumulators.ptr),
+        .accumulators = accumulators,
+        .postings_allocator = std.heap.FixedBufferAllocator.init(postings_buf),
+    };
+}
 
-        var max_impact: usize = 0;
-        var min_impact: usize = std.math.maxInt(config.AccumulatorType);
-        for (self.postings.items) |post| {
-            if (post.segments[0].impact > max_impact) max_impact = post.segments[0].impact;
-            if (post.segments[post.segments.len - 1].impact < min_impact) min_impact = post.segments[post.segments.len - 1].impact;
-        }
+fn prunePostings(self: *Self) void {
+    const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) * config.SearchProportion);
+    var total: usize = 0;
+    for (self.postings.items) |post|
+        total += post.len;
 
-        if (max_impact < accumulator_max)
-            return;
+    var impact: usize = 1;
+    while (total > budget) {
+        for (self.postings.items) |*post| {
+            if (post.segments.len == 0)
+                continue;
 
-        const scale_factor: f64 = @as(f64, @floatFromInt(accumulator_max)) / @as(f64, @floatFromInt(max_impact - min_impact));
-
-        for (self.postings.items) |post| {
-            for (post.segments) |*segment| {
-                const impact: f64 = segment.impact;
-                segment.impact = @intFromFloat(1 + (impact - @as(f64, @floatFromInt(min_impact))) * scale_factor);
+            const last = post.segments[post.segments.len - 1];
+            if (last.impact == impact) {
+                post.len -= last.len;
+                total -= last.len;
+                post.segments.len -= 1;
             }
         }
+        impact += 1;
     }
 
-    pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]Result {
-        self.postings_allocator.reset();
-        self.query.clearRetainingCapacity();
+    // Remove any postings that got emptied
+    var i = self.postings.items.len;
+    while (i > 0) : (i -= 1) {
+        if (self.postings.items[i - 1].len == 0)
+            _ = self.postings.swapRemove(i - 1);
+    }
+}
 
-        var tok = query.Parser.init(Stemmer.init(self.index.header.stemmer), &self.query, query_raw);
-        tok.parse();
+// Maps [@min(impact), @max(impact)] to [1, @intMax(AccumulatorType)]
+// Using the formula:
+//
+//            (x - @min) * (@intMax - 1)
+// f(x) = 1 + --------------------------
+//                 (@max - @min)
+//
+fn scalePostings(self: *Self) void {
+    const accumulator_max: usize = std.math.maxInt(config.AccumulatorType) / self.postings.items.len - 1;
 
-        // TODO reenable once allocation is fixed
-        // try expandQuery(allocator, &self.query);
+    var max_impact: usize = 0;
+    var min_impact: usize = std.math.maxInt(config.AccumulatorType);
+    for (self.postings.items) |post| {
+        if (post.segments[0].impact > max_impact) max_impact = post.segments[0].impact;
+        if (post.segments[post.segments.len - 1].impact < min_impact) min_impact = post.segments[post.segments.len - 1].impact;
+    }
 
-        self.topk.clearRetainingCapacity();
-        self.postings.clearRetainingCapacity();
+    if (max_impact < accumulator_max)
+        return;
 
-        // TODO fix term negation
-        for (self.query.items) |term| {
-            const res = try self.index.find(self.postings_allocator.allocator(), term.term);
-            if (res) |postings|
-                self.postings.appendAssumeCapacity(postings);
+    const scale_factor: f64 = @as(f64, @floatFromInt(accumulator_max)) / @as(f64, @floatFromInt(max_impact - min_impact));
+
+    for (self.postings.items) |post| {
+        for (post.segments) |*segment| {
+            const impact: f64 = segment.impact;
+            segment.impact = @intFromFloat(1 + (impact - @as(f64, @floatFromInt(min_impact))) * scale_factor);
         }
+    }
+}
 
-        // No results found
-        if (self.postings.items.len == 0)
-            return &.{};
+pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]Result {
+    self.postings_allocator.reset();
+    self.query.clearRetainingCapacity();
 
-        // Special case for single term query skipping accumulator reset
-        if (self.postings.items.len == 1)
-            return self.index.readPostings(&self.postings.items[0], results);
+    var tok = QueryParser.init(Stemmer.init(self.index.header.stemmer), &self.query, query_raw);
+    tok.parse();
 
-        // It's unlikely we'll prune down to a single postings and pruning takes time
-        if (prune)
-            self.prunePostings();
+    // TODO reenable once allocation is fixed
+    // try expandQuery(allocator, &self.query);
 
-        self.scalePostings();
+    self.topk.clearRetainingCapacity();
+    self.postings.clearRetainingCapacity();
 
-        std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
-
-        memset(std.mem.sliceAsBytes(self.accumulators));
-
-        // Now process normally
-        for (self.postings.items) |postings|
-            self.index.accumulatePostings(&postings, &self.topk, self.accumulators);
-
-        return self.topk.results(results);
+    // TODO fix term negation
+    for (self.query.items) |term| {
+        const res = try self.index.find(self.postings_allocator.allocator(), term.term);
+        if (res) |postings|
+            self.postings.appendAssumeCapacity(postings);
     }
 
-    pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
-        return self.index.name(doc_id);
-    }
+    // No results found
+    if (self.postings.items.len == 0)
+        return &.{};
 
-    pub fn snippet(self: *Self, doc_id: u32) ![]Term {
-        if (!self.snippets)
-            return &.{};
-        const range = self.index.snippet(doc_id);
-        return self.snippeter.snippet(self.query.items, range[0], range[1]);
-    }
-};
+    // Special case for single term query skipping accumulator reset
+    if (self.postings.items.len == 1)
+        return self.index.readPostings(&self.postings.items[0], results);
+
+    // It's unlikely we'll prune down to a single postings and pruning takes time
+    if (prune)
+        self.prunePostings();
+
+    self.scalePostings();
+
+    std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
+
+    memset(std.mem.sliceAsBytes(self.accumulators));
+
+    // Now process normally
+    for (self.postings.items) |postings|
+        self.index.accumulatePostings(&postings, &self.topk, self.accumulators);
+
+    return self.topk.results(results);
+}
+
+pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {
+    return self.index.name(doc_id);
+}
+
+pub fn snippet(self: *Self, doc_id: u32) ![]Term {
+    if (!self.snippets)
+        return &.{};
+    const range = self.index.snippet(doc_id);
+    return self.snippeter.snippet(self.query.items, range[0], range[1]);
+}

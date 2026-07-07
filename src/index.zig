@@ -106,7 +106,6 @@ pub const Index = struct {
     const Self = @This();
 
     header: *const Header,
-    allocator: std.heap.FixedBufferAllocator,
 
     // "sub-files"
     snippets_store: []const u8,
@@ -119,7 +118,7 @@ pub const Index = struct {
     vocab: []const VocabTuple,
     docs: []const config.FileOffsetType,
 
-    pub fn init(index: []align(16) const u8, postings_buf: []u8) !Self {
+    pub fn init(index: []align(16) const u8) !Self {
         const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));
 
         if (header.version != version) {
@@ -129,7 +128,6 @@ pub const Index = struct {
 
         return .{
             .header = header,
-            .allocator = std.heap.FixedBufferAllocator.init(postings_buf),
 
             // "sub-files"
             .snippets_store = index[header.snippets_store[0]..header.snippets_store[1]],
@@ -142,10 +140,6 @@ pub const Index = struct {
             .vocab = readVocabArray(index, header.vocab),
             .docs = readArray(index, header.docs),
         };
-    }
-
-    pub fn reset(self: *Self) void {
-        self.allocator.reset();
     }
 
     pub fn hasSnippets(self: *const Self) bool {
@@ -230,12 +224,12 @@ pub const Index = struct {
         return if (ImpactType == u16) read16(self.postings_store, offset) else self.postings_store[offset];
     }
 
-    fn readPostingsHeader(self: *Self, offset: u64) !PostingsHeader {
+    fn readPostingsHeader(self: *const Self, allocator: std.mem.Allocator, offset: u64) !PostingsHeader {
         var index = offset;
         const num_segments = self.readImpact(index);
         index += @sizeOf(ImpactType);
         var total_docs: usize = 0;
-        var segments = try self.allocator.allocator().alloc(SegmentHeader, num_segments);
+        var segments = try allocator.alloc(SegmentHeader, num_segments);
         for (0..num_segments) |i| {
             const impact = self.readImpact(index);
             index += @sizeOf(ImpactType);
@@ -250,7 +244,7 @@ pub const Index = struct {
     }
 
     // Returns start of segment header and start of segments
-    pub fn find(self: *Self, key: []const u8) !?PostingsHeader {
+    pub fn find(self: *const Self, allocator: std.mem.Allocator, key: []const u8) !?PostingsHeader {
         var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
         const hash2 = Wyhash.hash(42, key);
         while (true) {
@@ -263,7 +257,7 @@ pub const Index = struct {
             const term = readStr(self.postings_store, self.vocab[i].term);
             if (std.mem.eql(u8, term, key)) {
                 const postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
-                return try self.readPostingsHeader(postings_start);
+                return try self.readPostingsHeader(allocator, postings_start);
             }
 
             i = i + 1 & self.vocab.len - 1;

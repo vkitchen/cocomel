@@ -37,6 +37,7 @@ pub const Search = struct {
     postings: std.ArrayList(PostingsHeader),
     topk: TopK,
     accumulators: []align(32) config.AccumulatorType,
+    postings_allocator: std.heap.FixedBufferAllocator,
 
     pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
         const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
@@ -44,7 +45,7 @@ pub const Search = struct {
         const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
         const postings_buf = try allocator.alloc(u8, max_segments * @sizeOf(u32) * 2);
 
-        const index = try Index.init(index_file, postings_buf);
+        const index = try Index.init(index_file);
 
         const snippeter = blk: {
             if (index.hasSnippets()) {
@@ -76,6 +77,7 @@ pub const Search = struct {
             .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
             .topk = TopK.init(accumulators.ptr),
             .accumulators = accumulators,
+            .postings_allocator = std.heap.FixedBufferAllocator.init(postings_buf),
         };
     }
 
@@ -140,7 +142,7 @@ pub const Search = struct {
     }
 
     pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]Result {
-        self.index.reset();
+        self.postings_allocator.reset();
         self.query.clearRetainingCapacity();
 
         var tok = query.Parser.init(Stemmer.init(self.index.header.stemmer), &self.query, query_raw);
@@ -154,7 +156,7 @@ pub const Search = struct {
 
         // TODO fix term negation
         for (self.query.items) |term| {
-            const res = try self.index.find(term.term);
+            const res = try self.index.find(self.postings_allocator.allocator(), term.term);
             if (res) |postings|
                 self.postings.appendAssumeCapacity(postings);
         }

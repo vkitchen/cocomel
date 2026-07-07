@@ -23,7 +23,10 @@ accumulators: [*]config.AccumulatorType,
 cap: u32 = config.max_top_k,
 len: u32 = 0,
 saturated: bool = false,
-top_k_lower_bound: config.AccumulatorType = undefined, // cache the lower bound for performance
+
+// cache the lower bound for performance
+min_score: config.AccumulatorType = undefined,
+min_docid: u32 = undefined,
 
 pub fn init(accumulators: [*]config.AccumulatorType) Self {
     return .{ .accumulators = accumulators };
@@ -47,7 +50,8 @@ pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.A
                 for (0..self.len) |i|
                     tournament.append(@intCast(cache[i] - self.accumulators), cache[i].*);
                 tournament.make();
-                self.top_k_lower_bound = tournament.tree[0].score;
+                self.min_score = tournament.tree[0].score;
+                self.min_docid = tournament.bottomDoc();
                 self.saturated = true;
             }
         }
@@ -56,13 +60,14 @@ pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.A
     }
 
     // Can't enter tree
-    if (is < self.top_k_lower_bound or (is == self.top_k_lower_bound and docid > tournament.bottomDoc()))
+    if (is < self.min_score or (is == self.min_score and docid > self.min_docid))
         return;
 
     // Previously didn't enter tree. Or is bottom of tree. Insert
-    if (was < self.top_k_lower_bound or (was == self.top_k_lower_bound and docid >= tournament.bottomDoc())) {
+    if (was < self.min_score or (was == self.min_score and docid >= self.min_docid)) {
         tournament.replace(docid, is);
-        self.top_k_lower_bound = tournament.tree[0].score;
+        self.min_score = tournament.tree[0].score;
+        self.min_docid = tournament.bottomDoc();
         return;
     }
 

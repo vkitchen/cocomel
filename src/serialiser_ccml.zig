@@ -8,7 +8,7 @@ const Wyhash = std.hash.Wyhash;
 
 const config = @import("config.zig");
 const index = @import("index.zig");
-const Dictionary = @import("dictionary.zig").Dictionary;
+const HashMap = @import("hash_map.zig").HashMap;
 const Doc = @import("doc.zig");
 const compress = @import("compress_int.zig");
 const Stemmer = @import("stem.zig").Stemmer;
@@ -66,13 +66,13 @@ pub const CcmlSerialiser = struct {
         try self.writer.interface.writeAll(str);
     }
 
-    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, dictionary: *Dictionary(*Postings), vocab_offsets: []index.VocabTuple, compressor: compress.Compressor) ![4]u64 {
+    fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *HashMap(*Postings), vocab_offsets: []index.VocabTuple, compressor: compress.Compressor) ![4]u64 {
         var vbyte_buffer: [5]u8 = undefined;
 
         // Get statistics
         var best = [_]u32{0} ** (1 << config.quantise_bits);
 
-        for (dictionary.store) |pair| {
+        for (vocab.store) |pair| {
             if (pair.key == null) continue;
             const postings = pair.val.?;
 
@@ -100,7 +100,7 @@ pub const CcmlSerialiser = struct {
         while (self.writer.logicalPos() % @alignOf(u128) != 0) try self.writer.interface.writeByte(0);
         const blocks_start = self.writer.logicalPos();
 
-        for (dictionary.store, 0..) |pair, i| {
+        for (vocab.store, 0..) |pair, i| {
             if (pair.key == null) continue;
             const postings = pair.val.?;
 
@@ -185,7 +185,7 @@ pub const CcmlSerialiser = struct {
     }
 
     // This goes over the index multiple times to avoid allocating excessive memory
-    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), dictionary: *Dictionary(*Postings), compressor: compress.Compressor, stemmer: Stemmer.Alg, quantise: bool) !u64 {
+    pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), vocab: *HashMap(*Postings), compressor: compress.Compressor, stemmer: Stemmer.Alg, quantise: bool) !u64 {
         // Flush snippets
         try self.newDocId(allocator);
 
@@ -207,7 +207,7 @@ pub const CcmlSerialiser = struct {
             var min_score: f64 = std.math.floatMax(f64);
             var max_score: f64 = 0;
 
-            for (dictionary.store) |pair| {
+            for (vocab.store) |pair| {
                 if (pair.key == null) continue;
                 const post = pair.val.?;
 
@@ -220,7 +220,7 @@ pub const CcmlSerialiser = struct {
             // Actually quantise now
             const quantiser = Quantiser.init(min_score, max_score);
 
-            for (dictionary.store) |pair| {
+            for (vocab.store) |pair| {
                 if (pair.key == null) continue;
                 const post = pair.val.?;
 
@@ -229,10 +229,10 @@ pub const CcmlSerialiser = struct {
         }
 
         // Write postings
-        const vocab_offsets = try allocator.alloc(index.VocabTuple, dictionary.cap);
+        const vocab_offsets = try allocator.alloc(index.VocabTuple, vocab.cap);
         @memset(vocab_offsets, .{ .term = 0, .hash = 0 });
 
-        const postings = try self.writePostings(io, allocator, dictionary, vocab_offsets, compressor);
+        const postings = try self.writePostings(io, allocator, vocab, vocab_offsets, compressor);
 
         // Document ID strings
         const docs_offsets = try allocator.alloc(config.FileOffsetType, docs.items.len);
@@ -271,7 +271,7 @@ pub const CcmlSerialiser = struct {
         // Vocab
         while (self.writer.logicalPos() % @alignOf(u64) != 0) try self.writer.interface.writeByte(0);
         const vocab_offset = self.writer.logicalPos();
-        try self.writer.interface.writeInt(u64, dictionary.cap, native_endian);
+        try self.writer.interface.writeInt(u64, vocab.cap, native_endian);
         try self.writer.interface.writeSliceEndian(index.VocabTuple, vocab_offsets, native_endian);
 
         // Document IDs array

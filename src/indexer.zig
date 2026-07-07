@@ -5,7 +5,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
-const Dictionary = @import("dictionary.zig").Dictionary;
+const HashMap = @import("hash_map.zig").HashMap;
 const Postings = @import("postings.zig").Postings;
 const Doc = @import("doc.zig");
 const Compressor = @import("compress_int.zig").Compressor;
@@ -20,7 +20,7 @@ pub const Indexer = struct {
     serialiser: *CcmlSerialiser,
     buffer: [config.max_term_length]u8 = undefined,
     doc_ids: std.ArrayList(Doc),
-    dict: Dictionary(*Postings),
+    vocab: HashMap(*Postings),
     bigrams: bool,
     prev_buffer: [config.max_term_length * 2 + 1]u8 = undefined,
     prev_len: usize = 0,
@@ -31,7 +31,7 @@ pub const Indexer = struct {
             .stemmer = stemmer,
             .serialiser = serialiser,
             .doc_ids = .empty,
-            .dict = try Dictionary(*Postings).init(allocator),
+            .vocab = try HashMap(*Postings).init(allocator),
             .bigrams = bigrams,
         };
     }
@@ -47,7 +47,7 @@ pub const Indexer = struct {
 
         const doc_id: u32 = @truncate(self.doc_ids.items.len - 1);
 
-        var postings = try self.dict.emplace(allocator, term_);
+        var postings = try self.vocab.emplace(allocator, term_);
         if (postings.* == null) {
             const post = try allocator.create(Postings);
             post.* = Postings.init(doc_id);
@@ -63,7 +63,7 @@ pub const Indexer = struct {
                 @memcpy(self.prev_buffer[self.prev_len + 1 .. self.prev_len + 1 + term_.len], term_);
 
                 // TODO don't shadow
-                postings = try self.dict.emplace(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len]);
+                postings = try self.vocab.emplace(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len]);
                 if (postings.* == null) {
                     const post = try allocator.create(Postings);
                     post.* = Postings.init(doc_id);
@@ -98,7 +98,7 @@ pub const Indexer = struct {
     pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, compressor: Compressor) !void {
         std.debug.print("{s}\n", .{"Writing index..."});
 
-        const bytes_written = try self.serialiser.write(io, allocator, &self.doc_ids, &self.dict, compressor, self.stemmer.algorithm, true);
+        const bytes_written = try self.serialiser.write(io, allocator, &self.doc_ids, &self.vocab, compressor, self.stemmer.algorithm, true);
 
         std.debug.print("Index size {Bi:.2}\n", .{bytes_written});
     }

@@ -91,7 +91,7 @@ pub fn main(init: std.process.Init) !void {
         }
 
         try indexer.write(init.io, init.arena.allocator(), compressor);
-        std.debug.print("Terms count {d}\n", .{indexer.dict.len});
+        std.debug.print("Terms count {d}\n", .{indexer.vocab.len});
         std.debug.print("Memory usage {Bi:.2}\n", .{init.arena.queryCapacity()});
         return;
     } else {
@@ -148,7 +148,7 @@ pub fn main(init: std.process.Init) !void {
         }
 
         try indexer.write(init.io, init.arena.allocator(), compressor);
-        std.debug.print("Terms count {d}\n", .{indexer.dict.len});
+        std.debug.print("Terms count {d}\n", .{indexer.vocab.len});
         std.debug.print("Memory usage {Bi:.2}\n", .{init.arena.queryCapacity()});
         return;
     }

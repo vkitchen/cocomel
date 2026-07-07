@@ -8,7 +8,7 @@ const clap = @import("clap");
 const protobuf = @import("protobuf");
 const ciff = @import("proto/io/osirrc/ciff.pb.zig");
 const CcmlSerialiser = @import("serialiser_ccml.zig").CcmlSerialiser;
-const Dictionary = @import("dictionary.zig").Dictionary;
+const HashMap = @import("hash_map.zig").HashMap;
 const Postings = @import("postings.zig").Postings;
 const compress = @import("compress_int.zig");
 const Stemmer = @import("stem.zig").Stemmer;
@@ -81,7 +81,7 @@ pub fn main(init: std.process.Init) !void {
         defer header.deinit(scratch);
 
         var doc_ids: std.ArrayList(Doc) = try std.ArrayList(Doc).initCapacity(arena, @intCast(header.num_docs));
-        var dict = try Dictionary(*Postings).initCapacity(arena, @intCast(header.num_postings_lists));
+        var vocab = try HashMap(*Postings).initCapacity(arena, @intCast(header.num_postings_lists));
 
         for (0..@intCast(header.num_postings_lists)) |i| {
             len = try takeVByte(&reader.interface);
@@ -91,7 +91,7 @@ pub fn main(init: std.process.Init) !void {
             defer postings_list.deinit(scratch);
 
             var last_docid: u32 = 0;
-            const postings = try dict.emplace(arena, postings_list.term);
+            const postings = try vocab.emplace(arena, postings_list.term);
             for (postings_list.postings.items) |p| {
                 const docid = last_docid + @as(u32, @intCast(p.docid));
                 const tf: config.TermFrequencyType = @truncate(@as(u32, @intCast(std.math.clamp(p.tf, 0, std.math.maxInt(config.TermFrequencyType)))));
@@ -145,6 +145,6 @@ pub fn main(init: std.process.Init) !void {
 
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);
-        _ = try serialiser.write(init.io, arena, &doc_ids, &dict, compressor, Stemmer.Alg.none, res.args.quantise != 0);
+        _ = try serialiser.write(init.io, arena, &doc_ids, &vocab, compressor, Stemmer.Alg.none, res.args.quantise != 0);
     }
 }

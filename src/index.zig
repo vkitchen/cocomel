@@ -41,6 +41,8 @@ pub const PostingsHeader = struct {
     postings: u64,
 };
 
+var decompression_buffer: [128]u32 align(16) = undefined;
+
 // Helpers for unaligned reads
 
 fn read16(buf: []const u8, offset: u64) u16 {
@@ -105,7 +107,6 @@ pub const Index = struct {
 
     header: *const Header,
     allocator: std.heap.FixedBufferAllocator,
-    compression_buf: []align(16) u32,
 
     // "sub-files"
     snippets_store: []const u8,
@@ -118,7 +119,7 @@ pub const Index = struct {
     vocab: []const VocabTuple,
     docs: []const config.FileOffsetType,
 
-    pub fn init(index: []align(16) const u8, postings_buf: []u8, compression_buf: []align(16) u32) !Self {
+    pub fn init(index: []align(16) const u8, postings_buf: []u8) !Self {
         const header: *const Header = @alignCast(std.mem.bytesAsValue(Header, index[index.len - @sizeOf(Header) ..]));
 
         if (header.version != version) {
@@ -129,7 +130,6 @@ pub const Index = struct {
         return .{
             .header = header,
             .allocator = std.heap.FixedBufferAllocator.init(postings_buf),
-            .compression_buf = compression_buf,
 
             // "sub-files"
             .snippets_store = index[header.snippets_store[0]..header.snippets_store[1]],
@@ -171,10 +171,10 @@ pub const Index = struct {
 
     inline fn decompressBlock(self: *const Self, blocks: *u64, postings: *u64, len: u32, last_id: u32) []u32 {
         const doc_count = @min(128, len);
-        const res = compress.unpack_block_d1(self.header.compressor, self.blocks_store[blocks.*..], self.postings_store[postings.*..], self.compression_buf, doc_count, last_id);
+        const res = compress.unpack_block_d1(self.header.compressor, self.blocks_store[blocks.*..], self.postings_store[postings.*..], &decompression_buffer, doc_count, last_id);
         blocks.* += res.blocks;
         postings.* += res.bytes;
-        return self.compression_buf[0..doc_count];
+        return decompression_buffer[0..doc_count];
     }
 
     pub fn readPostings(self: *const Self, header: *const PostingsHeader, results: []Result) []Result {
@@ -197,7 +197,7 @@ pub const Index = struct {
                     if (out.len == results.len)
                         return out;
                 }
-                last_id = self.compression_buf[docids.len - 1];
+                last_id = decompression_buffer[docids.len - 1];
                 segment.len -= @truncate(docids.len);
             }
         }
@@ -220,7 +220,7 @@ pub const Index = struct {
                     accumulators[doc] += segment.impact;
                     topk.insert(doc, accumulators[doc], saved);
                 }
-                last_id = self.compression_buf[docids.len - 1];
+                last_id = decompression_buffer[docids.len - 1];
                 segment.len -= @truncate(docids.len);
             }
         }

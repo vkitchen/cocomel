@@ -44,9 +44,7 @@ pub const Search = struct {
         const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
         const postings_buf = try allocator.alloc(u8, max_segments * @sizeOf(u32) * 2);
 
-        const compression_buf = try allocator.alignedAlloc(u32, .@"16", 128);
-
-        const index = try Index.init(index_file, postings_buf, compression_buf);
+        const index = try Index.init(index_file, postings_buf);
 
         const snippeter = blk: {
             if (index.hasSnippets()) {

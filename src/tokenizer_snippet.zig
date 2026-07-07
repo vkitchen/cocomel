@@ -1,5 +1,3 @@
-// TOKENIZER_SNIPPET.ZIG
-// ---------------------
 // Copyright (c) Vaughan Kitchen
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 

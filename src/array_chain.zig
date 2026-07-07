@@ -1,5 +1,3 @@
-// ARRAY_CHAIN.ZIG
-// ---------------
 // Copyright (c) Vaughan Kitchen
 // Released under the ISC license (https://opensource.org/licenses/ISC)
 

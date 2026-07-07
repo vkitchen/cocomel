@@ -1,3 +1,6 @@
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
+
 #include "compress_int_bp128.h"
 
 #include "simdcomp.h"

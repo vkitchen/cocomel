@@ -1,3 +1,6 @@
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
+
 #ifndef CUMULATIVE_SUM_H
 #define CUMULATIVE_SUM_H
 

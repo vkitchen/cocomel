@@ -1,3 +1,6 @@
+// Copyright (c) Vaughan Kitchen
+// Released under the ISC license (https://opensource.org/licenses/ISC)
+
 #include <immintrin.h>
 
 #include "memset_avx2.h"

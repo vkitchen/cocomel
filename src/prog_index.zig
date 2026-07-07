@@ -31,7 +31,6 @@ pub fn main(init: std.process.Init) !void {
         \\-h, --help             Display this help and exit.
         \\--base64               Filenames are in base64.
         \\--snippets             Whether to generate a snippet index for the input.
-        \\--bigrams              Whether to include bigrams in index.
         \\--wsj                  Whether the files to index are in trec wsj format.
         \\--stem <name>          Stemmer to use. Only "s" supported.
         \\--compress <name>      Compressor to use:
@@ -71,7 +70,7 @@ pub fn main(init: std.process.Init) !void {
 
     var serialiser = try CcmlSerialiser.init(init.io, res.args.snippets != 0);
 
-    var indexer = try Indexer.init(init.arena.allocator(), stemmer, &serialiser, res.args.bigrams != 0);
+    var indexer = try Indexer.init(init.arena.allocator(), stemmer, &serialiser);
 
     if (res.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});

@@ -21,18 +21,13 @@ pub const Indexer = struct {
     buffer: [config.max_term_length]u8 = undefined,
     doc_ids: std.ArrayList(Doc),
     vocab: HashMap(*Postings),
-    bigrams: bool,
-    prev_buffer: [config.max_term_length * 2 + 1]u8 = undefined,
-    prev_len: usize = 0,
-    has_prev: bool = false,
 
-    pub fn init(allocator: std.mem.Allocator, stemmer: Stemmer, serialiser: *CcmlSerialiser, bigrams: bool) !Self {
+    pub fn init(allocator: std.mem.Allocator, stemmer: Stemmer, serialiser: *CcmlSerialiser) !Self {
         return .{
             .stemmer = stemmer,
             .serialiser = serialiser,
             .doc_ids = .empty,
             .vocab = try HashMap(*Postings).init(allocator),
-            .bigrams = bigrams,
         };
     }
 
@@ -47,7 +42,7 @@ pub const Indexer = struct {
 
         const doc_id: u32 = @truncate(self.doc_ids.items.len - 1);
 
-        var postings = try self.vocab.emplace(allocator, term_);
+        const postings = try self.vocab.emplace(allocator, term_);
         if (postings.* == null) {
             const post = try allocator.create(Postings);
             post.* = Postings.init(doc_id);
@@ -57,31 +52,10 @@ pub const Indexer = struct {
             try post.append(allocator, doc_id);
         }
 
-        if (self.bigrams) {
-            if (self.has_prev) {
-                self.prev_buffer[self.prev_len] = ' ';
-                @memcpy(self.prev_buffer[self.prev_len + 1 .. self.prev_len + 1 + term_.len], term_);
-
-                // TODO don't shadow
-                postings = try self.vocab.emplace(allocator, self.prev_buffer[0 .. self.prev_len + 1 + term_.len]);
-                if (postings.* == null) {
-                    const post = try allocator.create(Postings);
-                    post.* = Postings.init(doc_id);
-                    postings.* = post;
-                } else {
-                    const post = postings.*.?;
-                    try post.append(allocator, doc_id);
-                }
-            }
-            @memcpy(self.prev_buffer[0..term_.len], term_);
-            self.prev_len = term_.len;
-            self.has_prev = true;
-        }
         self.doc_ids.items[self.doc_ids.items.len - 1].len += 1;
     }
 
     pub fn addDocId(self: *Self, allocator: std.mem.Allocator, doc_id: []const u8) !void {
-        self.has_prev = false;
         try self.serialiser.newDocId(allocator);
 
         try self.doc_ids.append(allocator, .{ .name = try allocator.dupe(u8, doc_id) });

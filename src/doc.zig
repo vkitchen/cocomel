@@ -1,7 +1,5 @@
-// DOC.ZIG
-// -------
 // Copyright (c) Vaughan Kitchen
-// Released under the ISC license (https://opensource.org/licenses/ISC)
+// Released under the ISC license (https://opensource.org/license/isc)
 
 name: []u8,
 title: []u8 = &.{},

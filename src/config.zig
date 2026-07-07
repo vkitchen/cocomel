@@ -1,5 +1,5 @@
 // Copyright (c) Vaughan Kitchen
-// Released under the ISC license (https://opensource.org/licenses/ISC)
+// Released under the ISC license (https://opensource.org/license/isc)
 
 pub const index_name = "index.ccml";
 pub const socket_name = "/tmp/cocomel.sock";

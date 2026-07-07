@@ -1,5 +1,5 @@
 // Copyright (c) Vaughan Kitchen
-// Released under the ISC license (https://opensource.org/licenses/ISC)
+// Released under the ISC license (https://opensource.org/license/isc)
 
 pub const stem = @import("stem_s.zig");
 pub const vbyte = @import("compress_int_vbyte.zig");

@@ -1,5 +1,5 @@
 // Copyright (c) Xian-Fei Jia, Andrew Trotman, Vaughan Kitchen
-// Released under the 2-clause BSD license (See: https://en.wikipedia.org/wiki/BSD_licenses)
+// Released under the 2-clause BSD license (https://opensource.org/license/bsd-2-clause)
 //
 // Originally from the ATIRE code base where it was written by Xiang-Fei Jia and Andrew Trotman
 // Stolen from JASSv2 https://github.com/andrewtrotman/JASSv2/blob/master/source/heap.h

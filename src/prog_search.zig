@@ -1,7 +1,5 @@
-// PROG_SEARCH.ZIG
-// ---------------
 // Copyright (c) Vaughan Kitchen
-// Released under the ISC license (https://opensource.org/licenses/ISC)
+// Released under the ISC license (https://opensource.org/license/isc)
 
 const std = @import("std");
 const clap = @import("clap");

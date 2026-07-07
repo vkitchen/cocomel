@@ -1,7 +1,5 @@
-// COMPRESS_INT_VBYTE.ZIG
-// ----------------------
 // Copyright (c) Vaughan Kitchen
-// Released under the ISC license (https://opensource.org/licenses/ISC)
+// Released under the ISC license (https://opensource.org/license/isc)
 
 // Intended to be compatible with the scheme used in ATIRE
 // i.e. big endian with a stop bit

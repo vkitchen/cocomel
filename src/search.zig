@@ -37,8 +37,8 @@ topk: TopK,
 accumulators: []align(32) config.AccumulatorType,
 postings_allocator: std.heap.FixedBufferAllocator,
 
-pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8, top_k: TopK.Alg) !Self {
-    const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
+pub fn init(io: std.Io, allocator: std.mem.Allocator, index_filename: []const u8, top_k: TopK.Alg) !Self {
+    const index_file = try std.Io.Dir.cwd().readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
 
     const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
     const postings_buf = try allocator.alloc(u8, max_segments * @sizeOf(u32) * 2);

@@ -2,6 +2,7 @@
 // Released under the ISC license (https://opensource.org/license/isc)
 
 const std = @import("std");
+const clap = @import("clap");
 const config = @import("config.zig");
 const Result = @import("result.zig");
 const Search = @import("search.zig");
@@ -26,12 +27,42 @@ fn read16(str: []const u8, offset: usize) u16 {
 }
 
 pub fn main(init: std.process.Init) !void {
-    const args = try init.minimal.args.toSlice(init.gpa);
-    //    defer std.process.argsFree(init.gpa, args);
+    const params = comptime clap.parseParamsComptime(
+        \\-h, --help             Display this help and exit.
+        \\--index <file>         Search a different index than default.
+        \\--exhaustive           Search to completion (don't terminate early).
+        \\--topk <name>          Top-K algorithm to use:
+        \\                         * heap (default)
+        \\                         * tournament
+        \\
+    );
 
-    const dir = if (args.len == 1) std.Io.Dir.cwd() else try std.Io.Dir.openDirAbsolute(init.io, args[1], .{});
+    const cli_parsers = comptime .{
+        .file = clap.parsers.string,
+        .name = clap.parsers.string,
+    };
 
-    var searcher = try Search.init(init.io, init.gpa, dir, config.index_name, TopK.Alg.heap);
+    const cli = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
+
+    if (cli.args.help != 0)
+        return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
+
+    var index_name: []const u8 = config.index_name;
+    if (cli.args.index) |index|
+        index_name = index;
+
+    const prune = cli.args.exhaustive == 0;
+
+    var top_k = TopK.default;
+    if (cli.args.topk) |alg| {
+        top_k = TopK.fromName(alg);
+        if (top_k == .failed) {
+            std.debug.print("Unknown top-k algorithm {s}\n", .{alg});
+            std.process.exit(1);
+        }
+    }
+
+    var searcher = try Search.init(init.io, init.gpa, index_name, top_k);
 
     std.Io.Dir.deleteFileAbsolute(init.io, config.socket_name) catch {};
 
@@ -72,7 +103,7 @@ pub fn main(init: std.process.Init) !void {
             continue;
         }
 
-        const results = try searcher.search(&results_buffer, query, true);
+        const results = try searcher.search(&results_buffer, query, prune);
 
         try writer.interface.writeInt(u8, 1, native_endian); // protocol version
         try writer.interface.writeInt(u8, 3, native_endian); // protocol method

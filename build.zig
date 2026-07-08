@@ -67,6 +67,7 @@ pub fn build(b: *std.Build) !void {
             },
         }),
     });
+    daemon.root_module.addImport("clap", clap_dep.module("clap"));
     b.installArtifact(daemon);
 
     const search_client = b.addExecutable(.{

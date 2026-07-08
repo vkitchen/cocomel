@@ -58,7 +58,7 @@ pub fn main(init: std.process.Init) !void {
 
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-    var searcher = try Search.init(init.io, arena, std.Io.Dir.cwd(), index_name, top_k);
+    var searcher = try Search.init(init.io, arena, index_name, top_k);
 
     const read_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

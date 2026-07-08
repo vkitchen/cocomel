@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
+const Result = @import("index.zig").Result;
 
 pub var len: usize = 0;
 pub const cap = config.max_top_k;
@@ -17,6 +18,14 @@ const Node = struct {
 
 pub var docids: [cap_rounded]u32 = undefined;
 pub var tree: [cap * 2]Node = undefined;
+
+pub fn minScore() config.AccumulatorType {
+    return tree[0].score;
+}
+
+pub fn minDocid() u32 {
+    return docids[tree[0].i - cap];
+}
 
 fn parent(i: usize) usize {
     return i / 2;
@@ -90,7 +99,7 @@ pub fn replace(docid: u32, score: config.AccumulatorType) void {
 }
 
 // Promote an existing element with its new score
-pub fn promote(pos: u64, score: config.AccumulatorType) void {
+fn update(pos: u64, score: config.AccumulatorType) void {
     tree[pos + cap].score = score;
 
     var winner = tree[pos + cap];
@@ -114,11 +123,7 @@ pub fn promote(pos: u64, score: config.AccumulatorType) void {
     }
 }
 
-pub fn bottomDoc() u32 {
-    return docids[tree[0].i - cap];
-}
-
-pub fn find(docid: u32) u64 {
+fn find(docid: u32) u64 {
     const Vec = @Vector(cap_rounded, u32);
 
     const haystack: Vec = docids;
@@ -128,4 +133,14 @@ pub fn find(docid: u32) u64 {
     const bits: KMask = @bitCast(mask);
 
     return @ctz(bits);
+}
+
+pub fn promote(docid: u32, score: config.AccumulatorType) void {
+    const where = find(docid);
+    update(where, score);
+}
+
+pub fn extract(buf: []Result) void {
+    for (0..len) |i|
+        buf[i] = .{ .docid = docids[i], .score = tree[i + len].score };
 }

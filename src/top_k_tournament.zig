@@ -50,8 +50,8 @@ pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.A
                 for (0..self.len) |i|
                     tournament.append(@intCast(cache[i] - self.accumulators), cache[i].*);
                 tournament.make();
-                self.min_score = tournament.tree[0].score;
-                self.min_docid = tournament.bottomDoc();
+                self.min_score = tournament.minScore();
+                self.min_docid = tournament.minDocid();
                 self.saturated = true;
             }
         }
@@ -66,20 +66,18 @@ pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.A
     // Previously didn't enter tree. Or is bottom of tree. Insert
     if (was < self.min_score or (was == self.min_score and docid >= self.min_docid)) {
         tournament.replace(docid, is);
-        self.min_score = tournament.tree[0].score;
-        self.min_docid = tournament.bottomDoc();
+        self.min_score = tournament.minScore();
+        self.min_docid = tournament.minDocid();
         return;
     }
 
     // Was in the tree. Promote (can't affect root)
-    const where = tournament.find(docid);
-    tournament.promote(where, is);
+    tournament.promote(docid, is);
 }
 
 pub fn results(self: *Self, buf: []Result) []Result {
     if (self.saturated) {
-        for (0..self.len) |i|
-            buf[i] = .{ .docid = tournament.docids[i], .score = tournament.tree[i + tournament.cap].score };
+        tournament.extract(buf);
     } else {
         for (0..self.len) |i|
             buf[i] = .{ .docid = @intCast(cache[i] - self.accumulators), .score = cache[i].* };

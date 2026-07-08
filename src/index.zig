@@ -10,17 +10,13 @@ const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 const TopK = @import("top_k.zig");
 const Stemmer = @import("stem.zig").Stemmer;
+const Result = @import("result.zig");
 
 const c = @import("c");
 
 pub const version = 1;
 
 pub const ImpactType = if (((1 << config.quantise_bits) - 1) > std.math.maxInt(u8)) u16 else u8;
-
-pub const Result = struct {
-    docid: u32,
-    score: u16,
-};
 
 pub const VocabTuple = extern struct {
     hash: u64,

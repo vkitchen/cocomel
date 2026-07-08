@@ -6,7 +6,7 @@
 // Modified for use in cocomel by Vaughan Kitchen
 
 const config = @import("config.zig");
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 
 pub var len: usize = 0;
 

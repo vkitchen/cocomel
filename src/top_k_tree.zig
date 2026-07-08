@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 
 var cache: [config.max_top_k]*config.AccumulatorType = undefined;
 

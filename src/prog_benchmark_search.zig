@@ -5,7 +5,7 @@ const std = @import("std");
 const clap = @import("clap");
 
 const config = @import("config.zig");
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 const TopK = @import("top_k.zig");
 const Search = @import("search.zig");
 

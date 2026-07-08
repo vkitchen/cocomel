@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 const Heap = @import("heap.zig");
 const Tournament = @import("tournament.zig");
 const TopKTree = @import("top_k_tree.zig").TopKTree;

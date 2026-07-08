@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 const Search = @import("search.zig");
 const TopK = @import("top_k.zig");
 const native_endian = @import("builtin").target.cpu.arch.endian();

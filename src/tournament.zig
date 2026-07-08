@@ -3,7 +3,7 @@
 
 const std = @import("std");
 const config = @import("config.zig");
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 
 pub var len: usize = 0;
 pub const cap = config.max_top_k;

@@ -4,7 +4,7 @@
 const std = @import("std");
 const config = @import("config.zig");
 
-const Result = @import("index.zig").Result;
+const Result = @import("result.zig");
 
 pub var store: [config.max_top_k]Result = undefined;
 
@@ -12,28 +12,36 @@ fn lt(a: Result, b: Result) bool {
     return a.score < b.score or (a.score == b.score and a.docid > b.docid);
 }
 
-const Self = @This();
-
-cap: u32 = config.max_top_k,
-len: u32 = 0,
-
-pub fn clearRetainingCapacity(self: *Self) void {
-    self.len = 0;
+fn cmpResults(_: void, a: Result, b: Result) bool {
+    return lt(b, a);
 }
 
-pub fn saturate(self: *Self, key: Result) void {
-    if (self.len == self.cap) return;
-    store[self.len] = key;
-    self.len += 1;
+var len: u32 = undefined;
+
+pub fn clearRetainingCapacity() void {
+    len = 0;
 }
 
-pub fn insert(self: *Self, key: Result, _: u32) void {
-    const worst: Result = store[self.len - 1];
+pub fn append(docid: u32, score: config.AccumulatorType) void {
+    store[len] = .{ .docid = docid, .score = score };
+    len += 1;
+}
+
+pub fn make() void {
+    std.sort.pdq(Result, store[0..len], {}, cmpResults);
+}
+
+pub fn insert(docid: u32, is: config.AccumulatorType, _: config.AccumulatorType) void {
+    const key: Result = .{ .docid = docid, .score = is };
+    const worst: Result = store[len - 1];
+
     // Can't make top-k
-    if (self.len == self.cap and lt(key, worst)) return;
+    if (lt(key, worst))
+        return;
+
     // Find insert spot
     var i: usize = 0;
-    while (i < self.len and lt(key, store[i]))
+    while (i < len and lt(key, store[i]))
         i += 1;
 
     // Swap our new doc in
@@ -44,7 +52,7 @@ pub fn insert(self: *Self, key: Result, _: u32) void {
         return;
     i += 1;
     // Shuffle down remainder
-    while (i < self.len) : (i += 1) {
+    while (i < len) : (i += 1) {
         const tmp = store[i];
         store[i] = bumped;
         bumped = tmp;
@@ -52,20 +60,9 @@ pub fn insert(self: *Self, key: Result, _: u32) void {
         if (key.docid == bumped.docid)
             return;
     }
-    // Can append bumped doc?
-    if (self.len < self.cap) {
-        store[self.len] = bumped;
-        self.len += 1;
-    }
 }
 
-pub fn results(self: *Self) []Result {
-    return store[0..self.len];
+pub fn extract(buf: []Result) void {
+    for (0..len) |i|
+        buf[i] = store[i];
 }
-
-// Already sorted
-pub fn sorted(self: *Self) []Result {
-    return store[0..self.len];
-}
-
-// TODO unit tests. This is mildly complex logic

@@ -26,6 +26,7 @@ pub fn main(init: std.process.Init) !void {
         \\--index <file>         Search a different index than default.
         \\--exhaustive           Search to completion (don't terminate early).
         \\--topk <name>          Top-K algorithm to use:
+        \\                         * insert
         \\                         * heap (default)
         \\                         * tournament
         \\

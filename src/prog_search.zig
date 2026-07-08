@@ -7,6 +7,7 @@ const clap = @import("clap");
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const Search = @import("search.zig");
+const TopK = @import("top_k.zig");
 
 var stdin_buffer: [1024]u8 = undefined;
 var stdout_buffer: [1024]u8 = undefined;
@@ -24,12 +25,16 @@ pub fn main(init: std.process.Init) !void {
         \\-k <int>               Print k results.
         \\--index <file>         Search a different index than default.
         \\--exhaustive           Search to completion (don't terminate early).
+        \\--topk <name>          Top-K algorithm to use:
+        \\                         * heap (default)
+        \\                         * tournament
         \\
     );
 
     const cli_parsers = comptime .{
         .int = clap.parsers.int(usize, 0),
         .file = clap.parsers.string,
+        .name = clap.parsers.string,
     };
 
     const cli = try clap.parse(clap.Help, &params, cli_parsers, init.minimal.args, .{ .allocator = init.arena.allocator() });
@@ -47,6 +52,15 @@ pub fn main(init: std.process.Init) !void {
 
     const prune = cli.args.exhaustive == 0;
 
+    var top_k = TopK.default;
+    if (cli.args.topk) |alg| {
+        top_k = TopK.fromName(alg);
+        if (top_k == .failed) {
+            std.debug.print("Unknown top-k algorithm {s}\n", .{alg});
+            std.process.exit(1);
+        }
+    }
+
     stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
     stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
@@ -54,7 +68,7 @@ pub fn main(init: std.process.Init) !void {
 
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-    var searcher = try Search.init(init.io, init.arena.allocator(), std.Io.Dir.cwd(), index_name);
+    var searcher = try Search.init(init.io, init.arena.allocator(), std.Io.Dir.cwd(), index_name, top_k);
 
     const read_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

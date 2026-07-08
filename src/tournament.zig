@@ -74,7 +74,7 @@ pub fn append(docid: u32, score: config.AccumulatorType) void {
 }
 
 // Replace the overall winner
-pub fn replace(docid: u32, score: config.AccumulatorType) void {
+pub fn insert(docid: u32, score: config.AccumulatorType) void {
     const pos = tree[0].i;
 
     docids[pos - cap] = docid;

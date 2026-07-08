@@ -5,6 +5,7 @@ const std = @import("std");
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 const Search = @import("search.zig");
+const TopK = @import("top_k.zig");
 const native_endian = @import("builtin").target.cpu.arch.endian();
 
 var results_buffer: [1000]Result = undefined;
@@ -30,7 +31,7 @@ pub fn main(init: std.process.Init) !void {
 
     const dir = if (args.len == 1) std.Io.Dir.cwd() else try std.Io.Dir.openDirAbsolute(init.io, args[1], .{});
 
-    var searcher = try Search.init(init.io, init.gpa, dir, config.index_name);
+    var searcher = try Search.init(init.io, init.gpa, dir, config.index_name, TopK.Alg.heap);
 
     std.Io.Dir.deleteFileAbsolute(init.io, config.socket_name) catch {};
 

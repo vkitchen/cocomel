@@ -7,7 +7,7 @@ const PostingsHeader = @import("index.zig").PostingsHeader;
 const Result = @import("index.zig").Result;
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
-const TopK = @import("top_k_tournament.zig");
+const TopK = @import("top_k.zig");
 const QueryTerm = @import("tokenizer_query.zig").Term;
 const QueryParser = @import("tokenizer_query.zig").Parser;
 const Stemmer = @import("stem.zig").Stemmer;
@@ -37,7 +37,7 @@ topk: TopK,
 accumulators: []align(32) config.AccumulatorType,
 postings_allocator: std.heap.FixedBufferAllocator,
 
-pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8) !Self {
+pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_filename: []const u8, top_k: TopK.Alg) !Self {
     const index_file = try dir.readFileAllocOptions(io, index_filename, allocator, std.Io.Limit.unlimited, .@"16", null);
 
     const max_segments = config.max_query_terms * ((1 << config.quantise_bits) - 1);
@@ -73,7 +73,7 @@ pub fn init(io: std.Io, allocator: std.mem.Allocator, dir: std.Io.Dir, index_fil
         .snippeter = snippeter,
         .query = try std.ArrayListUnmanaged(QueryTerm).initCapacity(allocator, config.max_query_terms),
         .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
-        .topk = TopK.init(accumulators.ptr),
+        .topk = TopK.init(top_k, accumulators.ptr),
         .accumulators = accumulators,
         .postings_allocator = std.heap.FixedBufferAllocator.init(postings_buf),
     };

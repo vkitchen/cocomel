@@ -8,11 +8,21 @@
 const config = @import("config.zig");
 const Result = @import("index.zig").Result;
 
+pub var len: usize = 0;
+
 pub const top_k_rounded = (config.max_top_k + 7) / 8 * 8;
 const KMask = @Int(.unsigned, top_k_rounded);
 
 pub var docids: [top_k_rounded]u32 = [_]u32{0} ** top_k_rounded; // Rounded for SIMD
 pub var scores: [config.max_top_k]config.AccumulatorType = undefined;
+
+pub fn minScore() config.AccumulatorType {
+    return scores[0];
+}
+
+pub fn minDocid() u32 {
+    return docids[0];
+}
 
 fn swap(left: usize, right: usize) void {
     const tmp_docid = docids[left];
@@ -104,7 +114,7 @@ fn insert_from(docid: u32, score: config.AccumulatorType, index: usize) void {
     scores[position] = score;
 }
 
-pub fn make_heap() void {
+pub fn make() void {
     var position: i64 = config.max_top_k / 2 - 1;
     while (position >= 0) {
         heapify(@intCast(position));
@@ -112,11 +122,20 @@ pub fn make_heap() void {
     }
 }
 
-pub fn push_back(docid: u32, score: config.AccumulatorType) void {
+pub fn append(docid: u32, score: config.AccumulatorType) void {
+    if (len == config.max_top_k)
+        return;
+
+    docids[len] = docid;
+    scores[len] = score;
+    len += 1;
+}
+
+pub fn insert(docid: u32, score: config.AccumulatorType) void {
     insert_from(docid, score, 0);
 }
 
-pub fn find(docid: u32) u64 {
+fn find(docid: u32) u64 {
     const Vec = @Vector(top_k_rounded, u32);
 
     const haystack: Vec = docids;
@@ -128,6 +147,12 @@ pub fn find(docid: u32) u64 {
     return @ctz(bits);
 }
 
-pub fn promote(docid: u32, score: config.AccumulatorType, position: usize) void {
-    insert_from(docid, score, position);
+pub fn promote(docid: u32, score: config.AccumulatorType) void {
+    const where = find(docid);
+    insert_from(docid, score, where);
+}
+
+pub fn extract(buf: []Result) void {
+    for (0..config.max_top_k) |i|
+        buf[i] = .{ .docid = docids[i], .score = scores[i] };
 }

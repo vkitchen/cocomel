@@ -71,46 +71,73 @@ pub fn clearRetainingCapacity(self: *Self) void {
 }
 
 pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.AccumulatorType) void {
-    if (!self.saturated) {
-        // First time this doc has been accumulated (new entry)
-        if (was == 0) {
-            cache[self.len] = &self.accumulators[docid];
-            self.len += 1;
+    switch (self.alg) {
+        .insert => {
+            if (!self.saturated) {
+                // First time this doc has been accumulated (new entry)
+                if (was == 0) {
+                    cache[self.len] = &self.accumulators[docid];
+                    self.len += 1;
 
-            if (self.len == self.cap) {
-                switch (self.alg) {
-                    .insert => {
+                    if (self.len == self.cap) {
                         TopKInsert.clearRetainingCapacity();
                         for (0..self.len) |i|
                             TopKInsert.append(@intCast(cache[i] - self.accumulators), cache[i].*);
                         TopKInsert.make();
-                    },
-                    .heap => {
+
+                        self.saturated = true;
+                    }
+                }
+
+                return;
+            }
+
+            TopKInsert.insert(docid, is, was);
+        },
+        .heap => {
+            if (!self.saturated) {
+                // First time this doc has been accumulated (new entry)
+                if (was == 0) {
+                    cache[self.len] = &self.accumulators[docid];
+                    self.len += 1;
+
+                    if (self.len == self.cap) {
                         TopKHeap.clearRetainingCapacity();
                         for (0..self.len) |i|
                             TopKHeap.append(@intCast(cache[i] - self.accumulators), cache[i].*);
                         TopKHeap.make();
-                    },
-                    .tournament => {
+
+                        self.saturated = true;
+                    }
+                }
+
+                return;
+            }
+
+            TopKHeap.insert(docid, is, was);
+        },
+        .tournament => {
+            if (!self.saturated) {
+                // First time this doc has been accumulated (new entry)
+                if (was == 0) {
+                    cache[self.len] = &self.accumulators[docid];
+                    self.len += 1;
+
+                    if (self.len == self.cap) {
                         TopKTournament.clearRetainingCapacity();
                         for (0..self.len) |i|
                             TopKTournament.append(@intCast(cache[i] - self.accumulators), cache[i].*);
                         TopKTournament.make();
-                    },
-                    else => unreachable,
+
+                        self.saturated = true;
+                    }
                 }
 
-                self.saturated = true;
+                return;
             }
-        }
 
-        return;
-    }
-
-    switch (self.alg) {
-        .insert => TopKInsert.insert(docid, is, was),
-        .heap => TopKHeap.insert(docid, is, was),
-        .tournament => TopKTournament.insert(docid, is, was),
+            TopKTournament.insert(docid, is, was);
+        },
         else => unreachable,
     }
 }

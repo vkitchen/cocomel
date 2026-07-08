@@ -50,7 +50,7 @@ pub fn main(init: std.process.Init) !void {
 
     const prune = cli.args.exhaustive == 0;
 
-    var searcher = try Search.init(init.io, init.gpa, index_name, TopK.default);
+    var searcher = try Search.init(init.io, init.gpa, index_name);
 
     std.Io.Dir.deleteFileAbsolute(init.io, config.socket_name) catch {};
 

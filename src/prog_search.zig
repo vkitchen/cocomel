@@ -25,10 +25,6 @@ pub fn main(init: std.process.Init) !void {
         \\-k <int>               Print k results.
         \\--index <file>         Search a different index than default.
         \\--exhaustive           Search to completion (don't terminate early).
-        \\--topk <name>          Top-K algorithm to use:
-        \\                         * insert
-        \\                         * heap (default)
-        \\                         * tournament
         \\
     );
 
@@ -53,15 +49,6 @@ pub fn main(init: std.process.Init) !void {
 
     const prune = cli.args.exhaustive == 0;
 
-    var top_k = TopK.default;
-    if (cli.args.topk) |alg| {
-        top_k = TopK.fromName(alg);
-        if (top_k == .failed) {
-            std.debug.print("Unknown top-k algorithm {s}\n", .{alg});
-            std.process.exit(1);
-        }
-    }
-
     stdin = std.Io.File.stdin().reader(init.io, &stdin_buffer);
     stdout = std.Io.File.stdout().writer(init.io, &stdout_buffer);
 
@@ -69,7 +56,7 @@ pub fn main(init: std.process.Init) !void {
 
     const start_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-    var searcher = try Search.init(init.io, init.arena.allocator(), index_name, top_k);
+    var searcher = try Search.init(init.io, init.arena.allocator(), index_name);
 
     const read_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 

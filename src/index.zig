@@ -8,7 +8,7 @@ const config = @import("config.zig");
 const compress = @import("compress_int.zig");
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
-const TopK = @import("top_k.zig");
+const TopK = @import("top_k.zig").TopK;
 const Stemmer = @import("stem.zig").Stemmer;
 const Result = @import("result.zig");
 

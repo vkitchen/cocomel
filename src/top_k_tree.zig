@@ -5,35 +5,70 @@ const std = @import("std");
 const config = @import("config.zig");
 const Result = @import("result.zig");
 
-var min_score: config.AccumulatorType = undefined;
-var min_docid: u32 = undefined;
+var cache: [config.max_top_k]*config.AccumulatorType = undefined;
+
+fn cmpResults(_: void, a: Result, b: Result) bool {
+    // Score descending
+    if (a.score != b.score)
+        return a.score > b.score;
+
+    // ID ascending
+    return a.docid < b.docid;
+}
 
 pub fn TopKTree(comptime T: type) type {
     return struct {
-        pub fn clearRetainingCapacity() void {
-            T.len = 0;
+        const Self = @This();
+
+        cap: usize = config.max_top_k,
+        len: usize = undefined,
+        accumulators: [*]config.AccumulatorType,
+        saturated: bool = undefined,
+        min_score: config.AccumulatorType = undefined,
+        min_docid: u32 = undefined,
+
+        pub fn init(accumulators: [*]config.AccumulatorType) Self {
+            return .{
+                .accumulators = accumulators,
+            };
         }
 
-        pub fn append(docid: u32, score: config.AccumulatorType) void {
-            T.append(docid, score);
+        pub fn clearRetainingCapacity(self: *Self) void {
+            self.len = 0;
+            self.saturated = false;
         }
 
-        pub fn make() void {
-            T.make();
-            min_score = T.minScore();
-            min_docid = T.minDocid();
-        }
+        pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.AccumulatorType) void {
+            if (!self.saturated) {
+                // First time this doc has been accumulated (new entry)
+                if (was == 0) {
+                    cache[self.len] = &self.accumulators[docid];
+                    self.len += 1;
 
-        pub fn insert(docid: u32, is: config.AccumulatorType, was: config.AccumulatorType) void {
+                    if (self.len == self.cap) {
+                        T.len = 0;
+                        for (0..self.len) |i|
+                            T.append(@intCast(cache[i] - self.accumulators), cache[i].*);
+                        T.make();
+                        self.min_score = T.minScore();
+                        self.min_docid = T.minDocid();
+
+                        self.saturated = true;
+                    }
+                }
+
+                return;
+            }
+
             // Can't enter tree
-            if (is < min_score or (is == min_score and docid > min_docid))
+            if (is < self.min_score or (is == self.min_score and docid > self.min_docid))
                 return;
 
             // Previously didn't enter tree. Or is bottom of tree. Insert
-            if (was < min_score or (was == min_score and docid >= min_docid)) {
+            if (was < self.min_score or (was == self.min_score and docid >= self.min_docid)) {
                 T.insert(docid, is);
-                min_score = T.minScore();
-                min_docid = T.minDocid();
+                self.min_score = T.minScore();
+                self.min_docid = T.minDocid();
                 return;
             }
 
@@ -41,8 +76,17 @@ pub fn TopKTree(comptime T: type) type {
             T.promote(docid, is);
         }
 
-        pub fn extract(buf: []Result) void {
-            T.extract(buf);
+        pub fn results(self: *Self, buf: []Result) []Result {
+            if (!self.saturated) {
+                for (0..self.len) |i|
+                    buf[i] = .{ .docid = @intCast(cache[i] - self.accumulators), .score = cache[i].* };
+                return buf[0..self.len];
+            } else {
+                T.extract(buf);
+            }
+
+            std.sort.pdq(Result, buf[0..self.len], {}, cmpResults);
+            return buf[0..self.len];
         }
     };
 }

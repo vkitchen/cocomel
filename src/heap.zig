@@ -9,11 +9,12 @@ const config = @import("config.zig");
 const Result = @import("result.zig");
 
 pub var len: usize = 0;
+pub var cap: usize = undefined;
 
-pub const top_k_rounded = (config.max_top_k + 7) / 8 * 8;
-const KMask = @Int(.unsigned, top_k_rounded);
+pub const max_top_k_rounded = (config.max_top_k + 7) / 8 * 8;
+const KMask = @Int(.unsigned, max_top_k_rounded);
 
-pub var docids: [top_k_rounded]u32 = [_]u32{0} ** top_k_rounded; // Rounded for SIMD
+pub var docids: [max_top_k_rounded]u32 = [_]u32{0} ** max_top_k_rounded; // Rounded for SIMD
 pub var scores: [config.max_top_k]config.AccumulatorType = undefined;
 
 pub fn minScore() config.AccumulatorType {
@@ -62,13 +63,13 @@ fn heapify(position: usize) void {
     const left = left_of(position);
     const right = right_of(position);
 
-    if (left < config.max_top_k and lt(left, position)) {
+    if (left < cap and lt(left, position)) {
         smallest = left;
     } else {
         smallest = position;
     }
 
-    if (right < config.max_top_k and lt(right, smallest))
+    if (right < cap and lt(right, smallest))
         smallest = right;
 
     if (smallest != position) {
@@ -80,12 +81,12 @@ fn heapify(position: usize) void {
 fn insert_from(docid: u32, score: config.AccumulatorType, index: usize) void {
     var position = index;
 
-    while (position < config.max_top_k) {
+    while (position < cap) {
         const left = left_of(position);
         const right = right_of(position);
 
         // check store out of bound, it's also the stopping condition
-        if (left < config.max_top_k and right < config.max_top_k) {
+        if (left < cap and right < cap) {
             if (lteq(docid, score, left) and lteq(docid, score, right)) {
                 break; // we're smaller then the left and the right so we're done
             } else if (lt(left, right)) {
@@ -97,7 +98,7 @@ fn insert_from(docid: u32, score: config.AccumulatorType, index: usize) void {
                 scores[position] = scores[right];
                 position = right;
             }
-        } else if (left < config.max_top_k) { // and right > size (because this is an else)
+        } else if (left < cap) { // and right > size (because this is an else)
             if (gt(docid, score, left)) {
                 docids[position] = docids[left];
                 scores[position] = scores[left];
@@ -115,6 +116,9 @@ fn insert_from(docid: u32, score: config.AccumulatorType, index: usize) void {
 }
 
 pub fn make() void {
+    for (cap..max_top_k_rounded) |i|
+        docids[i] = 0;
+
     var position: i64 = config.max_top_k / 2 - 1;
     while (position >= 0) {
         heapify(@intCast(position));
@@ -123,7 +127,7 @@ pub fn make() void {
 }
 
 pub fn append(docid: u32, score: config.AccumulatorType) void {
-    if (len == config.max_top_k)
+    if (len == cap)
         return;
 
     docids[len] = docid;
@@ -136,7 +140,7 @@ pub fn insert(docid: u32, score: config.AccumulatorType) void {
 }
 
 fn find(docid: u32) u64 {
-    const Vec = @Vector(top_k_rounded, u32);
+    const Vec = @Vector(max_top_k_rounded, u32);
 
     const haystack: Vec = docids;
     const needle: Vec = @splat(docid);
@@ -153,6 +157,6 @@ pub fn promote(docid: u32, score: config.AccumulatorType) void {
 }
 
 pub fn extract(buf: []Result) void {
-    for (0..config.max_top_k) |i|
+    for (0..cap) |i|
         buf[i] = .{ .docid = docids[i], .score = scores[i] };
 }

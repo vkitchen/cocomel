@@ -20,7 +20,7 @@ pub fn TopKTree(comptime T: type) type {
     return struct {
         const Self = @This();
 
-        cap: usize = config.max_top_k,
+        cap: usize = undefined,
         len: usize = undefined,
         accumulators: [*]config.AccumulatorType,
         saturated: bool = undefined,
@@ -36,6 +36,11 @@ pub fn TopKTree(comptime T: type) type {
         pub fn clearRetainingCapacity(self: *Self) void {
             self.len = 0;
             self.saturated = false;
+        }
+
+        pub fn resize(self: *Self, k: usize) void {
+            T.cap = k;
+            self.cap = k;
         }
 
         pub fn insert(self: *Self, docid: u32, is: config.AccumulatorType, was: config.AccumulatorType) void {

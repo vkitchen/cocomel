@@ -6,18 +6,18 @@ const config = @import("config.zig");
 const Result = @import("result.zig");
 
 pub var len: usize = 0;
-pub const cap = config.max_top_k;
+pub var cap: usize = undefined;
 
-const cap_rounded = (config.max_top_k + 7) / 8 * 8;
-const KMask = @Int(.unsigned, cap_rounded);
+const max_top_k_rounded = (config.max_top_k + 7) / 8 * 8;
+const KMask = @Int(.unsigned, max_top_k_rounded);
 
 const Node = struct {
     i: u16, // pointer to leaf
     score: config.AccumulatorType,
 };
 
-pub var docids: [cap_rounded]u32 = undefined;
-pub var tree: [cap * 2]Node = undefined;
+pub var docids: [max_top_k_rounded]u32 = undefined;
+pub var tree: [config.max_top_k * 2]Node = undefined;
 
 pub fn minScore() config.AccumulatorType {
     return tree[0].score;
@@ -44,8 +44,11 @@ fn match(a: Node, b: Node) [2]Node {
 }
 
 pub fn make() void {
+    for (cap..max_top_k_rounded) |i|
+        docids[i] = 0;
+
     // We vs winners but ultimately only store losers. Here we keep the match results
-    var winners: [cap * 2]Node = undefined;
+    var winners: [config.max_top_k * 2]Node = undefined;
 
     // Populate with leaf nodes
     for (cap..cap * 2) |i|
@@ -124,7 +127,7 @@ fn update(pos: u64, score: config.AccumulatorType) void {
 }
 
 fn find(docid: u32) u64 {
-    const Vec = @Vector(cap_rounded, u32);
+    const Vec = @Vector(max_top_k_rounded, u32);
 
     const haystack: Vec = docids;
     const needle: Vec = @splat(docid);

@@ -91,7 +91,7 @@ pub fn main(init: std.process.Init) !void {
             continue;
         }
 
-        const results = try searcher.search(&results_buffer, query, prune);
+        const results = try searcher.search(&results_buffer, query, query_header.offset, query_header.offset + query_header.no_results, prune);
 
         try writer.interface.writeInt(u8, 1, native_endian); // protocol version
         try writer.interface.writeInt(u8, 3, native_endian); // protocol method

@@ -23,12 +23,14 @@ pub fn main(init: std.process.Init) !void {
 
     const params = comptime clap.parseParamsComptime(
         \\-h, --help             Display this help and exit.
+        \\-k <int>               Print k results.
         \\--index <file>         Search a different index than default.
         \\--exhaustive           Search to completion (don't terminate early).
         \\
     );
 
     const cli_parsers = comptime .{
+        .int = clap.parsers.int(usize, 0),
         .file = clap.parsers.string,
         .name = clap.parsers.string,
     };
@@ -37,6 +39,10 @@ pub fn main(init: std.process.Init) !void {
 
     if (cli.args.help != 0)
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
+
+    var num_results: usize = 1000;
+    if (cli.args.k) |k|
+        num_results = k;
 
     var index_name: []const u8 = config.index_name;
     if (cli.args.index) |index|
@@ -73,11 +79,11 @@ pub fn main(init: std.process.Init) !void {
 
     const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
     for (queries.items, 0..) |query, i|
-        all_results[i] = try searcher.search(all_results[i], query[1], prune);
+        all_results[i] = try searcher.search(all_results[i], query[1], 0, num_results, prune);
     const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
     for (all_results, 0..) |results, qi| {
-        for (0..@min(results.len, 1000)) |i| {
+        for (0..results.len) |i| {
             const doc_id = searcher.name(results[i].docid);
             try stdout.interface.print("{d} Q0 {s} {d} {d} cocomel\n", .{ queries.items[qi][0], doc_id[0], i + 1, results[i].score });
         }

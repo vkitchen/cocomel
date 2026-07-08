@@ -66,14 +66,14 @@ pub fn main(init: std.process.Init) !void {
     while (try stdin.interface.takeDelimiter('\n')) |query| {
         const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
 
-        const results = try searcher.search(&results_buffer, query, prune);
+        const results = try searcher.search(&results_buffer, query, 0, num_results, prune);
 
         const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
         total_search_time += end_search_time - start_search_time;
 
         std.debug.print("Search took: {d:.3}s\n", .{@as(f64, @floatFromInt(end_search_time - start_search_time)) / 1e9});
 
-        for (0..@min(results.len, num_results)) |i| {
+        for (0..results.len) |i| {
             const doc_id = searcher.name(results[i].docid);
 
             try stdout.interface.print("{d} {s}\n", .{ results[i].score, doc_id[0] });

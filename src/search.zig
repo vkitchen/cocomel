@@ -139,7 +139,7 @@ fn scalePostings(self: *Self) void {
     }
 }
 
-pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]Result {
+pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end: usize, prune: bool) ![]Result {
     self.postings_allocator.reset();
     self.query.clearRetainingCapacity();
 
@@ -149,7 +149,6 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]R
     // TODO reenable once allocation is fixed
     // try expandQuery(allocator, &self.query);
 
-    self.topk.clearRetainingCapacity();
     self.postings.clearRetainingCapacity();
 
     // TODO fix term negation
@@ -165,7 +164,7 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]R
 
     // Special case for single term query skipping accumulator reset
     if (self.postings.items.len == 1)
-        return self.index.readPostings(&self.postings.items[0], results);
+        return self.index.readPostings(&self.postings.items[0], results[start..end]);
 
     // It's unlikely we'll prune down to a single postings and pruning takes time
     if (prune)
@@ -177,11 +176,14 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, prune: bool) ![]R
 
     memset(std.mem.sliceAsBytes(self.accumulators));
 
+    self.topk.clearRetainingCapacity();
+    self.topk.resize(end);
+
     // Now process normally
     for (self.postings.items) |postings|
         self.index.accumulatePostings(&postings, &self.topk, self.accumulators);
 
-    return self.topk.results(results);
+    return self.topk.results(results)[start..end];
 }
 
 pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

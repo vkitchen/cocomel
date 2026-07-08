@@ -47,18 +47,17 @@ pub fn insert(docid: u32, is: config.AccumulatorType, _: config.AccumulatorType)
     // Swap our new doc in
     var bumped = store[i];
     store[i] = key;
-    // We upgraded this doc and are now done
-    if (key.docid == bumped.docid)
-        return;
     i += 1;
+
     // Shuffle down remainder
     while (i < len) : (i += 1) {
-        const tmp = store[i];
-        store[i] = bumped;
-        bumped = tmp;
         // We upgraded this doc and are now done
         if (key.docid == bumped.docid)
             return;
+
+        const tmp = store[i];
+        store[i] = bumped;
+        bumped = tmp;
     }
 }
 

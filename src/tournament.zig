@@ -46,9 +46,6 @@ fn match(a: Node, b: Node) [2]Node {
 }
 
 pub fn make() void {
-    for (cap..max_top_k_rounded) |i|
-        docids[i] = 0;
-
     // We vs winners but ultimately only store losers. Here we keep the match results
     var winners: [config.max_top_k * 2]Node = undefined;
 

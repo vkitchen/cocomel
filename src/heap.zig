@@ -118,9 +118,6 @@ fn insert_from(docid: u32, score: config.AccumulatorType, index: usize) void {
 }
 
 pub fn make() void {
-    for (cap..max_top_k_rounded) |i|
-        docids[i] = 0;
-
     var position: i64 = config.max_top_k / 2 - 1;
     while (position >= 0) {
         heapify(@intCast(position));

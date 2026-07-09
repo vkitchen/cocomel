@@ -33,7 +33,7 @@ pub const bm25_k1 = 0.9; // Term saturation
 pub const bm25_b = 0.4; // Document length normalisation
 
 pub const io_buffer_size = 4096;
+pub const query_buffer_size = 65536; // splade has big queries
 pub const max_top_k = 1000;
-pub const max_term_length = 100; // longest token from document
-pub const max_query_length = 1000; // chars in query
-pub const max_query_terms = 100; // words in query
+pub const max_term_length = 100; // used during indexing
+pub const max_query_terms = 6000; // splade has big queries

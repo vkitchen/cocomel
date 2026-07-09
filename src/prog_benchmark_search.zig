@@ -9,7 +9,7 @@ const Result = @import("result.zig");
 const TopK = @import("top_k.zig");
 const Search = @import("search.zig");
 
-var stdin_buffer: [1024]u8 = undefined;
+var stdin_buffer: [config.query_buffer_size]u8 = undefined;
 var stdout_buffer: [1024]u8 = undefined;
 
 var stdin: std.Io.File.Reader = undefined;

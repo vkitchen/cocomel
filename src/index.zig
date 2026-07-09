@@ -24,7 +24,7 @@ pub const VocabTuple = extern struct {
 };
 
 pub const SegmentHeader = struct {
-    impact: ImpactType,
+    impact: config.AccumulatorType,
     len: u32,
 };
 

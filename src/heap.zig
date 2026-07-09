@@ -8,6 +8,8 @@
 const config = @import("config.zig");
 const Result = @import("result.zig");
 
+const c = @import("c");
+
 pub var len: usize = 0;
 pub var cap: usize = undefined;
 
@@ -139,21 +141,9 @@ pub fn insert(docid: u32, score: config.AccumulatorType) void {
     insert_from(docid, score, 0);
 }
 
-fn find(docid: u32) u64 {
-    const Vec = @Vector(max_top_k_rounded, u32);
-
-    const haystack: Vec = docids;
-    const needle: Vec = @splat(docid);
-
-    const mask = haystack == needle;
-    const bits: KMask = @bitCast(mask);
-
-    return @ctz(bits);
-}
-
 pub fn promote(docid: u32, score: config.AccumulatorType) void {
-    const where = find(docid);
-    insert_from(docid, score, where);
+    const where = c.find_avx2(&docids, len, docid);
+    insert_from(docid, score, @intCast(where));
 }
 
 pub fn extract(buf: []Result) void {

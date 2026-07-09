@@ -25,7 +25,7 @@ pub fn init(allocator: std.heap.FixedBufferAllocator, stemmer: Stemmer, snippets
     };
 }
 
-pub fn snippet(self: *Self, query_: []query.Term, start: usize, end: usize) ![]Term {
+pub fn snippet(self: *Self, query_: [][]u8, start: usize, end: usize) ![]Term {
     self.terms.clearRetainingCapacity();
     self.allocator.reset();
 
@@ -38,7 +38,7 @@ pub fn snippet(self: *Self, query_: []query.Term, start: usize, end: usize) ![]T
     var i: usize = 0;
     while (i < self.terms.items.len) : (i += 1) {
         for (query_) |q| {
-            if (std.mem.eql(u8, q.term, self.terms.items[i].stemmed)) {
+            if (std.mem.eql(u8, q, self.terms.items[i].stemmed)) {
                 self.terms.items[i].hit = true;
                 if (i < window_size)
                     hits += 1;

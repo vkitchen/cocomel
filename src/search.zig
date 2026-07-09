@@ -8,7 +8,6 @@ const Result = @import("result.zig");
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
 const TopK = @import("top_k.zig").TopK;
-const QueryTerm = @import("tokenizer_query.zig").Term;
 const QueryParser = @import("tokenizer_query.zig").Parser;
 const Stemmer = @import("stem.zig").Stemmer;
 const Snippeter = @import("snippets.zig");
@@ -27,7 +26,7 @@ const Self = @This();
 index: Index,
 snippets: bool,
 snippeter: Snippeter,
-query: std.ArrayListUnmanaged(QueryTerm),
+query: std.ArrayListUnmanaged([]u8),
 postings: std.ArrayList(PostingsHeader),
 topk: TopK,
 accumulators: []align(32) config.AccumulatorType,
@@ -67,7 +66,7 @@ pub fn init(io: std.Io, allocator: std.mem.Allocator, index_filename: []const u8
         .index = index,
         .snippets = index.hasSnippets(),
         .snippeter = snippeter,
-        .query = try std.ArrayListUnmanaged(QueryTerm).initCapacity(allocator, config.max_query_terms),
+        .query = try std.ArrayListUnmanaged([]u8).initCapacity(allocator, config.max_query_terms),
         .postings = try std.ArrayList(PostingsHeader).initCapacity(allocator, config.max_query_terms),
         .topk = TopK.init(accumulators.ptr),
         .accumulators = accumulators,
@@ -149,7 +148,7 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
 
     // TODO fix term negation
     for (self.query.items) |term| {
-        const res = try self.index.find(self.postings_allocator.allocator(), term.term);
+        const res = try self.index.find(self.postings_allocator.allocator(), term);
         if (res) |postings|
             self.postings.appendAssumeCapacity(postings);
     }

@@ -22,10 +22,6 @@ fn memset(dest: []align(32) u8) void {
     c.memset_avx2(dest.ptr, dest.len);
 }
 
-fn cmpPostings(_: void, a: PostingsHeader, b: PostingsHeader) bool {
-    return a.len > b.len;
-}
-
 const Self = @This();
 
 index: Index,
@@ -171,8 +167,6 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
         self.prunePostings();
 
     self.scalePostings();
-
-    std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
 
     memset(std.mem.sliceAsBytes(self.accumulators));
 

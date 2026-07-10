@@ -105,35 +105,24 @@ fn prunePostings(self: *Self) void {
     }
 }
 
-// Maps [@min(impact), @max(impact)] to [1, @intMax(AccumulatorType)]
+// Maps [1, @max(impact)] to [1, @intMax(AccumulatorType)]
 // Using the formula:
 //
-//            (x - @min) * (@intMax - 1)
-// f(x) = 1 + --------------------------
-//                 (@max - @min)
+//            impact * (@intMax - termCount)
+// f(x) = 1 + ------------------------------
+//                     sum(@max)
 //
 fn scalePostings(self: *Self) void {
-    const accumulator_max: usize = std.math.maxInt(config.AccumulatorType) / self.postings.items.len - 1;
+    const accumulator_max: f64 = @floatFromInt(std.math.maxInt(config.AccumulatorType) - self.postings.items.len);
 
-    var max_impact: usize = 0;
-    var min_impact: usize = std.math.maxInt(config.AccumulatorType);
+    var max_total_impact: f64 = 0;
     for (self.postings.items) |post| {
-        const first_impact = post.segments[0].impact;
-        const last_impact = post.segments[post.segments.len - 1].impact;
-
-        if (first_impact > max_impact) max_impact = first_impact;
-        if (last_impact < min_impact) min_impact = last_impact;
+        max_total_impact += post.segments[0].impact;
     }
-
-    if (max_impact < accumulator_max)
-        return;
-
-    const scale_factor: f64 = @as(f64, @floatFromInt(accumulator_max)) / @as(f64, @floatFromInt(max_impact - min_impact));
 
     for (self.postings.items) |post| {
         for (post.segments) |*segment| {
-            const impact: f64 = segment.impact;
-            segment.impact = @intFromFloat(1 + (impact - @as(f64, @floatFromInt(min_impact))) * scale_factor);
+            segment.impact = @intFromFloat(1 + segment.impact * accumulator_max / max_total_impact);
         }
     }
 }

@@ -37,7 +37,7 @@ pub fn HashMap(comptime T: type) type {
 
             for (self.store) |p| {
                 if (p.key != null) {
-                    var i = Wyhash.hash(0, p.key.?) & self.cap - 1;
+                    var i = Wyhash.hash(0, p.key.?) & new_cap - 1;
                     while (new_store[i].key != null)
                         i = i + 1 & new_cap - 1;
 

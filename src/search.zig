@@ -117,10 +117,9 @@ fn scalePostings(self: *Self) void {
 
     var max_impact: usize = 0;
     var min_impact: usize = std.math.maxInt(config.AccumulatorType);
-    for (self.postings.items, 0..) |post, i| {
-        const term_count = self.query.items[i].count;
-        const first_impact = term_count * post.segments[0].impact;
-        const last_impact = term_count * post.segments[post.segments.len - 1].impact;
+    for (self.postings.items) |post| {
+        const first_impact = post.segments[0].impact;
+        const last_impact = post.segments[post.segments.len - 1].impact;
 
         if (first_impact > max_impact) max_impact = first_impact;
         if (last_impact < min_impact) min_impact = last_impact;
@@ -131,12 +130,9 @@ fn scalePostings(self: *Self) void {
 
     const scale_factor: f64 = @as(f64, @floatFromInt(accumulator_max)) / @as(f64, @floatFromInt(max_impact - min_impact));
 
-    for (self.postings.items, 0..) |post, i| {
-        const term_count = self.query.items[i].count;
-
+    for (self.postings.items) |post| {
         for (post.segments) |*segment| {
-            var impact: f64 = segment.impact;
-            impact *= @floatFromInt(term_count);
+            const impact: f64 = segment.impact;
             segment.impact = @intFromFloat(1 + (impact - @as(f64, @floatFromInt(min_impact))) * scale_factor);
         }
     }
@@ -172,23 +168,12 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
     self.postings.clearRetainingCapacity();
 
     for (0..self.query.items.len) |i| {
-        const res = try self.index.find(self.postings_allocator.allocator(), self.query.items[i].term);
+        // The term count gets passed through to find in order to scale the segments during decompression
+        const res = try self.index.find(self.postings_allocator.allocator(), self.query.items[i]);
         if (res) |postings| {
             self.postings.appendAssumeCapacity(postings);
-        } else {
-            self.query.items[i].count = 0;
         }
     }
-
-    // Remove failed queries
-    to = 0;
-    for (0..self.query.items.len) |i| {
-        if (self.query.items[i].count != 0) {
-            self.query.items[to] = self.query.items[i];
-            to += 1;
-        }
-    }
-    self.query.items.len = to;
 
     // No results found
     if (self.postings.items.len == 0)

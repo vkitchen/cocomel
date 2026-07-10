@@ -9,6 +9,7 @@ const compress = @import("compress_int.zig");
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 const TopK = @import("top_k.zig").TopK;
+const QueryTerm = @import("tokenizer_query.zig").Term;
 const Stemmer = @import("stem.zig").Stemmer;
 const Result = @import("result.zig");
 
@@ -24,7 +25,7 @@ pub const VocabTuple = extern struct {
 };
 
 pub const SegmentHeader = struct {
-    impact: config.AccumulatorType,
+    impact: u32,
     len: u32,
 };
 
@@ -180,7 +181,7 @@ pub const Index = struct {
                 const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
                 for (docids) |doc| {
                     out.len += 1;
-                    out[out.len - 1] = .{ .docid = doc, .score = segment.impact };
+                    out[out.len - 1] = .{ .docid = doc, .score = @truncate(segment.impact) };
 
                     if (out.len == results.len)
                         return out;
@@ -205,7 +206,7 @@ pub const Index = struct {
                 const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
                 for (docids) |doc| {
                     const saved = accumulators[doc];
-                    accumulators[doc] += segment.impact;
+                    accumulators[doc] += @truncate(segment.impact);
                     topk.insert(doc, accumulators[doc], saved);
                 }
                 last_id = decompression_buffer[docids.len - 1];
@@ -218,7 +219,7 @@ pub const Index = struct {
         return if (ImpactType == u16) read16(self.postings_store, offset) else self.postings_store[offset];
     }
 
-    fn readPostingsHeader(self: *const Self, allocator: std.mem.Allocator, offset: u64) !PostingsHeader {
+    fn readPostingsHeader(self: *const Self, allocator: std.mem.Allocator, offset: u64, scale: u32) !PostingsHeader {
         var index = offset;
         const num_segments = self.readImpact(index);
         index += @sizeOf(ImpactType);
@@ -229,7 +230,7 @@ pub const Index = struct {
             index += @sizeOf(ImpactType);
             var num_docs: u32 = undefined;
             index += vbyte.read(self.postings_store[index..], &num_docs);
-            segments[i] = .{ .impact = impact, .len = num_docs };
+            segments[i] = .{ .impact = impact * scale, .len = num_docs };
             total_docs += num_docs;
         }
         var blocks_start: u32 = undefined;
@@ -238,9 +239,9 @@ pub const Index = struct {
     }
 
     // Returns start of segment header and start of segments
-    pub fn find(self: *const Self, allocator: std.mem.Allocator, key: []const u8) !?PostingsHeader {
-        var i: u64 = Wyhash.hash(0, key) & self.vocab.len - 1;
-        const hash2 = Wyhash.hash(42, key);
+    pub fn find(self: *const Self, allocator: std.mem.Allocator, key: QueryTerm) !?PostingsHeader {
+        var i: u64 = Wyhash.hash(0, key.term) & self.vocab.len - 1;
+        const hash2 = Wyhash.hash(42, key.term);
         while (true) {
             if (self.vocab[i].term == 0)
                 return null;
@@ -249,9 +250,9 @@ pub const Index = struct {
                 continue;
             }
             const term = readStr(self.postings_store, self.vocab[i].term);
-            if (std.mem.eql(u8, term, key)) {
+            if (std.mem.eql(u8, term, key.term)) {
                 const postings_start = self.vocab[i].term + @sizeOf(u16) + term.len;
-                return try self.readPostingsHeader(allocator, postings_start);
+                return try self.readPostingsHeader(allocator, postings_start, key.count);
             }
 
             i = i + 1 & self.vocab.len - 1;

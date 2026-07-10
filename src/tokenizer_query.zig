@@ -6,7 +6,7 @@ const Stemmer = @import("stem.zig").Stemmer;
 
 pub const Term = struct {
     term: []u8,
-    count: usize,
+    count: u32,
 };
 
 pub const Parser = struct {

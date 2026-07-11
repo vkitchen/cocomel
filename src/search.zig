@@ -92,6 +92,7 @@ fn prunePostings(self: *Self) void {
         // Find best
         var best_i: usize = 0;
         var best_impact: usize = 0;
+        var best_len: usize = 0;
         for (self.postings.items, 0..) |*post, i| {
             // We've consumed this postings
             if (post.segments.len == segment_lengths[i])
@@ -99,9 +100,11 @@ fn prunePostings(self: *Self) void {
 
             // We have to do this plus one minus one juggle as access is bounds checked
             post.segments.len += 1;
-            if (post.segments[post.segments.len - 1].impact > best_impact) {
+            const segment = post.segments[post.segments.len - 1];
+            if (segment.impact > best_impact or (segment.impact == best_impact and segment.len < best_len)) {
                 best_i = i;
-                best_impact = post.segments[post.segments.len - 1].impact;
+                best_impact = segment.impact;
+                best_len = segment.len;
             }
             post.segments.len -= 1;
         }

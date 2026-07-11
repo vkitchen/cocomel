@@ -75,26 +75,46 @@ pub fn init(io: std.Io, allocator: std.mem.Allocator, index_filename: []const u8
     };
 }
 
+var segment_lengths: [config.max_query_terms]usize = undefined;
 fn prunePostings(self: *Self) void {
     const budget: usize = @intFromFloat(@as(f64, @floatFromInt(self.index.docs.len)) * config.SearchProportion);
     var total: usize = 0;
-    for (self.postings.items) |post|
-        total += post.len;
 
-    var impact: usize = 1;
-    while (total > budget) {
-        for (self.postings.items) |*post| {
-            if (post.segments.len == 0)
+    // Truncate all postings
+    for (self.postings.items, 0..) |*postings, i| {
+        segment_lengths[i] = postings.segments.len;
+        postings.segments.len = 0;
+        postings.len = 0;
+    }
+
+    // Slowly add the best postings back
+    while (total < budget) {
+        // Find best
+        var best_i: usize = 0;
+        var best_impact: usize = 0;
+        for (self.postings.items, 0..) |*post, i| {
+            // We've consumed this postings
+            if (post.segments.len == segment_lengths[i])
                 continue;
 
-            const last = post.segments[post.segments.len - 1];
-            if (last.impact == impact) {
-                post.len -= last.len;
-                total -= last.len;
-                post.segments.len -= 1;
+            // We have to do this plus one minus one juggle as access is bounds checked
+            post.segments.len += 1;
+            if (post.segments[post.segments.len - 1].impact > best_impact) {
+                best_i = i;
+                best_impact = post.segments[post.segments.len - 1].impact;
             }
+            post.segments.len -= 1;
         }
-        impact += 1;
+
+        // Add best
+        self.postings.items[best_i].segments.len += 1;
+        const segment_len = self.postings.items[best_i].segments.len;
+        const best_segment = self.postings.items[best_i].segments[segment_len - 1];
+
+        self.postings.items[best_i].len += best_segment.len;
+        total += best_segment.len;
+
+        segment_lengths[best_i] += 1;
     }
 
     // Remove any postings that got emptied

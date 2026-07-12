@@ -214,7 +214,13 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
     for (1..self.postings.items.len) |i|
         self.index.accumulatePostings(&self.postings.items[i]);
 
-    return HashMapResult.results()[start..@min(end, HashMapResult.cap)];
+    const res = HashMapResult.results();
+    var i: usize = 0;
+    while (i < end) : (i += 1) {
+        if (res[i].docid == 0)
+            break;
+    }
+    return res[start..i];
 }
 
 pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

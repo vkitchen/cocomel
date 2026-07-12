@@ -13,7 +13,7 @@ pub const default_compressor = "bp128";
 pub const SearchProportion = 0.1;
 
 // Used for search. If you regularly have queries above 8 terms I recommend u16
-pub const AccumulatorType = u8;
+pub const AccumulatorType = u16;
 
 // Used for offsets into sections of the index
 // This may break things if set below u64

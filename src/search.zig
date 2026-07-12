@@ -8,6 +8,7 @@ const Result = @import("result.zig");
 const Term = @import("tokenizer_snippet.zig").Term;
 const Token = @import("tokenizer.zig").Token;
 const TopK = @import("top_k.zig").TopK;
+const HashMapResult = @import("hash_map_result.zig");
 const QueryTerm = @import("tokenizer_query.zig").Term;
 const QueryParser = @import("tokenizer_query.zig").Parser;
 const Stemmer = @import("stem.zig").Stemmer;
@@ -154,6 +155,10 @@ fn cmpQuery(_: void, a: QueryTerm, b: QueryTerm) bool {
     return std.mem.order(u8, a.term, b.term) == .lt;
 }
 
+fn cmpPostings(_: void, a: PostingsHeader, b: PostingsHeader) bool {
+    return a.segments[0].impact > b.segments[0].impact;
+}
+
 pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end: usize, prune: bool) ![]Result {
     self.postings_allocator.reset();
     self.query.clearRetainingCapacity();
@@ -199,18 +204,17 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
     if (prune)
         self.prunePostings();
 
-    self.scalePostings();
+    std.sort.pdq(PostingsHeader, self.postings.items, {}, cmpPostings);
 
-    memset(std.mem.sliceAsBytes(self.accumulators));
+    HashMapResult.resize(self.postings.items[0].len);
 
-    self.topk.clearRetainingCapacity();
-    self.topk.resize(end);
+    self.index.saturatePostings(&self.postings.items[0]);
 
     // Now process normally
-    for (self.postings.items) |postings|
-        self.index.accumulatePostings(&postings, &self.topk, self.accumulators);
+    for (1..self.postings.items.len) |i|
+        self.index.accumulatePostings(&self.postings.items[i]);
 
-    return self.topk.results(results)[start..end];
+    return HashMapResult.results()[start..end];
 }
 
 pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

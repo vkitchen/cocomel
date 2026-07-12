@@ -4,4 +4,4 @@
 const config = @import("config.zig");
 
 docid: u32,
-score: config.AccumulatorType,
+score: u32,

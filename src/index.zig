@@ -9,6 +9,7 @@ const compress = @import("compress_int.zig");
 const snippets = @import("snippets.zig");
 const vbyte = @import("compress_int_vbyte.zig");
 const TopK = @import("top_k.zig").TopK;
+const HashMapResult = @import("hash_map_result.zig");
 const QueryTerm = @import("tokenizer_query.zig").Term;
 const Stemmer = @import("stem.zig").Stemmer;
 const Result = @import("result.zig");
@@ -194,7 +195,7 @@ pub const Index = struct {
         return out;
     }
 
-    pub fn accumulatePostings(self: *const Self, header: *const PostingsHeader, topk: *TopK, accumulators: []config.AccumulatorType) void {
+    pub fn saturatePostings(self: *const Self, header: *const PostingsHeader) void {
         var blocks = header.blocks;
         var postings = header.postings;
 
@@ -204,11 +205,28 @@ pub const Index = struct {
 
             while (segment.len > 0) {
                 const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
-                for (docids) |doc| {
-                    const saved = accumulators[doc];
-                    accumulators[doc] += @truncate(segment.impact);
-                    topk.insert(doc, accumulators[doc], saved);
-                }
+                for (docids) |doc|
+                    HashMapResult.append(doc, segment.impact);
+
+                last_id = decompression_buffer[docids.len - 1];
+                segment.len -= @truncate(docids.len);
+            }
+        }
+    }
+
+    pub fn accumulatePostings(self: *const Self, header: *const PostingsHeader) void {
+        var blocks = header.blocks;
+        var postings = header.postings;
+
+        for (0..header.segments.len) |i| {
+            var segment = header.segments[i];
+            var last_id: u32 = 0;
+
+            while (segment.len > 0) {
+                const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
+                for (docids) |doc|
+                    HashMapResult.promote(doc, segment.impact);
+
                 last_id = decompression_buffer[docids.len - 1];
                 segment.len -= @truncate(docids.len);
             }

@@ -78,16 +78,21 @@ pub fn main(init: std.process.Init) !void {
         all_results[i] = try arena.alloc(Result, 1000);
 
     const start_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
-    for (queries.items, 0..) |query, i|
-        all_results[i] = try searcher.search(all_results[i], query[1], 0, num_results, prune);
-    const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
-
-    for (all_results, 0..) |results, qi| {
+    for (queries.items, 0..) |query, qi| {
+        const results = try searcher.search(all_results[qi], query[1], 0, num_results, prune);
         for (0..results.len) |i| {
             const doc_id = searcher.name(results[i].docid);
             try stdout.interface.print("{d} Q0 {s} {d} {d} cocomel\n", .{ queries.items[qi][0], doc_id[0], i + 1, results[i].score });
         }
     }
+    const end_search_time = std.Io.Clock.now(.real, init.io).toNanoseconds();
+
+//    for (all_results, 0..) |results, qi| {
+//        for (0..results.len) |i| {
+//            const doc_id = searcher.name(results[i].docid);
+//            try stdout.interface.print("{d} Q0 {s} {d} {d} cocomel\n", .{ queries.items[qi][0], doc_id[0], i + 1, results[i].score });
+//        }
+//    }
     try stdout.flush();
 
     const total_time = std.Io.Clock.now(.real, init.io).toNanoseconds();

@@ -214,7 +214,7 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
     for (1..self.postings.items.len) |i|
         self.index.accumulatePostings(&self.postings.items[i]);
 
-    return HashMapResult.results()[start..end];
+    return HashMapResult.results()[start..@min(end, HashMapResult.cap)];
 }
 
 pub fn name(self: *const Self, doc_id: u32) [2][]const u8 {

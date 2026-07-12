@@ -7,7 +7,7 @@ const Result = @import("result.zig");
 const c = @import("c");
 
 var store: [1_500_000]Result align(32) = undefined;
-var cap: usize = undefined;
+pub var cap: usize = undefined;
 
 fn memset(dest: []align(32) u8) void {
     c.memset_avx2(dest.ptr, dest.len);
@@ -16,15 +16,15 @@ fn memset(dest: []align(32) u8) void {
 // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 fn hash(key: u32) u32 {
     var x = key;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
-    x = ((x >> 16) ^ x) * 0x45d9f3b;
+    x = ((x >> 16) ^ x) *% 0x45d9f3b;
+    x = ((x >> 16) ^ x) *% 0x45d9f3b;
     x = (x >> 16) ^ x;
     return x;
 }
 
 pub fn resize(len: usize) void {
-    cap = len;
-    memset(std.mem.sliceAsBytes(store[0..len]));
+    cap = @intFromFloat(@as(f64, @floatFromInt(len)) * 1.6);
+    memset(std.mem.sliceAsBytes(store[0..cap]));
 }
 
 pub fn append(docid: u32, impact: u32) void {
@@ -43,7 +43,7 @@ pub fn promote(docid: u32, impact: u32) void {
             return;
         }
 
-        i = i + 1 % cap;
+        i = (i + 1) % cap;
     }
 }
 

@@ -31,9 +31,9 @@ pub fn main(init: std.process.Init) !void {
         \\--snippets             Whether to generate a snippet index for the input.
         \\--wsj                  Whether the files to index are in trec wsj format.
         \\--stem <name>          Stemmer to use. Only "s" supported.
-        \\--compress <name>      Compressor to use:
-        \\                         * bp128 Packs 128 integers at a time into blocks (fast, default)
-        \\                         * vbyte Packs integers into variable number of bytes (slow)
+        //        \\--compress <name>      Compressor to use:
+        //        \\                         * bp128 Packs 128 integers at a time into blocks (fast, default)
+        //        \\                         * vbyte Packs integers into variable number of bytes (slow)
         \\<file>...
         \\
     );
@@ -57,14 +57,14 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
-    var compressor = compress.default;
-    if (res.args.compress) |alg| {
-        compressor = compress.fromName(alg);
-        if (compressor == .failed) {
-            std.debug.print("Unknown compressor {s}\n", .{alg});
-            std.process.exit(1);
-        }
-    }
+    const compressor = compress.default;
+    //    if (res.args.compress) |alg| {
+    //        compressor = compress.fromName(alg);
+    //        if (compressor == .failed) {
+    //            std.debug.print("Unknown compressor {s}\n", .{alg});
+    //            std.process.exit(1);
+    //        }
+    //    }
 
     var serialiser = try CcmlSerialiser.init(init.io, res.args.snippets != 0);
 

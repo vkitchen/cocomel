@@ -158,12 +158,10 @@ pub const Index = struct {
         return [2]u64{ self.snippets[doc_id], self.snippets[doc_id + 1] };
     }
 
-    inline fn decompressBlock(self: *const Self, blocks: *u64, postings: *u64, len: u32, last_id: u32) []u32 {
-        const doc_count = @min(128, len);
-        const res = compress.unpack_block_d1(self.header.compressor, self.blocks_store[blocks.*..], self.postings_store[postings.*..], &decompression_buffer, doc_count, last_id);
+    inline fn decompressBlock(self: *const Self, blocks: *u64, postings: *u64) void {
+        const res = compress.unpack_block(self.header.compressor, self.blocks_store[blocks.*..], self.postings_store[postings.*..], &decompression_buffer);
         blocks.* += res.blocks;
         postings.* += res.bytes;
-        return decompression_buffer[0..doc_count];
     }
 
     pub fn readPostings(self: *const Self, header: *const PostingsHeader, results: []Result) []Result {
@@ -173,21 +171,37 @@ pub const Index = struct {
         var blocks = header.blocks;
         var postings = header.postings;
 
-        for (0..header.segments.len) |i| {
-            var segment = header.segments[i];
-            var last_id: u32 = 0;
+        var segment_i: usize = 0;
+        var impact: u8 = @truncate(header.segments[segment_i].impact);
+        var last_doc: u32 = 0;
+        while (true) {
+            const res = compress.unpack_block(self.blocks_store[blocks..], self.postings_store[postings..], &decompression_buffer);
+            blocks += res.blocks;
+            postings += res.bytes;
 
-            while (segment.len > 0) {
-                const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
-                for (docids) |doc| {
-                    out.len += 1;
-                    out[out.len - 1] = .{ .docid = doc, .score = @truncate(segment.impact) };
+            for (decompression_buffer) |raw_doc| {
+                if (raw_doc == 0) {
+                    segment_i += 1;
+                    impact = @truncate(header.segments[segment_i].impact);
 
-                    if (out.len == results.len)
+                    // We are done
+                    if (impact == 0)
                         return out;
+
+                    last_doc = 0;
+                    continue;
                 }
-                last_id = decompression_buffer[docids.len - 1];
-                segment.len -= @truncate(docids.len);
+
+                // de-d-gap
+                const doc = raw_doc + last_doc;
+
+                out.len += 1;
+                out[out.len - 1] = .{ .docid = doc, .score = impact };
+
+                if (out.len == results.len)
+                    return out;
+
+                last_doc = doc;
             }
         }
 
@@ -198,19 +212,35 @@ pub const Index = struct {
         var blocks = header.blocks;
         var postings = header.postings;
 
-        for (0..header.segments.len) |i| {
-            var segment = header.segments[i];
-            var last_id: u32 = 0;
+        var segment_i: usize = 0;
+        var impact: u8 = @truncate(header.segments[segment_i].impact);
+        var last_doc: u32 = 0;
+        while (true) {
+            const res = compress.unpack_block(self.blocks_store[blocks..], self.postings_store[postings..], &decompression_buffer);
+            blocks += res.blocks;
+            postings += res.bytes;
 
-            while (segment.len > 0) {
-                const docids = self.decompressBlock(&blocks, &postings, segment.len, last_id);
-                for (docids) |doc| {
-                    const saved = accumulators[doc];
-                    accumulators[doc] += @truncate(segment.impact);
-                    topk.insert(doc, accumulators[doc], saved);
+            for (decompression_buffer) |raw_doc| {
+                if (raw_doc == 0) {
+                    segment_i += 1;
+                    impact = @truncate(header.segments[segment_i].impact);
+
+                    // We are done
+                    if (impact == 0)
+                        return;
+
+                    last_doc = 0;
+                    continue;
                 }
-                last_id = decompression_buffer[docids.len - 1];
-                segment.len -= @truncate(docids.len);
+
+                // de-d-gap
+                const doc = raw_doc + last_doc;
+
+                const saved = accumulators[doc];
+                accumulators[doc] += impact;
+                topk.insert(doc, accumulators[doc], saved);
+
+                last_doc = doc;
             }
         }
     }
@@ -224,15 +254,22 @@ pub const Index = struct {
         const num_segments = self.readImpact(index);
         index += @sizeOf(ImpactType);
         var total_docs: usize = 0;
-        var segments = try allocator.alloc(SegmentHeader, num_segments);
+        var segments = try allocator.alloc(SegmentHeader, num_segments + 1); // TODO this can overrun the buffer
         for (0..num_segments) |i| {
             const impact = self.readImpact(index);
             index += @sizeOf(ImpactType);
+
             var num_docs: u32 = undefined;
             index += vbyte.read(self.postings_store[index..], &num_docs);
+
             segments[i] = .{ .impact = impact * scale, .len = num_docs };
             total_docs += num_docs;
         }
+
+        // Null terminate
+        segments[num_segments] = .{ .impact = 0, .len = 0 };
+
+        // Read blocks
         var blocks_start: u32 = undefined;
         index += vbyte.read(self.postings_store[index..], &blocks_start);
         return .{ .len = total_docs, .segments = segments, .blocks = blocks_start, .postings = index };

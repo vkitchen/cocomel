@@ -82,11 +82,16 @@ fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *
             longest_segment = best[i];
     }
 
+    // TODO this is probably larger than it needs to be
+    const longest_postings = longest_segment * (1 << config.quantise_bits);
+
     // Buffers
     var doc_ids = [_]std.ArrayList(u32){.empty} ** (1 << config.quantise_bits);
     for (&doc_ids, 0..) |*d, i| try d.resize(allocator, best[i]); // reserve so arena doesn't get trampled
 
-    const blocks_buffer = try allocator.alloc(u128, longest_segment / 4);
+    // TODO these sizes are wrong
+    var docids_buffer = try allocator.alloc(u32, longest_postings + (1 << config.quantise_bits));
+    const blocks_buffer = try allocator.alloc(u128, longest_postings / 4);
     const bytes_buffer = try allocator.alloc(u8, longest_segment * @sizeOf(u32));
 
     // Scratch
@@ -144,19 +149,29 @@ fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *
         const block_offset_len = vbyte.store(&vbyte_buffer, @truncate(block_offset)); // TODO this could be u64
         try scratch_writer.interface.writeAll(vbyte_buffer[0..block_offset_len]);
 
-        // Write blocks and segment metadata
+        // Recombine segments into a single stream in impact order
+        docids_buffer.len = 0;
         impact = (1 << config.quantise_bits) - 1;
         while (impact > 0) : (impact -= 1) {
             if (doc_ids[impact].items.len == 0)
                 continue;
 
-            // Blocks
-            const written = compress.pack_stream(compressor, blocks_buffer, bytes_buffer, doc_ids[impact].items);
-            try self.writer.interface.writeAll(std.mem.sliceAsBytes(blocks_buffer[0..written.blocks]));
+            const start = docids_buffer.len;
+            const end = start + doc_ids[impact].items.len;
+            docids_buffer.len += doc_ids[impact].items.len;
+            @memcpy(docids_buffer[start..end], doc_ids[impact].items);
 
-            // Metadata
-            try scratch_writer.interface.writeAll(bytes_buffer[0..written.bytes]);
+            // Null terminate each segment
+            docids_buffer.len += 1;
+            docids_buffer[docids_buffer.len - 1] = 0;
         }
+
+        // Write blocks
+        const written = compress.pack_stream(compressor, blocks_buffer, bytes_buffer, docids_buffer);
+        try self.writer.interface.writeAll(std.mem.sliceAsBytes(blocks_buffer[0..written.blocks]));
+
+        // Write metadata
+        try scratch_writer.interface.writeAll(bytes_buffer[0..written.bytes]);
     }
 
     const blocks_end = self.writer.logicalPos();

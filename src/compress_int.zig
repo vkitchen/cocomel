@@ -34,16 +34,21 @@ pub fn fromName(compressor: []const u8) Compressor {
 
 pub inline fn pack_stream(compressor: Compressor, blocks: []u128, bytes: []u8, docs: []const u32) c.struct_compress_res {
     return switch (compressor) {
-        .vbyte => c.compress_int_vbyte_pack_stream(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr, docs.len),
+        .vbyte => c.compress_int_vbyte_pack_stream(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr, docs.len), // TODO fix this
         .bp128 => c.compress_int_bp128_pack_stream(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr, docs.len),
         else => unreachable,
     };
 }
 
-pub inline fn unpack_block_d1(compressor: Compressor, blocks: []const u128, bytes: []const u8, docs: []u32, len: usize, delta: u32) c.struct_compress_res {
-    return switch (compressor) {
-        .vbyte => c.compress_int_vbyte_unpack_block_d1(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr, len, delta),
-        .bp128 => c.compress_int_bp128_unpack_block_d1(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr, len, delta),
-        else => unreachable,
-    };
+// TODO fix this
+// pub inline fn unpack_block(compressor: Compressor, blocks: []const u128, bytes: []const u8, docs: []u32, len: usize, delta: u32) c.struct_compress_res {
+//     return switch (compressor) {
+//         .vbyte => c.compress_int_vbyte_unpack_block_d1(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr, len, delta), // TODO fix this
+//         .bp128 => c.compress_int_bp128_unpack_block(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr),
+//         else => unreachable,
+//     };
+// }
+//
+pub inline fn unpack_block(blocks: []const u128, bytes: []const u8, docs: []u32) c.struct_compress_res {
+    return c.compress_int_bp128_unpack_block(@ptrCast(blocks.ptr), bytes.ptr, docs.ptr);
 }

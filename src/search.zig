@@ -109,6 +109,10 @@ fn prunePostings(self: *Self) void {
             post.segments.len -= 1;
         }
 
+        // We have consumed everything
+        if (best_impact == 0)
+            break;
+
         // Add best
         self.postings.items[best_i].segments.len += 1;
         const segment_len = self.postings.items[best_i].segments.len;
@@ -118,6 +122,14 @@ fn prunePostings(self: *Self) void {
         total += best_segment.len;
 
         segment_lengths[best_i] += 1;
+    }
+
+    // Add the null terminators back in
+    for (0..self.postings.items.len) |i| {
+        self.postings.items[i].segments.len += 1;
+
+        const segment_len = self.postings.items[i].segments.len;
+        self.postings.items[i].segments[segment_len - 1] = .{ .impact = 0, .len = 0 };
     }
 
     // Remove any postings that got emptied
@@ -144,7 +156,7 @@ fn scalePostings(self: *Self) void {
     }
 
     for (self.postings.items) |post| {
-        for (post.segments) |*segment| {
+        for (post.segments[0 .. post.segments.len - 1]) |*segment| {
             segment.impact = @intFromFloat(1 + segment.impact * accumulator_max / max_total_impact);
         }
     }
@@ -168,8 +180,8 @@ pub fn search(self: *Self, results: []Result, query_raw: []u8, start: usize, end
     var from: usize = 1;
     // dedupe
     while (from < self.query.items.len) : (from += 1) {
-        if (std.mem.eql(u8, self.query.items[from-1].term, self.query.items[from].term)) {
-            self.query.items[to-1].count += 1;
+        if (std.mem.eql(u8, self.query.items[from - 1].term, self.query.items[from].term)) {
+            self.query.items[to - 1].count += 1;
         } else {
             self.query.items[to] = self.query.items[from];
             to += 1;

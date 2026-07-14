@@ -29,7 +29,6 @@ pub fn build(b: *std.Build) !void {
             "vendor/simdcomp/src/simdcomputil.c",
             "vendor/simdcomp/src/simdbitpacking.c",
             "vendor/simdcomp/src/simdpackedselect.c",
-            "vendor/simdcomp/src/simdintegratedbitpacking.c",
             "src/find_avx2.c",
             "src/memset_avx2.c",
             "src/compress_int_vbyte.c",

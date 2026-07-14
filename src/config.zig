@@ -7,7 +7,6 @@ pub const scratch_name = "scratch.ccml"; // used briefly during index serialisat
 
 // heap or tournament
 pub const top_k = "tournament";
-pub const default_compressor = "bp128";
 
 // Maximum amount of the collection to examine before giving up on a query
 pub const SearchProportion = 0.1;

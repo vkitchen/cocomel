@@ -63,7 +63,7 @@ fn writeStr(self: *Self, str: []u8) !void {
     try self.writer.interface.writeAll(str);
 }
 
-fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *HashMap(*Postings), vocab_offsets: []index.VocabTuple, compressor: compress.Compressor) ![4]u64 {
+fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *HashMap(*Postings), vocab_offsets: []index.VocabTuple) ![4]u64 {
     var vbyte_buffer: [5]u8 = undefined;
 
     // Get statistics
@@ -167,7 +167,7 @@ fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *
         }
 
         // Write blocks
-        const written = compress.pack_stream(compressor, blocks_buffer, bytes_buffer, docids_buffer);
+        const written = compress.pack_stream(blocks_buffer, bytes_buffer, docids_buffer);
         try self.writer.interface.writeAll(std.mem.sliceAsBytes(blocks_buffer[0..written.blocks]));
 
         // Write metadata
@@ -197,7 +197,7 @@ fn writePostings(self: *Self, io: std.Io, allocator: std.mem.Allocator, vocab: *
 }
 
 // This goes over the index multiple times to avoid allocating excessive memory
-pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), vocab: *HashMap(*Postings), compressor: compress.Compressor, stemmer: Stemmer.Alg, quantise: bool) !u64 {
+pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.ArrayList(Doc), vocab: *HashMap(*Postings), stemmer: Stemmer.Alg, quantise: bool) !u64 {
     // Flush snippets
     try self.newDocId(allocator);
 
@@ -244,7 +244,7 @@ pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.A
     const vocab_offsets = try allocator.alloc(index.VocabTuple, vocab.cap);
     @memset(vocab_offsets, .{ .term = 0, .hash = 0 });
 
-    const postings = try self.writePostings(io, allocator, vocab, vocab_offsets, compressor);
+    const postings = try self.writePostings(io, allocator, vocab, vocab_offsets);
 
     // Document ID strings
     const docs_offsets = try allocator.alloc(config.FileOffsetType, docs.items.len);
@@ -310,7 +310,6 @@ pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, docs: *std.A
         .docs = docs_offset,
 
         // config
-        .compressor = compressor,
         .stemmer = stemmer,
         .doc_fields = if (has_titles) 2 else 1,
         .version = index.version,

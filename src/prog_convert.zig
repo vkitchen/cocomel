@@ -39,9 +39,6 @@ pub fn main(init: std.process.Init) !void {
         \\-h, --help             Display this help and exit.
         \\--ciff <file>          Convert from ciff index.
         \\--quantise             Ciff needs quantising?
-        //        \\--compress <name>      Compressor to use:
-        //        \\                         * bp128 Packs 128 integers at a time into blocks (fast, default)
-        //        \\                         * vbyte Packs integers into variable number of bytes (slow)
         \\
     );
 
@@ -56,15 +53,6 @@ pub fn main(init: std.process.Init) !void {
     if (res.args.help != 0) {
         return clap.helpToFile(init.io, .stderr(), clap.Help, &params, .{});
     }
-
-    const compressor = compress.default;
-    //    if (res.args.compress) |alg| {
-    //        compressor = compress.fromName(alg);
-    //        if (compressor == .failed) {
-    //            std.debug.print("Unknown compressor {s}\n", .{alg});
-    //            std.process.exit(1);
-    //        }
-    //    }
 
     if (res.args.ciff) |filename| {
         var file = try std.Io.Dir.cwd().openFile(init.io, filename, .{});
@@ -143,6 +131,6 @@ pub fn main(init: std.process.Init) !void {
 
         std.debug.print("Writing index...\n", .{});
         var serialiser = try CcmlSerialiser.init(init.io, false);
-        _ = try serialiser.write(init.io, arena, &doc_ids, &vocab, compressor, Stemmer.Alg.none, res.args.quantise != 0);
+        _ = try serialiser.write(init.io, arena, &doc_ids, &vocab, Stemmer.Alg.none, res.args.quantise != 0);
     }
 }

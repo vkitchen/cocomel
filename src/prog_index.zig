@@ -31,9 +31,6 @@ pub fn main(init: std.process.Init) !void {
         \\--snippets             Whether to generate a snippet index for the input.
         \\--wsj                  Whether the files to index are in trec wsj format.
         \\--stem <name>          Stemmer to use. Only "s" supported.
-        //        \\--compress <name>      Compressor to use:
-        //        \\                         * bp128 Packs 128 integers at a time into blocks (fast, default)
-        //        \\                         * vbyte Packs integers into variable number of bytes (slow)
         \\<file>...
         \\
     );
@@ -57,15 +54,6 @@ pub fn main(init: std.process.Init) !void {
         }
     }
 
-    const compressor = compress.default;
-    //    if (res.args.compress) |alg| {
-    //        compressor = compress.fromName(alg);
-    //        if (compressor == .failed) {
-    //            std.debug.print("Unknown compressor {s}\n", .{alg});
-    //            std.process.exit(1);
-    //        }
-    //    }
-
     var serialiser = try CcmlSerialiser.init(init.io, res.args.snippets != 0);
 
     var indexer = try Indexer.init(init.arena.allocator(), stemmer, &serialiser);
@@ -87,7 +75,7 @@ pub fn main(init: std.process.Init) !void {
             }
         }
 
-        try indexer.write(init.io, init.arena.allocator(), compressor);
+        try indexer.write(init.io, init.arena.allocator());
         std.debug.print("Terms count {d}\n", .{indexer.vocab.len});
         std.debug.print("Memory usage {Bi:.2}\n", .{init.arena.queryCapacity()});
         return;
@@ -144,7 +132,7 @@ pub fn main(init: std.process.Init) !void {
             }
         }
 
-        try indexer.write(init.io, init.arena.allocator(), compressor);
+        try indexer.write(init.io, init.arena.allocator());
         std.debug.print("Terms count {d}\n", .{indexer.vocab.len});
         std.debug.print("Memory usage {Bi:.2}\n", .{init.arena.queryCapacity()});
         return;

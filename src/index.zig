@@ -90,10 +90,9 @@ pub const Header = extern struct {
     docs: u64,
 
     // config
-    compressor: compress.Compressor,
     stemmer: Stemmer.Alg,
     doc_fields: u8,
-    _reserved: [3]u8 = .{0} ** 3,
+    _reserved: [4]u8 = .{0} ** 4,
     version: u16,
 };
 

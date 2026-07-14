@@ -6,7 +6,6 @@ const config = @import("config.zig");
 const HashMap = @import("hash_map.zig").HashMap;
 const Postings = @import("postings.zig");
 const Doc = @import("doc.zig");
-const Compressor = @import("compress_int.zig").Compressor;
 const Stemmer = @import("stem.zig").Stemmer;
 const CcmlSerialiser = @import("serialiser_ccml.zig");
 const str = @import("str.zig");
@@ -66,10 +65,10 @@ pub fn addTitle(self: *Self, allocator: std.mem.Allocator, title: []u8) !void {
     self.doc_ids.items[self.doc_ids.items.len - 1].title = try allocator.dupe(u8, title);
 }
 
-pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator, compressor: Compressor) !void {
+pub fn write(self: *Self, io: std.Io, allocator: std.mem.Allocator) !void {
     std.debug.print("{s}\n", .{"Writing index..."});
 
-    const bytes_written = try self.serialiser.write(io, allocator, &self.doc_ids, &self.vocab, compressor, self.stemmer.algorithm, true);
+    const bytes_written = try self.serialiser.write(io, allocator, &self.doc_ids, &self.vocab, self.stemmer.algorithm, true);
 
     std.debug.print("Index size {Bi:.2}\n", .{bytes_written});
 }
